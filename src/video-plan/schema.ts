@@ -404,6 +404,8 @@ function make(strict: boolean) {
     captions: obj({
       enabled: z.boolean().default(true),
       style: z.enum(KIT_CAPTION_STYLES).optional(),
+      /** V4 (ROUND-C1 F4): a speech-to-text provider of the registry times the words. */
+      provider: z.string().max(48).optional(),
     }).optional(),
     music: obj({
       query: text(80),
@@ -415,6 +417,8 @@ function make(strict: boolean) {
     voice: obj({
       voiceId: z.string().min(1).max(100).optional(),
       speed: z.number().finite().min(0.5).max(2).optional(),
+      /** V4 (ROUND-C1 F4): a text-to-speech provider of the registry speaks it. */
+      provider: z.string().max(48).optional(),
     }).optional(),
     notes: z.string().max(4000).optional(),
     /** Written by the builder: each media layer's chosen candidate. */

@@ -6,6 +6,7 @@
 import { lookup } from 'node:dns/promises';
 import { RateLimiter, restRunner, type RestRunner } from '../src/tools/media';
 import type { HttpFetch, Resolver } from '../src/tools/net-guard';
+import { speechRunner } from '../src/tools/speech';
 import { runTool, TOOLS, type ToolId, type ToolOutcome } from '../src/tools';
 import type { PlatformConfig, Plan } from '../src/platform-config';
 import type { UsageLog } from '../src/gateway/usage';
@@ -18,6 +19,9 @@ export const SERVER_TOOLS: readonly ToolId[] = [
   'fetchPage',
   'validatePlan',
   'checkBlock',
+  // ROUND-C1 F4: voices and captions of providers the owner adds.
+  'speak',
+  'transcribe',
 ];
 export interface ServerToolDeps {
   readonly env: () => Readonly<Record<string, string | undefined>>;
@@ -35,6 +39,11 @@ export function createServerTools(d: ServerToolDeps) {
     d.fetch ?? ((url, init) => fetch(url, init as RequestInit));
   const resolve = d.resolve ?? realResolve;
   const rest: RestRunner = restRunner({
+    fetch: fetch_,
+    resolve,
+    key: (ref) => d.env()[ref],
+  });
+  const speech = speechRunner({
     fetch: fetch_,
     resolve,
     key: (ref) => d.env()[ref],
@@ -73,6 +82,7 @@ export function createServerTools(d: ServerToolDeps) {
         media: { builtin: {}, rest },
         limiter,
         web: { fetch: fetch_, resolve, rest },
+        speech,
         pagesUsed: () => pages.get(pageKey) ?? 0,
         notePage: () => pages.set(pageKey, (pages.get(pageKey) ?? 0) + 1),
         available: () => left,

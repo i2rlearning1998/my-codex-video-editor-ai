@@ -42,7 +42,9 @@ export function liveSheetLines(
         .map((p) => {
           const hint = (o.locale === 'hi' ? p.hint.hi : undefined) ?? p.hint.en;
           const cost =
-            p.costPerCall > 0 ? `, ${p.costPerCall} credits a search` : '';
+            p.costPerCall > 0
+              ? `, ${p.costPerCall} credits a ${/-to-/.test(kind) ? 'call' : 'search'}`
+              : '';
           return `${p.id} (${(hint || p.name).replace(/\.$/, '')}${cost}; ${p.rateLimit.perMinute}/min)`;
         })
         .join('; ')}`,

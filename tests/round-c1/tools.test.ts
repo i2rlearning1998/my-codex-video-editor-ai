@@ -451,6 +451,9 @@ describe('[RDC1-005] the shared tools run under Node with no DOM', () => {
       'searchMedia',
       'searchWeb',
       'fetchPage',
+      // ROUND-C1 F4: voices and captions by provider kind.
+      'speak',
+      'transcribe',
       'listLibrary',
       'validatePlan',
       'checkBlock',

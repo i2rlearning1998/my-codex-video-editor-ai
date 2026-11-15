@@ -214,6 +214,72 @@ export async function runPlanBuild(
   }
   const voice = await planVoiceEngine(plan.meta.language).catch(() => null);
   const theme = plan.meta.themeId ? await deps.theme(plan.meta.themeId) : null;
+  // ROUND-C1 F4: a v4 plan's voice is the registry's text-to-speech provider
+  // it names, or the first enabled one when no voice engine is ready here;
+  // a speech-to-text provider (named, or the first enabled) times the words
+  // of a narration whose voice gave none. Each keeps its licence line.
+  const regVoice =
+    registry &&
+    (plan.voice?.provider
+      ? registry.hasSpeech('text-to-speech', plan.voice.provider)
+      : !voice && registry.hasSpeech('text-to-speech'))
+      ? registry
+      : null;
+  const regCaptions =
+    registry &&
+    plan.captions?.enabled !== false &&
+    registry.hasSpeech('speech-to-text', plan.captions?.provider)
+      ? registry
+      : null;
+  const base64Of = async (blob: Blob) => {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let text = '';
+    for (let i = 0; i < bytes.length; i += 0x8000)
+      text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(text);
+  };
+  const timeWords = async (blob: Blob, mime: string, lang: string) => {
+    if (!regCaptions) return undefined;
+    try {
+      const heard = await regCaptions.transcribe(
+        await base64Of(blob),
+        mime,
+        lang,
+        plan.captions?.provider,
+      );
+      return heard.words.length ? heard.words : undefined;
+    } catch {
+      return undefined; // captions keep the narration's own timing
+    }
+  };
+  const regSpeak = regVoice
+    ? async (text: string, lang: string) => {
+        const said = await regVoice.voice(
+          text,
+          lang,
+          plan.voice?.voiceId,
+          plan.voice?.provider,
+        );
+        const bytes = Uint8Array.from(atob(said.base64), (ch) =>
+          ch.charCodeAt(0),
+        );
+        const blob = new Blob([bytes], { type: said.mime });
+        const ext = /mpeg|mp3/.test(said.mime) ? 'mp3' : 'wav';
+        const asset = await deps.importFile(
+          new File([blob], `Narration.${ext}`, { type: said.mime }),
+          regVoice.licenceOf(said),
+        );
+        if (!asset) return null;
+        const words = said.words.length
+          ? said.words
+          : await timeWords(blob, said.mime, lang);
+        return {
+          asset,
+          duration: asset.duration ?? 0,
+          ...(words ? { words } : {}),
+        };
+      }
+    : null;
   return buildVideoFromPlan(
     plan,
     {
@@ -227,28 +293,45 @@ export async function runPlanBuild(
             },
           }
         : {}),
-      ...(voice
+      ...(regSpeak
         ? {
-            voice: async (text, lang, sig) => {
+            voice: async (text: string, lang: string) => {
               const known = `${lang}|${text}`;
               if (spokenBefore.has(known)) return spokenBefore.get(known)!;
-              const made = await synthesizeToMedia(text, {
-                provider: voice.provider,
-                voiceId: voice.voiceId,
-                lang,
-                ...(sig ? { signal: sig } : {}),
-              });
-              const asset = await deps.importFile(
-                new File([made.blob], `Narration.wav`, { type: made.mime }),
-              );
-              const spoken = asset
-                ? { asset, duration: made.durationSec }
-                : null;
+              const spoken = await regSpeak(text, lang);
               spokenBefore.set(known, spoken);
               return spoken;
             },
           }
-        : { voiceUnavailable: t('plan.noVoice') }),
+        : voice
+          ? {
+              voice: async (text, lang, sig) => {
+                const known = `${lang}|${text}`;
+                if (spokenBefore.has(known)) return spokenBefore.get(known)!;
+                const made = await synthesizeToMedia(text, {
+                  provider: voice.provider,
+                  voiceId: voice.voiceId,
+                  lang,
+                  ...(sig ? { signal: sig } : {}),
+                });
+                const asset = await deps.importFile(
+                  new File([made.blob], `Narration.wav`, { type: made.mime }),
+                );
+                const timed = asset
+                  ? await timeWords(made.blob, made.mime, lang)
+                  : undefined;
+                const spoken = asset
+                  ? {
+                      asset,
+                      duration: made.durationSec,
+                      ...(timed ? { words: timed } : {}),
+                    }
+                  : null;
+                spokenBefore.set(known, spoken);
+                return spoken;
+              },
+            }
+          : { voiceUnavailable: t('plan.noVoice') }),
       sound: async (query, kind) => {
         // A sound effect from our own library catalog when its name fits.
         if (kind === 'sfx') return deps.sfx?.(words(query)) ?? null;

@@ -155,6 +155,8 @@ export class Director {
   #projectId = '';
   #queue: Send[] = [];
   #abort: AbortController | null = null;
+  /** ROUND-C1 F3: web pages this Video has read (the web rules count them). */
+  #pagesRead = 0;
   /** ROUND-C1 F2: the plan being made (Stop aborts it). */
   #planAbort: AbortController | null = null;
   #busy = false;
@@ -1025,6 +1027,21 @@ export class Director {
         input.answers.accent = kit.colors[0];
       const style = this.#ws.effectiveStyle(this.#videoId);
       const memory = this.#mem.facts(this.#projectId).map((f) => f.text);
+      // ROUND-C1 F3 (C1.4.3): a link in the Brief card is read first by the
+      // fetchPage tool (wrapped as untrusted data); a page that cannot be
+      // read is said in one sentence and planning goes on without it.
+      let reference: string | undefined;
+      const link = (this.#flow.brief.reference ?? '').trim();
+      if (/^https?:\/\//i.test(link)) {
+        status.textContent = this.#line('plan.readingLink');
+        const read = await this.#research('fetchPage', { url: link });
+        if (read.ok) reference = read.text;
+        else
+          this.#director(
+            this.#line('plan.linkFailed', { reason: clip(read.text, 200) }),
+          );
+        status.textContent = t('plan.working');
+      }
       const result = await llmPlan({
         gateway: s.gateway,
         config: this.#c,
@@ -1051,6 +1068,8 @@ export class Director {
         videoType: this.#flow.typeId || undefined,
         kit: this.#host.graphicsKit(),
         research: (tool, input) => this.#research(tool, input),
+        reference,
+        ...(e2eSeen() ? { onAsk: e2eSeen()! } : {}),
         // ROUND-C1 F2: sample frames of the new graphics, and the vision
         // check's frames (both drawn off screen by the editor's renderer).
         frames: async (p) => {
@@ -1107,6 +1126,27 @@ export class Director {
       const aspect = this.#flow.brief.aspect;
       if (aspect && aspect !== YOU_DECIDE && /^\d+:\d+$/.test(aspect))
         plan = { ...plan, meta: { ...plan.meta, aspect: aspect as never } };
+      // ROUND-C1 F3 (C1.3): the Brief card's "Pictures and footage" choice
+      // is the plan's asset rule (the owner's rules in director.assets).
+      const media = this.#flow.brief.media;
+      const rule =
+        media && media !== YOU_DECIDE
+          ? this.#c.director.assets.briefChoices[media]
+          : undefined;
+      if (rule)
+        plan = {
+          ...plan,
+          version: 4,
+          meta: {
+            ...plan.meta,
+            assets: {
+              order: [...rule.order],
+              aiImagesMax: rule.aiImagesMax,
+              aiVideosMax: rule.aiVideosMax,
+              onlyMine: rule.onlyMine,
+            },
+          },
+        } as VideoPlan;
       const checked = checkPlan(plan);
       if (checked.ok) plan = checked.plan;
       if (rewrite) this.#mem.countRewrite(this.#videoId);
@@ -1172,6 +1212,36 @@ export class Director {
                 : o,
             ).slice(0, 6000),
         };
+      }
+      // DEV and e2e pages only: pages from a test fixture, read by the same
+      // fetchPage (rules, page limit, untrusted wrapping) as the server's.
+      const pages = e2ePages();
+      if (tool === 'fetchPage' && pages) {
+        const { runTool } = await import('../tools');
+        const out = await runTool('fetchPage', input, {
+          config: this.#c,
+          planId: s.planOf(user.id).id,
+          userId: user.id,
+          media: { builtin: {}, rest: async () => [] },
+          pagesUsed: () => this.#pagesRead,
+          notePage: () => void this.#pagesRead++,
+          web: {
+            rest: async () => [],
+            resolve: async () => ['93.184.216.34'],
+            fetch: async (url: string) => {
+              const html = pages[url];
+              return html === undefined
+                ? new Response('Not found', { status: 404 })
+                : new Response(html, {
+                    status: 200,
+                    headers: { 'content-type': 'text/html; charset=utf-8' },
+                  });
+            },
+          } as never,
+        });
+        return out.ok
+          ? { ok: true, text: (out.output as { wrapped: string }).wrapped }
+          : { ok: false, text: out.error };
       }
       if (tool === 'searchMedia') {
         const { searchMedia } = await import('../tools/media');
@@ -1759,13 +1829,17 @@ export class Director {
         ? null
         : h('p', { class: 'ai-muted', text: t('assets.nothing') }),
     );
-    const choices: [Slot['choice'], AiKey][] = [
-      ['make', 'assets.make'],
-      ['upload', 'assets.upload'],
-      ['prompt', 'assets.prompt'],
-      ['library', 'assets.library'],
-      ['later', 'assets.later'],
-    ];
+    // ROUND-C1 F3: "Use only my files" offers no AI-made file.
+    const onlyMine = !!this.#flow.plan?.meta.assets?.onlyMine;
+    const choices: [Slot['choice'], AiKey][] = (
+      [
+        ['make', 'assets.make'],
+        ['upload', 'assets.upload'],
+        ['prompt', 'assets.prompt'],
+        ['library', 'assets.library'],
+        ['later', 'assets.later'],
+      ] as [Slot['choice'], AiKey][]
+    ).filter(([c]) => !onlyMine || (c !== 'make' && c !== 'prompt'));
     for (const slot of slots) {
       const body = h('div', { class: 'ai-slot-body' });
       const row = h(
@@ -1903,6 +1977,22 @@ export class Director {
               })
             : null,
         ),
+        // ROUND-C1 F3: what Director picked, with the other choices, in
+        // the editor's Review & swap.
+        status === 'done' && this.#flow.plan
+          ? h(
+              'div',
+              { class: 'ai-row' },
+              Object.assign(
+                this.#button(
+                  'build.review',
+                  () => this.#host.openReview(this.#flow.plan!.meta.title),
+                  'sm quiet',
+                ),
+                { id: 'ai-build-review' },
+              ),
+            )
+          : null,
       );
       return;
     }
@@ -3588,6 +3678,22 @@ function e2eScript(): string[] | null {
     w.__AIVE_E2E_PLAN_SCRIPT__.length
     ? (w.__AIVE_E2E_PLAN_SCRIPT__ as string[])
     : null;
+}
+/** DEV and e2e pages only: records what the planning model was sent. */
+function e2eSeen(): ((req: { messages: readonly unknown[] }) => void) | null {
+  if (!(import.meta.env.DEV || import.meta.env.MODE === 'e2e')) return null;
+  const w = window as { __AIVE_E2E_PLAN_SEEN__?: unknown[] };
+  return Array.isArray(w.__AIVE_E2E_PLAN_SEEN__)
+    ? (req) => void w.__AIVE_E2E_PLAN_SEEN__!.push(structuredClone(req))
+    : null;
+}
+/** DEV and e2e pages only: web pages by address for the fetchPage tool. */
+function e2ePages(): Record<string, string> | null {
+  if (!(import.meta.env.DEV || import.meta.env.MODE === 'e2e')) return null;
+  return (
+    (window as { __AIVE_E2E_PAGES__?: Record<string, string> })
+      .__AIVE_E2E_PAGES__ ?? null
+  );
 }
 /** DEV and e2e pages only: fixtures for REST providers without a gateway. */
 function e2eMedia(): Record<string, never[]> | null {

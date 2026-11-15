@@ -3093,6 +3093,7 @@ export function mountEditorShell(
               silent: result.silent,
               sceneIds: ids,
               pages: {},
+              ...(result.picks ? { picks: { ...result.picks } } : {}),
             });
             aiPanel?.render();
           },
@@ -3160,8 +3161,21 @@ export function mountEditorShell(
           : { voiceUnavailable: t('plan.noVoice') }),
       };
     },
-    importCandidate: async (candidate) =>
-      (await planBuildServices()).importCandidate(candidate),
+    importCandidate: async (candidate) => {
+      // ROUND-C1 F3: a pick from a provider the owner added in config
+      // carries its own download details (kept with the alternatives).
+      const p = candidate.payload as
+        { download?: unknown; mediaType?: unknown } | undefined;
+      if (
+        candidate.source === 'stock' &&
+        typeof p?.download === 'string' &&
+        typeof p.mediaType === 'string'
+      ) {
+        const { importRegistryPick } = await import('./plan-media');
+        return importRegistryPick(candidate, importQuiet);
+      }
+      return (await planBuildServices()).importCandidate(candidate);
+    },
     searchMore: async (intent, page) => [
       ...(await (
         await planBuildServices()
@@ -8745,6 +8759,25 @@ export function mountEditorShell(
               })),
           ).catch(reportError);
         lastPlanBuild = result;
+        // ROUND-C1 F3: the build keeps its plan state, so Review & swap shows
+        // what Director picked (and its alternatives) for a build made here.
+        {
+          const previous = planState(engine.state.id, result.plan!.meta.title);
+          savePlanState(engine.state.id, {
+            plan: result.plan!,
+            earlier: previous
+              ? allSceneIds(previous).filter((id) => !sceneIds.includes(id))
+              : [],
+            alternatives: Object.fromEntries(
+              Object.entries(result.alternatives).map(([k, v]) => [k, [...v]]),
+            ),
+            flags: [...result.flags],
+            silent: result.silent,
+            sceneIds,
+            pages: {},
+            ...(result.picks ? { picks: { ...result.picks } } : {}),
+          });
+        }
         return {
           sceneIds,
           silent: result.silent,
@@ -8827,6 +8860,10 @@ export function mountEditorShell(
     markAi: () => markAiProject(engine.state.id),
     saveGraphics,
     graphicsKit,
+    openReview: (title: string) => {
+      session.setLayout('editor');
+      openPlanReview(title);
+    },
   };
   // Another Video opened in AI mode: a reload comes back to that one.
   engine.on('state:changed', (event) => {

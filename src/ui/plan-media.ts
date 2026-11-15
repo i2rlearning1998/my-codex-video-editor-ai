@@ -22,6 +22,16 @@ import {
   type RestRunner,
 } from '../tools/media';
 import { ToolError } from '../tools/net-guard';
+import {
+  speak,
+  speechFixtureRunner,
+  speechProvider,
+  transcribe,
+  type SpeakResult,
+  type SpeechKind,
+  type SpeechRunner,
+  type TranscribeResult,
+} from '../tools/speech';
 import type { MediaCandidate, ResolveServices } from '../video-plan/resolve';
 import { stockProvider } from './services';
 import { stockQuality } from './stock-panel';
@@ -195,12 +205,159 @@ export function registryMedia(o: RegistryMediaOptions) {
   const stock: ResolveServices['stock'] = async (query, type, orientation) =>
     (await find(query, type, orientation)).map(candidate);
   /** Downloads a pick and imports it through the existing importer. */
-  const importPick = async (
+  const importPick = (
     c: MediaCandidate,
     importFile: (file: File, license?: LicenseMeta) => Promise<Asset | null>,
     signal?: AbortSignal,
-  ): Promise<Asset> => {
-    const stockItem = stockItems.get(c.key);
+  ) =>
+    importRegistryPick(
+      c,
+      importFile,
+      signal,
+      stockItems.get(c.key),
+      restItems.get(c.key),
+    );
+  /** Music or a sound effect by words through the registry (v4 builds). */
+  const sound = async (query: string, kind: 'music' | 'sfx') => {
+    const items = await find(query, kind === 'music' ? 'audio' : 'sfx').catch(
+      () => [] as MediaItem[],
+    );
+    const pick = items.find((i) => i.mediaType === 'audio');
+    return pick ? candidate(pick) : null;
+  };
+  // ROUND-C1 F4: voices and captions of the registry (kinds text-to-speech,
+  // speech-to-text): through the gateway's tools when one is set (keys on
+  // the server), else DEV and e2e fixtures, else they are not available.
+  const speechFixtures = e2eSpeech();
+  const speechCall = async <T>(
+    tool: 'speak' | 'transcribe',
+    input: Record<string, unknown>,
+    offline: (run: SpeechRunner) => Promise<T>,
+  ): Promise<T> => {
+    if (o.tools) {
+      const out = (await o.tools(tool, input, o.videoId)) as {
+        ok: boolean;
+        error?: string;
+        output?: T;
+      };
+      if (!out.ok) throw new Error(out.error ?? 'The provider failed.');
+      return out.output!;
+    }
+    if (!speechFixtures)
+      throw new Error('Voices and captions from providers need the server.');
+    return offline(speechFixtureRunner(speechFixtures));
+  };
+  const hasSpeech = (kind: SpeechKind, wanted?: string) => {
+    try {
+      speechProvider(o.config.mediaProviders, kind, o.planId, wanted);
+      return true;
+    } catch {
+      return false;
+    }
+  };
+  const voice = (
+    text: string,
+    lang: string,
+    voiceId?: string,
+    provider?: string,
+  ) =>
+    speechCall<SpeakResult>(
+      'speak',
+      {
+        text,
+        lang,
+        ...(voiceId ? { voice: voiceId } : {}),
+        ...(provider ? { provider } : {}),
+      },
+      (run) =>
+        speak(
+          { text, lang, voice: voiceId, provider },
+          o.config.mediaProviders,
+          o.planId,
+          run,
+        ),
+    );
+  const transcribeAudio = (
+    audio: string,
+    mime: string,
+    lang: string,
+    provider?: string,
+  ) =>
+    speechCall<TranscribeResult>(
+      'transcribe',
+      { audio, mime, lang, ...(provider ? { provider } : {}) },
+      (run) =>
+        transcribe(
+          { audio, mime, lang, provider },
+          o.config.mediaProviders,
+          o.planId,
+          run,
+        ),
+    );
+  return {
+    stock,
+    importPick,
+    sound,
+    hasSpeech,
+    voice,
+    transcribe: transcribeAudio,
+    licenceOf: speechLicence,
+  };
+}
+/** DEV and e2e pages only: speech provider answers by provider id. */
+const e2eSpeech = (): Record<string, unknown> | null =>
+  (import.meta.env.DEV || import.meta.env.MODE === 'e2e') &&
+  typeof window !== 'undefined'
+    ? ((window as { __AIVE_E2E_SPEECH__?: Record<string, unknown> })
+        .__AIVE_E2E_SPEECH__ ?? null)
+    : null;
+/** The licence of a provider's voice or words, kept with the asset. */
+export const speechLicence = (r: {
+  provider: string;
+  providerName: string;
+  licence: string;
+  attribution: string;
+}): LicenseMeta => ({
+  providerId: r.provider,
+  itemId: 'speech',
+  sourceUrl: '',
+  author: r.attribution,
+  authorUrl: '',
+  license: {
+    name: r.licence,
+    url: '',
+    attributionRequired: true,
+    commercialUse: true,
+  },
+  attributionText: `${r.attribution} (${r.providerName})`,
+  importedAt: new Date().toISOString(),
+});
+
+const isMediaItem = (v: unknown): v is MediaItem =>
+  !!v &&
+  typeof v === 'object' &&
+  typeof (v as MediaItem).download === 'string' &&
+  typeof (v as MediaItem).provider === 'string' &&
+  typeof (v as MediaItem).mediaType === 'string';
+const isStockItem = (v: unknown): v is StockItem =>
+  !!v &&
+  typeof v === 'object' &&
+  Array.isArray((v as StockItem).files) &&
+  !!(v as StockItem).license;
+/**
+ * Imports a pick of the provider registry. The pick carries its own details
+ * (`payload`, kept with the plan's alternatives), so Review & swap can
+ * import a choice long after the build (ROUND-C1 F3).
+ */
+export async function importRegistryPick(
+  c: MediaCandidate,
+  importFile: (file: File, license?: LicenseMeta) => Promise<Asset | null>,
+  signal?: AbortSignal,
+  known?: StockItem,
+  knownRest?: MediaItem,
+): Promise<Asset> {
+  {
+    const stockItem = known ?? (isStockItem(c.payload) ? c.payload : undefined);
     if (stockItem) {
       const got = await importStockItem(
         stockItem,
@@ -214,7 +371,7 @@ export function registryMedia(o: RegistryMediaOptions) {
       if (!asset) throw new Error('The file could not be added.');
       return asset;
     }
-    const item = restItems.get(c.key);
+    const item = knownRest ?? (isMediaItem(c.payload) ? c.payload : undefined);
     if (!item) throw new Error('This pick is no longer available.');
     const res = await fetch(item.download, signal ? { signal } : {});
     if (!res.ok)
@@ -256,14 +413,5 @@ export function registryMedia(o: RegistryMediaOptions) {
     );
     if (!asset) throw new Error('The file could not be added.');
     return asset;
-  };
-  /** Music or a sound effect by words through the registry (v4 builds). */
-  const sound = async (query: string, kind: 'music' | 'sfx') => {
-    const items = await find(query, kind === 'music' ? 'audio' : 'sfx').catch(
-      () => [] as MediaItem[],
-    );
-    const pick = items.find((i) => i.mediaType === 'audio');
-    return pick ? candidate(pick) : null;
-  };
-  return { stock, importPick, sound };
+  }
 }

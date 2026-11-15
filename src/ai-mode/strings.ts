@@ -156,6 +156,7 @@ const S = {
   ],
   'build.missing': ['Still waiting for: {names}', 'अभी चाहिए: {names}'],
   'build.doneTitle': ['Built', 'बन गया'],
+  'build.review': ['Review & swap media', 'मीडिया देखें और बदलें'],
   'build.cancelledTitle': ['Build cancelled', 'बनाना रोका गया'],
   'build.failedTitle': ['Build failed', 'बनाना विफल'],
   'build.summary': [

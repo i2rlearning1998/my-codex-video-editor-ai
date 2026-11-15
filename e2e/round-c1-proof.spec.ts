@@ -77,7 +77,8 @@ async function dragController(
 test('[RDC1-050] proof 1, explainer: two NEW code graphics (Tier B and Tier C) reused in two scenes, narration and captions, built by Director with no hand edits; a controller drag is one undo step', async ({
   page,
 }) => {
-  test.setTimeout(240_000);
+  // A whole build plus the sample-frame check, under a full parallel run.
+  test.setTimeout(420_000);
   const plan = {
     format: 'video-plan',
     version: 4,
@@ -215,7 +216,8 @@ const layersOf = async (page: import('@playwright/test').Page) =>
 test('[RDC1-051] proof 2, documentary: footage and photos from a REST provider the owner added in config, icons, a music bed, effects and a colour grade on footage, lower thirds and captions; all picked by Director', async ({
   page,
 }) => {
-  test.setTimeout(240_000);
+  // A whole build plus the sample-frame check, under a full parallel run.
+  test.setTimeout(420_000);
   const plan = {
     format: 'video-plan',
     version: 4,
@@ -322,7 +324,8 @@ test('[RDC1-051] proof 2, documentary: footage and photos from a REST provider t
 test('[RDC1-052] proof 3, reel: kinetic text, effects, a faster clip, a pixel transition and music, 9:16', async ({
   page,
 }) => {
-  test.setTimeout(240_000);
+  // A whole build plus the sample-frame check, under a full parallel run.
+  test.setTimeout(420_000);
   const plan = {
     format: 'video-plan',
     version: 4,
@@ -424,7 +427,8 @@ test('[RDC1-052] proof 3, reel: kinetic text, effects, a faster clip, a pixel tr
 test("[RDC1-053] proof 4, recorded-video enhance: the person's own clip (by name), captions, zoom keyframes, a lower third and a chroma-keyed overlay", async ({
   page,
 }) => {
-  test.setTimeout(240_000);
+  // A whole build plus the sample-frame check, under a full parallel run.
+  test.setTimeout(420_000);
   const plan = {
     format: 'video-plan',
     version: 4,

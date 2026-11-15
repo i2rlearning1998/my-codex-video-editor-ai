@@ -73,6 +73,8 @@ export interface AiHost {
       readonly item: unknown;
     }[],
   ): Promise<void>;
+  /** ROUND-C1 F3: the editor layout with Review & swap open for a built plan. */
+  openReview(title: string): void;
   /** ROUND-C1: the Project's graphics kit (saved new graphics). */
   graphicsKit(): readonly {
     id: string;

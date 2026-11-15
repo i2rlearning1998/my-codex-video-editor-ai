@@ -34,6 +34,8 @@ export type HttpFetch = (
   init: {
     method?: string;
     headers?: Record<string, string>;
+    /** ROUND-C1 F4: a POST body (speech providers). */
+    body?: string;
     redirect: 'manual';
     signal?: AbortSignal;
   },
@@ -150,6 +152,11 @@ export interface SafeFetchOptions extends GuardOptions {
   readonly maxBytes: number;
   readonly maxRedirects?: number;
   readonly signal?: AbortSignal;
+  /**
+   * ROUND-C1 F4: a POST with a JSON body (speech providers). A POST never
+   * follows a redirect: the body must not be sent to another place.
+   */
+  readonly post?: string | undefined;
 }
 export interface SafeReply {
   readonly url: string;
@@ -177,8 +184,9 @@ export async function safeFetch(
       let reply: Response;
       try {
         reply = await o.fetch(url.toString(), {
-          method: 'GET',
+          method: o.post === undefined ? 'GET' : 'POST',
           headers: o.headers ?? {},
+          ...(o.post === undefined ? {} : { body: o.post }),
           redirect: 'manual',
           signal: controller.signal,
         });
@@ -193,6 +201,11 @@ export async function safeFetch(
         );
       }
       if (reply.status >= 300 && reply.status < 400) {
+        if (o.post !== undefined)
+          throw new ToolError(
+            'blocked-url',
+            'The provider tried to redirect a request with data.',
+          );
         const next = reply.headers.get('location');
         if (!next)
           throw new ToolError(

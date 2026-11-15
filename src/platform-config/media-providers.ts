@@ -98,20 +98,61 @@ export const restDescriptorSchema = z
           .default({}),
       })
       .default({}),
-    response: z.object({
-      items: pathExpr,
-      id: pathExpr,
-      title: pathExpr.optional(),
-      thumbnail: pathExpr,
-      preview: pathExpr.optional(),
-      download: pathExpr,
-      width: pathExpr.optional(),
-      height: pathExpr.optional(),
-      duration: pathExpr.optional(),
-      licence: pathExpr.optional(),
-      attribution: pathExpr.optional(),
-      tags: pathExpr.optional(),
-    }),
+    response: z
+      .object({
+        items: pathExpr,
+        id: pathExpr,
+        title: pathExpr.optional(),
+        thumbnail: pathExpr,
+        preview: pathExpr.optional(),
+        download: pathExpr,
+        width: pathExpr.optional(),
+        height: pathExpr.optional(),
+        duration: pathExpr.optional(),
+        licence: pathExpr.optional(),
+        attribution: pathExpr.optional(),
+        tags: pathExpr.optional(),
+      })
+      // ROUND-C1 F4: a speech-only provider has no search answer.
+      .optional(),
+    /**
+     * ROUND-C1 F4: a speech provider (kinds text-to-speech, speech-to-text)
+     * is called with a POST of JSON instead of a search: these names say
+     * where the text, voice, language and audio go, and where the answer
+     * keeps the audio (base64) or the words with their times.
+     */
+    speech: z
+      .object({
+        path: z
+          .string()
+          .max(200)
+          .regex(/^\/[^\s]*$/)
+          .default('/'),
+        fields: z
+          .object({
+            text: z.string().max(40).default('text'),
+            voice: z.string().max(40).default('voice'),
+            lang: z.string().max(40).default('lang'),
+            audio: z.string().max(40).default('audio'),
+            mime: z.string().max(40).default('mime'),
+          })
+          .default({}),
+        response: z
+          .object({
+            audio: pathExpr.optional(),
+            mime: pathExpr.optional(),
+            text: pathExpr.optional(),
+            words: pathExpr.optional(),
+            wordText: pathExpr.default('text'),
+            wordStart: pathExpr.default('start'),
+            wordEnd: pathExpr.default('end'),
+            licence: pathExpr.optional(),
+            attribution: pathExpr.optional(),
+          })
+          .default({}),
+        defaultMime: z.string().max(60).default('audio/wav'),
+      })
+      .optional(),
     /** Licence the provider grants when a reply names none. */
     defaultLicence: z.string().max(60).default('provider-licence'),
     timeoutMs: z.number().int().min(500).max(30000).default(8000),
@@ -329,6 +370,32 @@ export const assetRulesSchema = z
     aiVideosMax: z.number().int().min(0).max(20).default(0),
     /** Licences a build may pick on its own ([] = any). */
     licences: z.array(z.string().max(60)).default([]),
+    /**
+     * ROUND-C1 F3: the Brief card's "Pictures and footage" choices, each an
+     * asset rule written into the plan's meta.assets (option value to rule).
+     */
+    briefChoices: z
+      .record(
+        id,
+        z.object({
+          order: z
+            .array(z.enum(['mine', 'library', 'stock', 'ai']))
+            .min(1)
+            .max(4),
+          aiImagesMax: z.number().int().min(0).max(100).default(0),
+          aiVideosMax: z.number().int().min(0).max(20).default(0),
+          onlyMine: z.boolean().default(false),
+        }),
+      )
+      .default({
+        'mine-first': { order: ['mine', 'library', 'stock'] },
+        'stock-first': { order: ['stock', 'library', 'mine'] },
+        'ai-pictures': {
+          order: ['mine', 'library', 'stock', 'ai'],
+          aiImagesMax: 6,
+        },
+        'only-mine': { order: ['mine'], onlyMine: true },
+      }),
   })
   .default({});
 

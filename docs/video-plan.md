@@ -84,6 +84,14 @@ Scene: `transitionOut.type` may also be a pixel transition `transition.<id>` (se
 
 For each media layer the builder searches by KIND (`photo` → `stock-photo`, `video` → `stock-video`, `icon`, `sticker`/`emoji` → `sticker`, `audio` → `music`) through every enabled provider of the Platform Config's registry (src/tools searchMedia), in the asset rule's order: the person's own files (by name), the library, then stock. A pick must pass the checks: allowed licence (`director.assets.licences`), the right kind, long enough footage, big enough to fill the screen, not used by another layer. The pick is recorded with up to four alternatives and marked "picked by AI" (`picks`); footage is cut with `sourceIn` and the layer's length. Nothing usable: the layer becomes the named empty slot with the "needs asset" flag, and the reason offers rewording the search or a code graphic (or an AI picture when the rule allows). "Use only my files" searches nothing else. The credit lines of the stock used are returned with the build (`credits`). v2 and v3 plans keep the FIX7 rule unchanged.
 
+### Voices and captions by provider (v4, ROUND-C1 F4)
+
+`voice.provider` names a text-to-speech provider and `captions.provider` a speech-to-text provider of the registry (only ones the capability sheet lists for the person; another id is a plan error). A speech provider is a REST descriptor with a `speech` part: the POST path, the JSON field names for the text, voice, language and audio, and where the answer keeps the audio (base64) or the words with their times. Keys and fetching stay on the gateway (tools `speak` and `transcribe`). With no `voice.provider`, a v4 build uses the editor's own voice engine, and the first enabled voice provider only when no engine is ready. The captions provider times the words of a narration whose voice gave none. The voice's licence and credit stay on the narration file. With no speech provider set up, the offline captions (from the narration text) work as before.
+
+### The Brief card and the asset rule (ROUND-C1 F3)
+
+The Brief card's "Pictures and footage" choice becomes `meta.assets` (the rules are the owner's, `director.assets.briefChoices`): my files first, stock first, AI pictures allowed, or use only my files. "Use only my files" asks the person for every media file and offers nothing made by AI. A link in the Brief card is read first by `fetchPage` and given to the model wrapped as untrusted data.
+
 ## How it is built
 
 1. **Media**: the project's media first (by name), then stock: photos and videos from Pexels or Pixabay (the saved key), icons from Iconify, emoji from the sticker sets. Candidates are ranked by the query's words in their title and tags, the orientation and the kind, then by key, so the same plan picks the same media. The top four are kept as alternatives. When nothing is usable the layer becomes a fallback card ("Needs: ...") with a **needs asset** flag; the build never stops for media.
@@ -98,7 +106,7 @@ The build runs headless through the Composition Spec adapter, so it is determini
 
 ## Review & swap
 
-The build summary's **Review & swap** (also the palette's _Review video plan_) opens a left panel: per scene its length, Up, Down, Delete and Regenerate, the narration with **Update voice** (speaks it again and remakes that scene's captions and timing), and each media layer with its flag, up to four alternatives, **Search more** and **Use my own**. A swap keeps the layer's place, animation and the camera. **Export plan** downloads the plan with every choice (importing it builds the same video); **Compare to plan** lists where the project differs. The plan state is kept in this browser per project (`aive.videoPlan.<projectId>`), never in the project.
+The build summary's **Review & swap** (also the palette's _Review video plan_) opens a left panel: per scene its length, Up, Down, Delete and Regenerate, the narration with **Update voice** (speaks it again and remakes that scene's captions and timing), and each media layer with its flag, up to four alternatives, **Search more** and **Use my own**. Each found file says who chose it (**Picked by AI**, your choice, or your file found by name) with its credit line and how many other choices there are; a swap is one undo step and makes it your choice. A build made in AI mode opens it from the Built card. A swap keeps the layer's place, animation and the camera. **Export plan** downloads the plan with every choice (importing it builds the same video); **Compare to plan** lists where the project differs. The plan state is kept in this browser per project (`aive.videoPlan.<projectId>`), never in the project.
 
 ## Starter kit
 

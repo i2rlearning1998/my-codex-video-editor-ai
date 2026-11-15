@@ -11779,6 +11779,14 @@ body:has(.modal-backdrop) .toast-stack {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* ROUND-C1 F3: the credit line and the count of other choices. */
+.plan-slot-credit {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
 .plan-slot-actions {
   display: flex;
   flex-direction: column;

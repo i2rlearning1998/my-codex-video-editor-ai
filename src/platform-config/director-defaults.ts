@@ -229,6 +229,34 @@ export function defaultFieldLibrary(): {
         type: 'text',
       },
       {
+        // ROUND-C1 F3 (C1.3): where pictures and footage may come from. Each
+        // choice is an asset rule in director.assets.briefChoices.
+        id: 'media',
+        label: L('Pictures and footage', 'तस्वीरें और फ़ुटेज'),
+        type: 'choice',
+        options: [
+          o(
+            'mine-first',
+            'My files first, then stock',
+            'पहले मेरी फ़ाइलें, फिर स्टॉक',
+          ),
+          o('stock-first', 'Stock first', 'पहले स्टॉक'),
+          o('ai-pictures', 'AI pictures allowed', 'AI तस्वीरें भी चलेंगी'),
+          o('only-mine', 'Use only my files', 'सिर्फ़ मेरी फ़ाइलें'),
+        ],
+        hints: {
+          'only-mine': [
+            'only my files',
+            'only my own',
+            'use only my',
+            'no stock',
+            'सिर्फ़ मेरी',
+          ],
+          'ai-pictures': ['ai pictures', 'ai images', 'generate pictures'],
+          'stock-first': ['stock footage', 'stock photos'],
+        },
+      },
+      {
         id: 'notes',
         label: L('Anything else', 'और कुछ'),
         type: 'longtext',
@@ -257,6 +285,7 @@ export function defaultFieldLibrary(): {
           { id: 'captions' },
           { id: 'aspect' },
           { id: 'reference' },
+          { id: 'media' },
         ],
       },
       {
@@ -317,6 +346,7 @@ export function defaultFieldLibrary(): {
           { id: 'hook' },
           { id: 'music' },
           { id: 'voice' },
+          { id: 'media' },
         ],
       },
       {
@@ -330,6 +360,7 @@ export function defaultFieldLibrary(): {
           { id: 'language', required: true },
           { id: 'music' },
           { id: 'captions' },
+          { id: 'media' },
         ],
       },
       {
@@ -342,6 +373,7 @@ export function defaultFieldLibrary(): {
           { id: 'captions' },
           { id: 'music' },
           { id: 'brand' },
+          { id: 'media' },
         ],
       },
       {
@@ -365,6 +397,7 @@ export function defaultFieldLibrary(): {
           { id: 'captions' },
           { id: 'aspect' },
           { id: 'reference' },
+          { id: 'media' },
         ],
       },
       {
@@ -391,6 +424,7 @@ export function defaultFieldLibrary(): {
           { id: 'voice' },
           { id: 'music' },
           { id: 'notes' },
+          { id: 'media' },
         ],
       },
     ],
@@ -488,6 +522,14 @@ export const DIRECTOR_LINES: Record<string, LT> = {
   'plan.cancelled': L(
     'I stopped making the plan. Nothing was charged; your brief is kept.',
     'मैंने प्लान बनाना रोक दिया। कुछ नहीं कटा; आपका ब्रीफ़ रखा है।',
+  ),
+  'plan.readingLink': L(
+    'Reading the page you linked…',
+    'आपके दिए लिंक का पेज पढ़ रहा हूँ…',
+  ),
+  'plan.linkFailed': L(
+    'I could not read the page you linked ({reason}), so I planned without it.',
+    'आपके दिए लिंक का पेज नहीं पढ़ सका ({reason}), इसलिए उसके बिना प्लान बनाया।',
   ),
   'plan.interrupted': L(
     'The page was reloaded while I was making the plan, so none was made and nothing was charged. Here is your brief again.',

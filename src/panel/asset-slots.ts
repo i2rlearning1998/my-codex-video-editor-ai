@@ -46,7 +46,15 @@ export function planSlots(video: VideoPlan, voice: boolean): AssetSlot[] {
       // by name, the library, then stock by kind); only a picture to be made
       // by AI (a paid step with its own card) is asked for here. What is
       // still missing after the build is listed by the build.
-      if (video.version === 4 && m !== 'ai-image' && m !== 'ai-video') continue;
+      // ROUND-C1 F3: with "Use only my files" the build may take nothing
+      // else, so every place asks for the person's own file.
+      if (
+        video.version === 4 &&
+        !video.meta.assets?.onlyMine &&
+        m !== 'ai-image' &&
+        m !== 'ai-video'
+      )
+        continue;
       seen.add(name);
       out.push({
         name,

@@ -25,6 +25,15 @@ import {
   type WebRuntime,
 } from './web';
 import { ToolError } from './net-guard';
+import {
+  speak as speakRun,
+  speechProvider,
+  transcribe as transcribeRun,
+  type SpeakResult,
+  type SpeechKind,
+  type SpeechRunner,
+  type TranscribeResult,
+} from './speech';
 
 export { ToolError } from './net-guard';
 export type { KitEntry } from './capabilities';
@@ -73,6 +82,8 @@ export interface ToolContext {
   readonly build?:
     ((plan: unknown, signal?: AbortSignal) => Promise<unknown>) | undefined;
   readonly renderFrames?: RenderFrames | undefined;
+  /** ROUND-C1 F4: runs voice and captions providers (server; fixtures offline). */
+  readonly speech?: SpeechRunner | undefined;
   readonly signal?: AbortSignal | undefined;
   readonly locale?: 'en' | 'hi' | undefined;
 }
@@ -89,6 +100,44 @@ export interface ToolDef<I extends z.ZodTypeAny, O> {
 const def = <I extends z.ZodTypeAny, O>(d: ToolDef<I, O>) => d;
 
 const kind = z.string().regex(/^[a-z][a-z0-9-]{1,39}$/);
+/** ROUND-C1 F4: the most one speech call costs (the provider's price). */
+const speechCost = (
+  config: PlatformConfig,
+  kind: SpeechKind,
+  wanted?: string,
+) => {
+  try {
+    return speechProvider(config.mediaProviders, kind, '', wanted).costPerCall;
+  } catch {
+    return 0;
+  }
+};
+async function speechCall<T>(
+  c: ToolContext,
+  kind: SpeechKind,
+  wanted: string | undefined,
+  call: () => Promise<T>,
+): Promise<T> {
+  if (!c.speech)
+    throw new ToolError(
+      'not-available',
+      'Voices and captions from providers need the server.',
+    );
+  const p = speechProvider(c.config.mediaProviders, kind, c.planId, wanted);
+  if (p.costPerCall > 0 && (c.available?.() ?? Infinity) < p.costPerCall)
+    throw new ToolError(
+      'no-credits',
+      `There are not enough credits for ${p.name}.`,
+    );
+  if (c.limiter && !c.limiter.take(p.id, p.rateLimit.perMinute))
+    throw new ToolError(
+      'rate-limit',
+      `${p.name} is busy; try again in a minute.`,
+    );
+  const out = await call();
+  if (p.costPerCall > 0) c.spend?.(`speech:${p.id}`, p.costPerCall);
+  return out;
+}
 export const TOOLS = {
   getCapabilities: def({
     id: 'getCapabilities',
@@ -189,6 +238,50 @@ export const TOOLS = {
       if (rules.costPerPage > 0) c.spend?.('web:page', rules.costPerPage);
       return page;
     },
+  }),
+  speak: def({
+    id: 'speak',
+    description:
+      'Speaks a text with a voice provider of the registry (kind text-to-speech).',
+    input: z
+      .object({
+        text: z.string().min(1).max(5000),
+        lang: z.string().min(2).max(20),
+        voice: z.string().max(100).optional(),
+        provider: z.string().max(48).optional(),
+      })
+      .strict(),
+    cost: (i, config) => speechCost(config, 'text-to-speech', i.provider),
+    server: true,
+    run: (i, c): Promise<SpeakResult> =>
+      speechCall(c, 'text-to-speech', i.provider, () =>
+        speakRun(i, c.config.mediaProviders, c.planId, c.speech!, c.signal),
+      ),
+  }),
+  transcribe: def({
+    id: 'transcribe',
+    description:
+      'Turns speech into words with times, with a captions provider of the registry (kind speech-to-text).',
+    input: z
+      .object({
+        audio: z.string().min(4).max(30_000_000),
+        mime: z.string().min(3).max(60),
+        lang: z.string().min(2).max(20),
+        provider: z.string().max(48).optional(),
+      })
+      .strict(),
+    cost: (i, config) => speechCost(config, 'speech-to-text', i.provider),
+    server: true,
+    run: (i, c): Promise<TranscribeResult> =>
+      speechCall(c, 'speech-to-text', i.provider, () =>
+        transcribeRun(
+          i,
+          c.config.mediaProviders,
+          c.planId,
+          c.speech!,
+          c.signal,
+        ),
+      ),
   }),
   listLibrary: def({
     id: 'listLibrary',

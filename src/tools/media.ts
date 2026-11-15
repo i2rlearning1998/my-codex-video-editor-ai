@@ -351,6 +351,7 @@ export function restItems(
   kind: string,
 ): MediaItem[] {
   const r = d.response;
+  if (!r) throw new ToolError('not-available', 'it does not search.');
   const raw = readPathArray(json, r.items);
   if (!raw)
     throw new ToolError(
