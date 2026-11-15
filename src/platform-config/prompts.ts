@@ -38,7 +38,10 @@ UPGRADES
 An upgrade is {"id": "<a-z0-9->", "title": "<short>", "why": "<one sentence>", "addScene": {"at": <index>, "scene": <scene>}} or {"id", "title", "why", "replaceScene": {"index": <index>, "scene": <scene>}}.
 
 CAPABILITY SHEET (version {{sheetVersion}})
-{{capabilities}}`;
+{{capabilities}}
+
+MANUAL (the same text Claude reads through the connector)
+{{manual}}`;
 
 export const REPAIR_PROMPT = `You are Director. Your previous plan failed these checks:
 {{errors}}

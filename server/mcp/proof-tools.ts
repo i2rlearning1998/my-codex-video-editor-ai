@@ -25,7 +25,7 @@ export const proofExportCard: McpToolSpec<FrameCtx> = {
   name: 'proof_export_card',
   title: 'Export card test',
   description:
-    'Shows a test export card that renders a sample video on this device (a developer check). Use only when the user is making, editing or exporting a video with this platform and asked to test the export card. Next: watch the card; then call get_frames with video_id "proof".',
+    'Shows a test export card that renders a sample video on this device (a developer check, only when the person asks to test the export card). Use only when the user is making, editing or exporting a video with this platform. Next: watch the card; then call get_frames with video_id "proof".',
   input: {
     seconds: z.number().int().min(1).max(600),
     h264: z.boolean().optional(),
@@ -68,7 +68,7 @@ export const submitFrames: McpToolSpec<FrameCtx> = {
   name: 'submit_frames',
   title: 'Send sample frames',
   description:
-    'Stores the sample frames the export card drew on this device. Use only when the user is making, editing or exporting a video with this platform; the export card calls it, not Claude. Next: Claude calls get_frames.',
+    'Stores the sample frames the export card drew on this device (the card calls it, not Claude). Use only when the user is making, editing or exporting a video with this platform. Next: Claude calls get_frames.',
   input: {
     video_id: z.string().min(1).max(80),
     frames: z

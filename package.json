@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "vite build && vite build --config vite.card.ts && node scripts/assert-editor-bundle.mjs",
+    "build": "node scripts/mcp-references.mjs && vite build && vite build --config vite.card.ts && node scripts/assert-editor-bundle.mjs",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
@@ -44,7 +44,10 @@
     "server:test": "vitest run tests/server",
     "keys:check": "node scripts/keys-check.mjs",
     "visual": "playwright test e2e/visual.spec.ts --project=desktop",
-    "visual:update": "playwright test e2e/visual.spec.ts --project=desktop --update-snapshots"
+    "visual:update": "playwright test e2e/visual.spec.ts --project=desktop --update-snapshots",
+    "docs:playbook": "node scripts/creator-playbook-docs.mjs",
+    "docs:references": "node scripts/mcp-references.mjs",
+    "mcp:bundle": "node scripts/mcp-bundle.mjs"
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1",

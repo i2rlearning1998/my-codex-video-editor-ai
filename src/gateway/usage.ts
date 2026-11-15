@@ -11,6 +11,8 @@ export interface UsageRow {
   readonly ms: number;
   readonly outcome: 'ok' | 'failed' | 'refused';
   readonly code?: string;
+  /** ROUND-C2: where the call came from ("mcp": the Claude connector). */
+  readonly source?: 'mcp';
 }
 export interface UsageLog {
   append(row: UsageRow): void;

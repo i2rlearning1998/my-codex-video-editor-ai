@@ -14,6 +14,13 @@ import type {
 // (SUPABASE_SERVICE_ROLE_KEY); it is never sent to a browser. Tables and
 // policies: supabase/migrations/20261101000000_phase2_gateway.sql.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import {
+  emptyClaudeDoc,
+  RevisionConflict,
+  type ClaudeDoc,
+  type McpConnection,
+} from './mcp/records';
+
 import type { ConfigVersion } from '../src/platform-config';
 import type { LedgerEntry, UsageRow } from '../src/gateway';
 import {
@@ -256,6 +263,7 @@ export function supabaseStore(
         ms: r.ms,
         outcome: r.outcome,
         ...(r.code ? { code: r.code } : {}),
+        ...(r.source === 'mcp' ? { source: 'mcp' as const } : {}),
         ...(r.cost_usd !== null && r.cost_usd !== undefined
           ? { costUsd: Number(r.cost_usd) }
           : {}),
@@ -273,6 +281,8 @@ export function supabaseStore(
         code: row.code ?? null,
         cost_usd: row.costUsd ?? null,
         created_at: row.at,
+        // ROUND-C2: connector calls are marked (column added by its migration).
+        ...(row.source ? { source: row.source } : {}),
       });
       fail('write the usage', error);
     },
@@ -303,6 +313,182 @@ export function supabaseStore(
       return Number(data?.value ?? 0);
     },
     // ROUND-A: one row per person (supabase/migrations/20261112000000_round_a_workspace.sql).
+    // ROUND-C2: the Claude connector (migration 20261116000000_round_c2_mcp).
+    async mcpClient(id) {
+      const { data, error } = await db
+        .from('mcp_clients')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+      fail('read a connector client', error);
+      return data
+        ? {
+            id: data.id as string,
+            name: data.name as string,
+            redirectUris: data.redirect_uris as string[],
+            createdAt: data.created_at as string,
+          }
+        : null;
+    },
+    async saveMcpClient(c) {
+      const { error } = await db.from('mcp_clients').upsert({
+        id: c.id,
+        name: c.name,
+        redirect_uris: c.redirectUris,
+        created_at: c.createdAt,
+      });
+      fail('save a connector client', error);
+    },
+    async mcpConnections(u) {
+      let q = db.from('mcp_connections').select('*');
+      if (u) q = q.eq('user_id', u);
+      const { data, error } = await q;
+      fail('read the connections', error);
+      return (data ?? []).map((r): McpConnection => ({
+        id: r.id as string,
+        userId: r.user_id as string,
+        clientId: r.client_id as string,
+        clientName: r.client_name as string,
+        createdAt: r.created_at as string,
+        lastUsedAt: (r.last_used_at as string | null) ?? null,
+        revokedAt: (r.revoked_at as string | null) ?? null,
+        accessHash: r.access_hash as string,
+        accessExp: Number(r.access_exp),
+        refreshHash: r.refresh_hash as string,
+      }));
+    },
+    async saveMcpConnection(c) {
+      const { error } = await db.from('mcp_connections').upsert({
+        id: c.id,
+        user_id: c.userId,
+        client_id: c.clientId,
+        client_name: c.clientName,
+        created_at: c.createdAt,
+        last_used_at: c.lastUsedAt,
+        revoked_at: c.revokedAt,
+        access_hash: c.accessHash,
+        access_exp: c.accessExp,
+        refresh_hash: c.refreshHash,
+      });
+      fail('save a connection', error);
+    },
+    async claudeDoc(u) {
+      const { data, error } = await db
+        .from('mcp_workspace')
+        .select('doc')
+        .eq('user_id', u)
+        .maybeSingle();
+      fail('read the Claude workspace', error);
+      const doc = data?.doc as ClaudeDoc | undefined;
+      return doc && typeof doc === 'object' && doc.projects
+        ? doc
+        : emptyClaudeDoc();
+    },
+    async saveClaudeDoc(u, doc) {
+      const { error } = await db
+        .from('mcp_workspace')
+        .upsert({ user_id: u, doc, updated_at: new Date().toISOString() });
+      fail('save the Claude workspace', error);
+    },
+    // The same table the editor's cloud sync uses (Phase 1).
+    async cloudProject(u, id) {
+      const { data, error } = await db
+        .from('projects')
+        .select('id, name, schema_version, document, revision, updated_at')
+        .eq('owner_id', u)
+        .eq('id', id)
+        .maybeSingle();
+      fail('read a project', error);
+      return data
+        ? {
+            id: data.id as string,
+            name: data.name as string,
+            schemaVersion: data.schema_version as number,
+            document: data.document as string,
+            revision: data.revision as number,
+            updatedAt: data.updated_at as string,
+          }
+        : null;
+    },
+    async saveCloudProject(u, row, expected) {
+      const fields = {
+        name: row.name,
+        schema_version: row.schemaVersion,
+        document: row.document,
+      };
+      const q =
+        expected === null
+          ? db
+              .from('projects')
+              .insert({ id: row.id, owner_id: u, ...fields })
+              .select('revision, updated_at')
+          : db
+              .from('projects')
+              .update(fields)
+              .eq('owner_id', u)
+              .eq('id', row.id)
+              .eq('revision', expected)
+              .select('revision, updated_at');
+      const { data, error } = await q;
+      if (error?.code === '23505') throw new RevisionConflict(0);
+      fail('save a project', error);
+      const saved = (data ?? [])[0] as
+        { revision: number; updated_at: string } | undefined;
+      if (!saved) {
+        const now = await this.cloudProject(u, row.id);
+        throw new RevisionConflict(now?.revision ?? 0);
+      }
+      return { ...row, revision: saved.revision, updatedAt: saved.updated_at };
+    },
+    async mediaRecord(u, fp) {
+      const { data, error } = await db
+        .from('media')
+        .select(
+          'fingerprint, name, mime_type, size, provider, licence, attribution',
+        )
+        .eq('owner_id', u)
+        .eq('fingerprint', fp)
+        .maybeSingle();
+      fail('read a media file', error);
+      return data
+        ? {
+            fingerprint: data.fingerprint as string,
+            name: data.name as string,
+            mimeType: data.mime_type as string,
+            size: Number(data.size),
+            provider: (data.provider as string | null) ?? null,
+            licence: (data.licence as string | null) ?? null,
+            attribution: (data.attribution as string | null) ?? null,
+          }
+        : null;
+    },
+    async putMedia(u, rec, bytes) {
+      const up = await db.storage
+        .from('media')
+        .upload(`${u}/${rec.fingerprint}`, bytes, {
+          contentType: rec.mimeType,
+          upsert: true,
+        });
+      fail('store a media file', up.error);
+      const { error } = await db.from('media').upsert({
+        owner_id: u,
+        fingerprint: rec.fingerprint,
+        name: rec.name,
+        mime_type: rec.mimeType,
+        size: rec.size,
+        provider: rec.provider,
+        licence: rec.licence,
+        attribution: rec.attribution,
+      });
+      fail('record a media file', error);
+    },
+    async mediaBytes(u, fp) {
+      const { data, error } = await db.storage
+        .from('media')
+        .download(`${u}/${fp}`);
+      if (error) return null;
+      return new Uint8Array(await data.arrayBuffer());
+    },
     async workspaceRegistry(u) {
       const { data, error } = await db
         .from('workspace_registry')

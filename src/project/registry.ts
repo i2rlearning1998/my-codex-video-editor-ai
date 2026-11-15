@@ -22,7 +22,12 @@ import { workspaceRules } from '../platform-config';
 export interface Registry {
   projects: Record<
     string,
-    { trashed: boolean; videos: Record<string, { trashed: boolean }> }
+    {
+      trashed: boolean;
+      videos: Record<string, { trashed: boolean; origin?: 'claude' }>;
+      /** ROUND-C2: made through the Claude connector (the "Made with Claude" tag). */
+      origin?: 'claude';
+    }
   >;
 }
 export const emptyRegistry = (): Registry => ({ projects: {} });
@@ -94,16 +99,23 @@ export function checkVideo(
  */
 export function claim(
   r: Registry,
-  input: { kind: 'project' | 'video'; id: string; projectId?: string },
+  input: {
+    kind: 'project' | 'video';
+    id: string;
+    projectId?: string;
+    /** ROUND-C2: made through the Claude connector. */
+    origin?: 'claude';
+  },
   c: PlatformConfig,
   plan: Plan,
   locale: 'en' | 'hi',
 ): Registry {
   const next: Registry = structuredClone(r);
+  const origin = input.origin ? { origin: input.origin } : {};
   if (input.kind === 'project') {
     if (next.projects[input.id]) return next;
     checkProject(next, c, plan, locale);
-    next.projects[input.id] = { trashed: false, videos: {} };
+    next.projects[input.id] = { trashed: false, videos: {}, ...origin };
     return next;
   }
   const pid = input.projectId!;
@@ -113,7 +125,7 @@ export function claim(
   }
   if (next.projects[pid]!.videos[input.id]) return next;
   checkVideo(next, pid, c, plan, locale);
-  next.projects[pid]!.videos[input.id] = { trashed: false };
+  next.projects[pid]!.videos[input.id] = { trashed: false, ...origin };
   return next;
 }
 

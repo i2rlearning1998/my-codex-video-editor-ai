@@ -5,6 +5,7 @@
 // rulebook's limits; one repair call gets the exact errors; a second failure
 // is refused with the owner's text and charges nothing (the job's whole hold
 // is given back). With a mock model the free deterministic planner is used.
+import { buildManual } from '../director-rules/manual';
 import {
   buildBrief,
   costById,
@@ -93,6 +94,9 @@ export function planPrompt(x: PlanContext): { system: string; user: string } {
     }),
     sheetVersion: sheet.version,
     capabilities: sheet.text,
+    // ROUND-C2 (2.4, D-440): the same manual Claude reads through the
+    // connector, where the owner's prompt has a {{manual}} place.
+    manual: buildManual(c, { videoType: x.videoType }),
     ...power,
   });
   // A prompt saved before Round C1 has no place for these: they are added.
