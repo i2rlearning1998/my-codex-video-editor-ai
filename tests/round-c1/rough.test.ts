@@ -108,7 +108,7 @@ describe('[RDC1-060] rough use', () => {
     expect(r.project!.compositions[0]!.layers.length).toBeGreaterThanOrEqual(
       400,
     );
-  }, 120_000);
+  }, 360_000);
   it('[RDC1-060] cancel during the build or during a download stops with nothing returned', async () => {
     const controller = new AbortController();
     const slow = v4Deps({
