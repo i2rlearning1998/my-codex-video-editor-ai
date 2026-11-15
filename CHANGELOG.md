@@ -7,6 +7,7 @@
 - Video Plan v4: effects, grade, blend, chroma, masks, transitions, keyframes, presets, speed, trim, sound, fonts, fit, groups, lock, names, stickers, new graphics (Tier B and C) saved to the Project's AI library; v4 media are found on their own with alternatives; older plans build exactly as before (D-427, D-428).
 - Director: research step, untrusted web text, rulebook v2, playbook slots, authoring guide, graphics repair and frame fix, "change this graphic" (D-429).
 - Layout validator and first-content posters and covers; editor first load smaller than Round B (D-430). Schema 9 unchanged; no new npm dependencies.
+- Finish: the project cover no longer re-seeks the stage's video (PB-009 and PB-010 pass again); LAY-048's test waits for the expand animation (D-431). New graphics are drawn off screen and checked before the Plan card, with Stop and a vision check when the model can see (D-432). Review & swap says Picked by AI with credits and other choices; the Brief card sets the asset rule and reads a linked page as untrusted (D-433). Voices and captions from providers the owner adds (D-434).
 
 ## Round B: AI mode in the editor, Style chat, panel UI pass (14 Nov)
 
