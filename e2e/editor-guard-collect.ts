@@ -121,8 +121,15 @@ const visible = async (page: Page, selector: string) =>
 
 async function clickIf(page: Page, selector: string): Promise<boolean> {
   if (!(await visible(page, selector))) return false;
-  await page.locator(selector).first().click();
-  return true;
+  // A control covered by another (a phone's bottom sheet) is not reachable.
+  return page
+    .locator(selector)
+    .first()
+    .click({ timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
 }
 
 export async function category(page: Page, name: string): Promise<boolean> {
