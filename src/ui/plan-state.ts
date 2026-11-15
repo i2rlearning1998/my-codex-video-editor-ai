@@ -10,6 +10,7 @@ import {
   type PlanFlag,
   type VideoPlan,
 } from '../video-plan';
+import type { PlanPick } from '../video-plan/build';
 
 export interface PlanState {
   plan: VideoPlan;
@@ -20,6 +21,11 @@ export interface PlanState {
   sceneIds: (string | null)[];
   /** Further stock pages already fetched per layer. */
   pages: Record<string, number>;
+  /**
+   * ROUND-C1 F3: how each media layer was filled (v4): picked by AI, the
+   * person's own choice, or a file found by name; with its credit line.
+   */
+  picks?: Record<string, PlanPick>;
   /** FX10: scenes of earlier builds of this plan. Undo may bring one back,
    *  and the card then reads Built again: it follows the canvas. */
   earlier?: string[];

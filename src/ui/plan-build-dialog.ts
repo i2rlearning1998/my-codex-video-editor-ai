@@ -189,41 +189,149 @@ type SpokenCache = Map<string, { asset: Asset; duration: number } | null>;
  */
 export async function runPlanBuild(
   plan: VideoPlan,
-  deps: Pick<PlanBuildDeps, 'assets' | 'importFile' | 'sfx' | 'theme'>,
+  deps: Pick<PlanBuildDeps, 'assets' | 'importFile' | 'sfx' | 'theme'> & {
+    /** ROUND-C1: a v4 plan finds media through the provider registry. */
+    readonly media?: import('./plan-media').RegistryMediaOptions | undefined;
+  },
   show: (progress: BuildProgress) => void,
   signal: AbortSignal,
   spokenBefore: SpokenCache = new Map(),
 ): Promise<PlanBuildResult> {
   const services = planServices(deps);
+  // ROUND-C1 C1.3: v4 plans pick media on their own (by kind, every enabled
+  // provider); v2 and v3 plans keep the FIX7 rule and build as before.
+  const registry =
+    plan.version === 4 && deps.media
+      ? (await import('./plan-media')).registryMedia(deps.media)
+      : null;
+  if (registry) {
+    const own = services.importCandidate;
+    services.resolve = { ...services.resolve, stock: registry.stock };
+    services.importCandidate = (candidate, sig) =>
+      candidate.source === 'stock'
+        ? registry.importPick(candidate, deps.importFile, sig)
+        : own(candidate, sig);
+  }
   const voice = await planVoiceEngine(plan.meta.language).catch(() => null);
   const theme = plan.meta.themeId ? await deps.theme(plan.meta.themeId) : null;
+  // ROUND-C1 F4: a v4 plan's voice is the registry's text-to-speech provider
+  // it names, or the first enabled one when no voice engine is ready here;
+  // a speech-to-text provider (named, or the first enabled) times the words
+  // of a narration whose voice gave none. Each keeps its licence line.
+  const regVoice =
+    registry &&
+    (plan.voice?.provider
+      ? registry.hasSpeech('text-to-speech', plan.voice.provider)
+      : !voice && registry.hasSpeech('text-to-speech'))
+      ? registry
+      : null;
+  const regCaptions =
+    registry &&
+    plan.captions?.enabled !== false &&
+    registry.hasSpeech('speech-to-text', plan.captions?.provider)
+      ? registry
+      : null;
+  const base64Of = async (blob: Blob) => {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    let text = '';
+    for (let i = 0; i < bytes.length; i += 0x8000)
+      text += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(text);
+  };
+  const timeWords = async (blob: Blob, mime: string, lang: string) => {
+    if (!regCaptions) return undefined;
+    try {
+      const heard = await regCaptions.transcribe(
+        await base64Of(blob),
+        mime,
+        lang,
+        plan.captions?.provider,
+      );
+      return heard.words.length ? heard.words : undefined;
+    } catch {
+      return undefined; // captions keep the narration's own timing
+    }
+  };
+  const regSpeak = regVoice
+    ? async (text: string, lang: string) => {
+        const said = await regVoice.voice(
+          text,
+          lang,
+          plan.voice?.voiceId,
+          plan.voice?.provider,
+        );
+        const bytes = Uint8Array.from(atob(said.base64), (ch) =>
+          ch.charCodeAt(0),
+        );
+        const blob = new Blob([bytes], { type: said.mime });
+        const ext = /mpeg|mp3/.test(said.mime) ? 'mp3' : 'wav';
+        const asset = await deps.importFile(
+          new File([blob], `Narration.${ext}`, { type: said.mime }),
+          regVoice.licenceOf(said),
+        );
+        if (!asset) return null;
+        const words = said.words.length
+          ? said.words
+          : await timeWords(blob, said.mime, lang);
+        return {
+          asset,
+          duration: asset.duration ?? 0,
+          ...(words ? { words } : {}),
+        };
+      }
+    : null;
   return buildVideoFromPlan(
     plan,
     {
       ...services,
       theme,
-      ...(voice
+      ...(deps.media
         ? {
-            voice: async (text, lang, sig) => {
+            assetRule: {
+              licences: deps.media.config.director.assets.licences,
+              order: deps.media.config.director.assets.order,
+            },
+          }
+        : {}),
+      ...(regSpeak
+        ? {
+            voice: async (text: string, lang: string) => {
               const known = `${lang}|${text}`;
               if (spokenBefore.has(known)) return spokenBefore.get(known)!;
-              const made = await synthesizeToMedia(text, {
-                provider: voice.provider,
-                voiceId: voice.voiceId,
-                lang,
-                ...(sig ? { signal: sig } : {}),
-              });
-              const asset = await deps.importFile(
-                new File([made.blob], `Narration.wav`, { type: made.mime }),
-              );
-              const spoken = asset
-                ? { asset, duration: made.durationSec }
-                : null;
+              const spoken = await regSpeak(text, lang);
               spokenBefore.set(known, spoken);
               return spoken;
             },
           }
-        : { voiceUnavailable: t('plan.noVoice') }),
+        : voice
+          ? {
+              voice: async (text, lang, sig) => {
+                const known = `${lang}|${text}`;
+                if (spokenBefore.has(known)) return spokenBefore.get(known)!;
+                const made = await synthesizeToMedia(text, {
+                  provider: voice.provider,
+                  voiceId: voice.voiceId,
+                  lang,
+                  ...(sig ? { signal: sig } : {}),
+                });
+                const asset = await deps.importFile(
+                  new File([made.blob], `Narration.wav`, { type: made.mime }),
+                );
+                const timed = asset
+                  ? await timeWords(made.blob, made.mime, lang)
+                  : undefined;
+                const spoken = asset
+                  ? {
+                      asset,
+                      duration: made.durationSec,
+                      ...(timed ? { words: timed } : {}),
+                    }
+                  : null;
+                spokenBefore.set(known, spoken);
+                return spoken;
+              },
+            }
+          : { voiceUnavailable: t('plan.noVoice') }),
       sound: async (query, kind) => {
         // A sound effect from our own library catalog when its name fits.
         if (kind === 'sfx') return deps.sfx?.(words(query)) ?? null;
@@ -236,7 +344,13 @@ export async function runPlanBuild(
               !(asset.metadata as { removed?: boolean }).removed &&
               namesMatch(asset.name, query),
           );
-        return own ? { asset: own, duration: own.duration ?? 0 } : null;
+        if (own || !registry)
+          return own ? { asset: own, duration: own.duration ?? 0 } : null;
+        // ROUND-C1: a v4 plan's music bed comes from a music provider.
+        const pick = await registry.sound(query, 'music');
+        if (!pick) return null;
+        const asset = await registry.importPick(pick, deps.importFile, signal);
+        return { asset, duration: asset.duration ?? pick.duration ?? 0 };
       },
     },
     show,

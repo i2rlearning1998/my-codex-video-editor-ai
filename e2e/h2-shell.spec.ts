@@ -155,6 +155,12 @@ test('[LAY-004] panel dividers drag within their limits: left 260 to 420, right 
   // (there is no half-lane minimum any more); far up it opens to 60%.
   await drag('.panel-resizer.height', 0, 600);
   await expect(page.locator('.editor-shell')).toHaveClass(/timeline-collapsed/);
+  // ROUND-C1 F1: the collapse animates the row for 300 ms; aim at the edge
+  // only once it has stopped moving (on a slow CI machine the press landed
+  // where the edge had been).
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
   await drag('.panel-resizer.height', 0, -900);
   await expect.poll(() => size('.timeline', 'height')).toBeCloseTo(600, 0);
 });

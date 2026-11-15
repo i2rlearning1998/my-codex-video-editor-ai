@@ -83,6 +83,12 @@ test('[LAY-048] the Player bar is the top edge of the timeline and its resize gr
   await expect(page.locator('.editor-shell')).not.toHaveClass(
     /timeline-collapsed/,
   );
+  // ROUND-C1 F1: Expand animates the row for 300 ms; the bar is measured
+  // only once it has stopped moving (measured mid-animation, the press
+  // landed where the bar had been: the CI failure, reproduced here).
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
   // At most 60% of the window, and the stage keeps 400 px (FX11-004).
   from = await emptySpot(page);
   await page.mouse.move(from.x, from.y);
@@ -177,4 +183,55 @@ test('[LAY-050] the status row under the canvas has 20 px icons, 13 px text and 
   expect(sizes.text.length).toBeGreaterThan(2);
   for (const size of sizes.text) expect(size).toBeGreaterThanOrEqual(13);
   for (const size of sizes.buttons) expect(size).toBeGreaterThanOrEqual(32);
+});
+
+test('[RDC1-091] Collapse and Expand pressed fast twice end expanded; the bar then resizes at once', async ({
+  page,
+}) => {
+  const toggle = page.locator(
+    '#timeline-foundation [data-action="collapse-timeline"]',
+  );
+  await toggle.click();
+  await toggle.click();
+  await toggle.click();
+  await toggle.click();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-collapsed/,
+  );
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
+  const before = await height(page);
+  const spot = await emptySpot(page);
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.down();
+  await page.mouse.move(spot.x, spot.y - 50, { steps: 6 });
+  await page.mouse.up();
+  await expect.poll(() => height(page)).toBeCloseTo(before + 50, 0);
+});
+
+test('[RDC1-091] a press on the bar while the Expand animation still runs, aimed where the bar is now, resizes', async ({
+  page,
+}) => {
+  const toggle = page.locator(
+    '#timeline-foundation [data-action="collapse-timeline"]',
+  );
+  await toggle.click();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
+  await toggle.click();
+  // Measured and pressed in one step, during the animation.
+  const spot = await emptySpot(page);
+  await page.mouse.move(spot.x, spot.y);
+  await page.mouse.down();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
+  await page.mouse.move(spot.x, 2, { steps: 8 });
+  await page.mouse.up();
+  const window = page.viewportSize()!.height;
+  await expect
+    .poll(() => height(page))
+    .toBeCloseTo(Math.min(window * 0.6, window - 400), 0);
 });

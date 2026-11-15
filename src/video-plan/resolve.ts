@@ -20,6 +20,13 @@ export interface MediaCandidate {
   readonly thumbUrl?: string;
   /** Provider-specific data the importer needs (a stock item). */
   readonly payload?: unknown;
+  /** V4: seconds of footage or sound (0 or missing: unknown or a picture). */
+  readonly duration?: number;
+  /** V4: the licence id and the credit line a stock pick carries. */
+  readonly licence?: string;
+  readonly attribution?: string;
+  /** V4: the provider that found it (registry id). */
+  readonly provider?: string;
 }
 export interface ResolveServices {
   /** The project's media and the editor library matching a query. */

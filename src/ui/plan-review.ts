@@ -405,6 +405,14 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
   const choose = async (slot: Slot, candidate: MediaCandidate) => {
     swapping.delete(project.id);
     (state.plan.resolved ??= {})[slot.ref] = candidate.key;
+    // ROUND-C1 F3: a swap makes it the person's choice, with its credit line.
+    (state.picks ??= {})[slot.ref] = {
+      by: 'person',
+      title: candidate.title,
+      ...(candidate.provider ? { provider: candidate.provider } : {}),
+      ...(candidate.licence ? { licence: candidate.licence } : {}),
+      ...(candidate.attribution ? { attribution: candidate.attribution } : {}),
+    };
     save();
     const target = slot.built && !slot.flagged ? slot.built : null;
     if (!target) return regenerate(slot.index);
@@ -597,8 +605,43 @@ export function planReviewPanel(deps: PlanReviewDeps): HTMLElement | null {
       name.textContent = chosen?.title ?? layer.mediaIntent!.query;
       const state2 = document.createElement('span');
       state2.className = slot.flagged ? 'plan-flag' : 'plan-found';
-      state2.textContent = slot.flagged ? t('plan.missing') : t('plan.found');
+      // ROUND-C1 F3: who chose it (Picked by AI, your choice, your file),
+      // its credit line and how many other choices there are.
+      const pick = slot.flagged ? undefined : state.picks?.[ref];
+      state2.textContent = slot.flagged
+        ? t('plan.missing')
+        : pick
+          ? t(
+              pick.by === 'ai'
+                ? 'plan.pickedAi'
+                : pick.by === 'name'
+                  ? 'plan.pickedName'
+                  : 'plan.pickedYou',
+            )
+          : t('plan.found');
+      if (pick) state2.dataset.pick = pick.by;
       text.append(name, state2);
+      if (pick?.attribution || pick?.licence) {
+        const credit = document.createElement('span');
+        credit.className = 'plan-slot-credit';
+        credit.textContent = t('plan.credit', {
+          who: pick.attribution ?? pick.provider ?? '',
+          licence: pick.licence ?? '',
+        });
+        text.append(credit);
+      }
+      const others = (state.alternatives[ref] ?? []).filter(
+        (c) => c.key !== chosenKey,
+      ).length;
+      if (!slot.flagged && others) {
+        const more = document.createElement('span');
+        more.className = 'plan-slot-credit';
+        more.dataset.alternatives = String(Math.min(4, others));
+        more.textContent = t('plan.altCount', {
+          count: String(Math.min(4, others)),
+        });
+        text.append(more);
+      }
       row.append(thumb, text);
       if (slot.flagged) {
         const own = useOwn(slot);

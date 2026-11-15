@@ -1,0 +1,4757 @@
+{
+ "project": {
+  "schemaVersion": 9,
+  "id": "composition-plan-where-honey-comes-from",
+  "metadata": {
+   "name": "Where honey comes from",
+   "createdAt": "<time>",
+   "updatedAt": "<time>"
+  },
+  "settings": {
+   "backgroundColor": "#000000",
+   "audioSampleRate": 48000
+  },
+  "compositions": [
+   {
+    "id": "ais_plan-where-honey-comes-from_s0_c",
+    "name": "Cold open",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 4.533333333333333,
+    "backgroundColor": "#000000",
+    "layers": [
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_bg_c",
+      "name": "Scene background",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.533333333333333,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1920,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1080,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "rectangle",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#1b1a17"
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_i3_layer_c",
+      "name": "bee flower macro",
+      "type": "image",
+      "startTime": 0,
+      "duration": 4.533333333333333,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1920,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1080,
+        "keyframes": []
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "open/flower",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "bee-flower-macro",
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_i2_layer_c",
+      "name": "Where honey comes from",
+      "type": "text",
+      "startTime": 0,
+      "duration": 4.533333333333333,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         192,
+         486.25
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1536,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 107.5,
+        "keyframes": []
+       },
+       "text": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Where honey comes from",
+        "keyframes": []
+       },
+       "fontSize": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 86,
+        "keyframes": []
+       },
+       "fontFamily": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Poppins",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#fff7e6"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "open/title",
+        "keyframes": []
+       },
+       "textAlign": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "center",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_i1_layer_c",
+      "name": "Music",
+      "type": "audio",
+      "startTime": 0,
+      "duration": 4.533333333333333,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "open#music",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "music-calm-acoustic",
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_i0_layer_c",
+      "name": "Narration 1",
+      "type": "audio",
+      "startTime": 0,
+      "duration": 4.133333333333333,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "open#voice",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "voice-47",
+      "children": []
+     },
+     {
+      "id": "captions-1-cue-1",
+      "name": "Caption s1-caption_1",
+      "type": "group",
+      "startTime": 0.05,
+      "duration": 4.033333333333334,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         153.5,
+         810
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {},
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": [
+       {
+        "id": "captions-1-box-1",
+        "name": "Caption box",
+        "type": "shape",
+        "startTime": 0.05,
+        "duration": 4.033333333333334,
+        "transform": {
+         "position": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           0,
+           0
+          ],
+          "keyframes": []
+         },
+         "rotation": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0,
+          "keyframes": []
+         },
+         "scale": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           1,
+           1
+          ],
+          "keyframes": []
+         },
+         "opacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1,
+          "keyframes": []
+         }
+        },
+        "properties": {
+         "width": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1613,
+          "keyframes": []
+         },
+         "height": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 194,
+          "keyframes": []
+         },
+         "shapeKind": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "rectangle",
+          "keyframes": []
+         },
+         "fill": {
+          "animated": false,
+          "constraints": [],
+          "type": "color",
+          "keyframes": [],
+          "value": "#111111"
+         },
+         "fillOpacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0.9,
+          "keyframes": []
+         },
+         "cornerRadius": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 14,
+          "keyframes": []
+         }
+        },
+        "effects": [],
+        "masks": [],
+        "assetId": null,
+        "children": []
+       },
+       {
+        "id": "captions-1-text-1",
+        "name": "Caption: Every jar of honey starts with a single flower.",
+        "type": "text",
+        "startTime": 0.05,
+        "duration": 4.033333333333334,
+        "transform": {
+         "position": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           20,
+           20
+          ],
+          "keyframes": []
+         },
+         "rotation": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0,
+          "keyframes": []
+         },
+         "scale": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           1,
+           1
+          ],
+          "keyframes": []
+         },
+         "opacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1,
+          "keyframes": []
+         }
+        },
+        "properties": {
+         "width": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1573,
+          "keyframes": []
+         },
+         "height": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 154,
+          "keyframes": []
+         },
+         "text": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "Every jar of honey starts with a\nsingle flower.",
+          "keyframes": []
+         },
+         "fontSize": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 64,
+          "keyframes": []
+         },
+         "fill": {
+          "animated": false,
+          "constraints": [],
+          "type": "color",
+          "keyframes": [],
+          "value": "#ffffff"
+         },
+         "fontFamily": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "Poppins",
+          "keyframes": []
+         },
+         "fontWeight": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 800,
+          "keyframes": []
+         },
+         "textAlign": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "center",
+          "keyframes": []
+         },
+         "lineHeight": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1.2,
+          "keyframes": []
+         },
+         "textCase": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "upper",
+          "keyframes": []
+         },
+         "captionCue": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "{\"version\":1,\"id\":\"s1-caption_1\",\"start\":0.05,\"end\":4.083333333333334,\"words\":[{\"text\":\"Every\",\"start\":0.05,\"end\":0.5541666666666667},{\"text\":\"jar\",\"start\":0.5541666666666667,\"end\":0.8902777777777777},{\"text\":\"of\",\"start\":0.8902777777777777,\"end\":1.1423611111111112},{\"text\":\"honey\",\"start\":1.1423611111111112,\"end\":1.6465277777777778},{\"text\":\"starts\",\"start\":1.6465277777777778,\"end\":2.2347222222222225},{\"text\":\"with\",\"start\":2.2347222222222225,\"end\":2.6548611111111113},{\"text\":\"a\",\"start\":2.6548611111111113,\"end\":2.822916666666667},{\"text\":\"single\",\"start\":2.822916666666667,\"end\":3.4111111111111114},{\"text\":\"flower.\",\"start\":3.4111111111111114,\"end\":4.083333333333334}],\"language\":\"en\",\"styleId\":\"bold-box\"}",
+          "keyframes": []
+         }
+        },
+        "effects": [],
+        "masks": [],
+        "assetId": null,
+        "children": []
+       }
+      ]
+     },
+     {
+      "id": "shot-plan-where-honey-comes-from-2",
+      "name": "Camera 1 · push-in",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.533333333333333,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "role": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "camera",
+        "keyframes": []
+       },
+       "cameraSpec": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "{\"id\":\"camera-plan-where-honey-comes-from-1\",\"name\":\"Camera 1\",\"type\":\"persp\",\"lensUnit\":\"mm\",\"focal\":50,\"orthoScale\":1,\"sensorFit\":\"auto\",\"sensor\":36,\"shiftX\":0,\"shiftY\":0,\"clipStart\":0.1,\"clipEnd\":100000,\"showLimits\":false,\"dof\":{\"enabled\":false,\"focusLayer\":null,\"distance\":0,\"fStop\":2.8,\"blades\":0,\"rotation\":0,\"ratio\":1},\"safeAreas\":{\"show\":false,\"title\":[0.1,0.05],\"action\":[0.035,0.035],\"centerCut\":false,\"centerTitle\":[0.175,0.05],\"centerAction\":[0.15,0.05]},\"passepartout\":{\"show\":true,\"alpha\":0.5},\"guides\":{\"center\":false,\"centerDiagonal\":false,\"thirds\":false,\"golden\":false,\"goldenTriangleA\":false,\"goldenTriangleB\":false,\"harmoniousTriangleA\":false,\"harmoniousTriangleB\":false},\"display\":{\"size\":1,\"showName\":true,\"showSensor\":false},\"background\":null,\"trackTo\":{\"layerId\":null,\"up\":\"Y\"}}",
+        "keyframes": []
+       },
+       "cameraShot": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "{\"cameraId\":\"camera-plan-where-honey-comes-from-1\",\"controller\":\"push-in\",\"easing\":\"smooth\",\"strength\":0.6,\"amount\":6,\"speed\":1.2,\"seed\":1,\"direction\":1,\"target\":null}",
+        "keyframes": []
+       },
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     }
+    ],
+    "tracks": [
+     {
+      "id": "camera-track-ais_plan-where-honey-comes-from_s0_c",
+      "name": "Camera",
+      "type": "object",
+      "order": 0,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "shot-plan-where-honey-comes-from-2-clip",
+        "name": "Camera 1 · push-in",
+        "layerId": "shot-plan-where-honey-comes-from-2",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.533333333333333,
+        "sourceIn": 0,
+        "sourceOut": 4.533333333333333,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {}
+       }
+      ]
+     },
+     {
+      "id": "captions-1-lane",
+      "name": "Captions",
+      "type": "text",
+      "order": 1,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "captions-1-clip-1",
+        "name": "Caption s1-caption_1",
+        "layerId": "captions-1-cue-1",
+        "assetId": null,
+        "startTime": 0.05,
+        "duration": 4.033333333333334,
+        "sourceIn": 0,
+        "sourceOut": 4.033333333333334,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "role": "caption"
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_i0_track_c",
+      "name": "Narration 1",
+      "type": "audio",
+      "order": 2,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s0_i0_clip_c",
+        "name": "Narration 1",
+        "layerId": "ais_plan-where-honey-comes-from_s0_i0_layer_c",
+        "assetId": "voice-47",
+        "startTime": 0,
+        "duration": 4.133333333333333,
+        "sourceIn": 0,
+        "sourceOut": 4.133333333333333,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "audio": {
+          "eq": {
+           "low": 0,
+           "mid": 0,
+           "high": 0
+          },
+          "compressor": {
+           "enabled": false,
+           "threshold": -24,
+           "ratio": 4,
+           "attack": 0.003,
+           "release": 0.25
+          },
+          "normalization": null,
+          "role": "speech",
+          "duck": {
+           "enabled": false,
+           "thresholdDb": -36,
+           "reductionDb": -12,
+           "attack": 0.05,
+           "hold": 0.15,
+           "release": 0.3
+          },
+          "gainDb": 0,
+          "pan": 0,
+          "fadeIn": 0,
+          "fadeOut": 0,
+          "muted": false,
+          "volumeKeys": []
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_i1_track_c",
+      "name": "Music",
+      "type": "audio",
+      "order": 3,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s0_i1_clip_c",
+        "name": "Music",
+        "layerId": "ais_plan-where-honey-comes-from_s0_i1_layer_c",
+        "assetId": "music-calm-acoustic",
+        "startTime": 0,
+        "duration": 4.533333333333333,
+        "sourceIn": 0,
+        "sourceOut": 4.533333333333333,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "audio": {
+          "eq": {
+           "low": 0,
+           "mid": 0,
+           "high": 0
+          },
+          "compressor": {
+           "enabled": false,
+           "threshold": -24,
+           "ratio": 4,
+           "attack": 0.003,
+           "release": 0.25
+          },
+          "normalization": null,
+          "role": "music",
+          "duck": {
+           "enabled": true,
+           "thresholdDb": -36,
+           "reductionDb": -12,
+           "attack": 0.05,
+           "hold": 0.15,
+           "release": 0.3
+          },
+          "gainDb": 0,
+          "volume": 0.3,
+          "pan": 0,
+          "fadeIn": 0,
+          "fadeOut": 0,
+          "muted": false,
+          "volumeKeys": []
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_i2_track_c",
+      "name": "Where honey comes from",
+      "type": "text",
+      "order": 4,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s0_i2_clip_c",
+        "name": "Where honey comes from",
+        "layerId": "ais_plan-where-honey-comes-from_s0_i2_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.533333333333333,
+        "sourceIn": 0,
+        "sourceOut": 4.533333333333333,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "slide",
+           "duration": 0.6,
+           "direction": "up"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s0_i3_track_c",
+      "name": "bee flower macro",
+      "type": "video",
+      "order": 5,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s0_i3_clip_c",
+        "name": "bee flower macro",
+        "layerId": "ais_plan-where-honey-comes-from_s0_i3_layer_c",
+        "assetId": "bee-flower-macro",
+        "startTime": 0,
+        "duration": 4.533333333333333,
+        "sourceIn": 0,
+        "sourceOut": 4.533333333333333,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "fade",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     }
+    ],
+    "markers": [],
+    "audioTracks": []
+   },
+   {
+    "id": "ais_plan-where-honey-comes-from_s1_c",
+    "name": "The hive",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 6.4,
+    "backgroundColor": "#000000",
+    "layers": [
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_bg_c",
+      "name": "Scene background",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 6.4,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1920,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1080,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "rectangle",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#1b1a17"
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i8_layer_c",
+      "name": "beehive bees working",
+      "type": "video",
+      "startTime": 0,
+      "duration": 6.4,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1920,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1080,
+        "keyframes": []
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive/hive-video",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "beehive-bees-working",
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i7_layer_c",
+      "name": "Lower third role",
+      "type": "text",
+      "startTime": 0,
+      "duration": 6.4,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         134.4,
+         885.5999999999999
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 729.6,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 42.12,
+        "keyframes": []
+       },
+       "text": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Up to 60,000 bees",
+        "keyframes": []
+       },
+       "fontSize": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 32,
+        "keyframes": []
+       },
+       "fontFamily": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Inter",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#111111"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive/name#2",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i6_layer_c",
+      "name": "Lower third name",
+      "type": "text",
+      "startTime": 0,
+      "duration": 6.4,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         134.4,
+         815.4
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 729.6,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 63.18000000000001,
+        "keyframes": []
+       },
+       "text": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "The hive",
+        "keyframes": []
+       },
+       "fontSize": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 49,
+        "keyframes": []
+       },
+       "fontFamily": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Inter",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#111111"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive/name#1",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i5_layer_c",
+      "name": "Lower third bar",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 6.4,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         96,
+         799.2
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 806.4,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 151.20000000000002,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "rectangle",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#f2a900"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive/name",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i4_layer_c",
+      "name": "Number label",
+      "type": "text",
+      "startTime": 2.5,
+      "duration": 3.9000000000000004,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         192,
+         648
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1536,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 56.160000000000004,
+        "keyframes": []
+       },
+       "text": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "bees in one hive",
+        "keyframes": []
+       },
+       "fontSize": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 43,
+        "keyframes": []
+       },
+       "fontFamily": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Inter",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#fff7e6"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive/count#1",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i3_layer_c",
+      "name": "Number",
+      "type": "text",
+      "startTime": 2.5,
+      "duration": 3.9000000000000004,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         192,
+         345.6
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1536,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 252.72000000000003,
+        "keyframes": []
+       },
+       "text": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "60,000",
+        "keyframes": []
+       },
+       "fontSize": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 194,
+        "keyframes": []
+       },
+       "fontFamily": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Inter",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#f2a900"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive/count",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i2_layer_c",
+      "name": "bees buzzing",
+      "type": "audio",
+      "startTime": 0,
+      "duration": 2,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive#sfx0",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "sfx-bees-buzzing",
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i1_layer_c",
+      "name": "Music",
+      "type": "audio",
+      "startTime": 0,
+      "duration": 6.4,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive#music",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "music-calm-acoustic",
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i0_layer_c",
+      "name": "Narration 2",
+      "type": "audio",
+      "startTime": 0,
+      "duration": 6,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "hive#voice",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "voice-75",
+      "children": []
+     },
+     {
+      "id": "captions-2-cue-2",
+      "name": "Caption s2-caption_1",
+      "type": "group",
+      "startTime": 0.04999999999999982,
+      "duration": 4.425000000000002,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         153.5,
+         810
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {},
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": [
+       {
+        "id": "captions-2-box-2",
+        "name": "Caption box",
+        "type": "shape",
+        "startTime": 0.04999999999999982,
+        "duration": 4.425000000000002,
+        "transform": {
+         "position": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           0,
+           0
+          ],
+          "keyframes": []
+         },
+         "rotation": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0,
+          "keyframes": []
+         },
+         "scale": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           1,
+           1
+          ],
+          "keyframes": []
+         },
+         "opacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1,
+          "keyframes": []
+         }
+        },
+        "properties": {
+         "width": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1613,
+          "keyframes": []
+         },
+         "height": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 194,
+          "keyframes": []
+         },
+         "shapeKind": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "rectangle",
+          "keyframes": []
+         },
+         "fill": {
+          "animated": false,
+          "constraints": [],
+          "type": "color",
+          "keyframes": [],
+          "value": "#111111"
+         },
+         "fillOpacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0.9,
+          "keyframes": []
+         },
+         "cornerRadius": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 14,
+          "keyframes": []
+         }
+        },
+        "effects": [],
+        "masks": [],
+        "assetId": null,
+        "children": []
+       },
+       {
+        "id": "captions-2-text-2",
+        "name": "Caption: Inside the hive, thousands of bees work together to turn",
+        "type": "text",
+        "startTime": 0.04999999999999982,
+        "duration": 4.425000000000002,
+        "transform": {
+         "position": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           20,
+           20
+          ],
+          "keyframes": []
+         },
+         "rotation": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0,
+          "keyframes": []
+         },
+         "scale": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           1,
+           1
+          ],
+          "keyframes": []
+         },
+         "opacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1,
+          "keyframes": []
+         }
+        },
+        "properties": {
+         "width": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1573,
+          "keyframes": []
+         },
+         "height": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 154,
+          "keyframes": []
+         },
+         "text": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "Inside the hive, thousands of\nbees work together to turn",
+          "keyframes": []
+         },
+         "fontSize": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 64,
+          "keyframes": []
+         },
+         "fill": {
+          "animated": false,
+          "constraints": [],
+          "type": "color",
+          "keyframes": [],
+          "value": "#ffffff"
+         },
+         "fontFamily": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "Poppins",
+          "keyframes": []
+         },
+         "fontWeight": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 800,
+          "keyframes": []
+         },
+         "textAlign": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "center",
+          "keyframes": []
+         },
+         "lineHeight": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1.2,
+          "keyframes": []
+         },
+         "textCase": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "upper",
+          "keyframes": []
+         },
+         "captionCue": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "{\"version\":1,\"id\":\"s2-caption_1\",\"start\":4.583333333333333,\"end\":9.008333333333335,\"words\":[{\"text\":\"Inside\",\"start\":4.583333333333333,\"end\":5.126754385964912},{\"text\":\"the\",\"start\":5.126754385964912,\"end\":5.437280701754386},{\"text\":\"hive,\",\"start\":5.437280701754386,\"end\":5.903070175438597},{\"text\":\"thousands\",\"start\":5.903070175438597,\"end\":6.679385964912281},{\"text\":\"of\",\"start\":6.679385964912281,\"end\":6.912280701754386},{\"text\":\"bees\",\"start\":6.912280701754386,\"end\":7.300438596491229},{\"text\":\"work\",\"start\":7.300438596491229,\"end\":7.688596491228071},{\"text\":\"together\",\"start\":7.688596491228071,\"end\":8.387280701754387},{\"text\":\"to\",\"start\":8.387280701754387,\"end\":8.620175438596492},{\"text\":\"turn\",\"start\":8.620175438596492,\"end\":9.008333333333335}],\"language\":\"en\",\"styleId\":\"bold-box\"}",
+          "keyframes": []
+         }
+        },
+        "effects": [],
+        "masks": [],
+        "assetId": null,
+        "children": []
+       }
+      ]
+     },
+     {
+      "id": "captions-2-cue-3",
+      "name": "Caption s2-caption_2",
+      "type": "group",
+      "startTime": 4.475000000000001,
+      "duration": 1.4750000000000014,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         153.5,
+         887
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {},
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": [
+       {
+        "id": "captions-2-box-3",
+        "name": "Caption box",
+        "type": "shape",
+        "startTime": 4.475000000000001,
+        "duration": 1.4750000000000014,
+        "transform": {
+         "position": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           0,
+           0
+          ],
+          "keyframes": []
+         },
+         "rotation": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0,
+          "keyframes": []
+         },
+         "scale": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           1,
+           1
+          ],
+          "keyframes": []
+         },
+         "opacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1,
+          "keyframes": []
+         }
+        },
+        "properties": {
+         "width": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1613,
+          "keyframes": []
+         },
+         "height": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 117,
+          "keyframes": []
+         },
+         "shapeKind": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "rectangle",
+          "keyframes": []
+         },
+         "fill": {
+          "animated": false,
+          "constraints": [],
+          "type": "color",
+          "keyframes": [],
+          "value": "#111111"
+         },
+         "fillOpacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0.9,
+          "keyframes": []
+         },
+         "cornerRadius": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 14,
+          "keyframes": []
+         }
+        },
+        "effects": [],
+        "masks": [],
+        "assetId": null,
+        "children": []
+       },
+       {
+        "id": "captions-2-text-3",
+        "name": "Caption: nectar into honey.",
+        "type": "text",
+        "startTime": 4.475000000000001,
+        "duration": 1.4750000000000014,
+        "transform": {
+         "position": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           20,
+           20
+          ],
+          "keyframes": []
+         },
+         "rotation": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0,
+          "keyframes": []
+         },
+         "scale": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           1,
+           1
+          ],
+          "keyframes": []
+         },
+         "opacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1,
+          "keyframes": []
+         }
+        },
+        "properties": {
+         "width": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1573,
+          "keyframes": []
+         },
+         "height": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 77,
+          "keyframes": []
+         },
+         "text": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "nectar into honey.",
+          "keyframes": []
+         },
+         "fontSize": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 64,
+          "keyframes": []
+         },
+         "fill": {
+          "animated": false,
+          "constraints": [],
+          "type": "color",
+          "keyframes": [],
+          "value": "#ffffff"
+         },
+         "fontFamily": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "Poppins",
+          "keyframes": []
+         },
+         "fontWeight": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 800,
+          "keyframes": []
+         },
+         "textAlign": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "center",
+          "keyframes": []
+         },
+         "lineHeight": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1.2,
+          "keyframes": []
+         },
+         "textCase": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "upper",
+          "keyframes": []
+         },
+         "captionCue": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "{\"version\":1,\"id\":\"s2-caption_2\",\"start\":9.008333333333335,\"end\":10.483333333333336,\"words\":[{\"text\":\"nectar\",\"start\":9.008333333333335,\"end\":9.551754385964914},{\"text\":\"into\",\"start\":9.551754385964914,\"end\":9.939912280701757},{\"text\":\"honey.\",\"start\":9.939912280701757,\"end\":10.483333333333336}],\"language\":\"en\",\"styleId\":\"bold-box\"}",
+          "keyframes": []
+         }
+        },
+        "effects": [],
+        "masks": [],
+        "assetId": null,
+        "children": []
+       }
+      ]
+     },
+     {
+      "id": "shot-plan-where-honey-comes-from-4",
+      "name": "Camera 1 · parallax-drift",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 6.4,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "role": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "camera",
+        "keyframes": []
+       },
+       "cameraSpec": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "{\"id\":\"camera-plan-where-honey-comes-from-3\",\"name\":\"Camera 1\",\"type\":\"persp\",\"lensUnit\":\"mm\",\"focal\":50,\"orthoScale\":1,\"sensorFit\":\"auto\",\"sensor\":36,\"shiftX\":0,\"shiftY\":0,\"clipStart\":0.1,\"clipEnd\":100000,\"showLimits\":false,\"dof\":{\"enabled\":false,\"focusLayer\":null,\"distance\":0,\"fStop\":2.8,\"blades\":0,\"rotation\":0,\"ratio\":1},\"safeAreas\":{\"show\":false,\"title\":[0.1,0.05],\"action\":[0.035,0.035],\"centerCut\":false,\"centerTitle\":[0.175,0.05],\"centerAction\":[0.15,0.05]},\"passepartout\":{\"show\":true,\"alpha\":0.5},\"guides\":{\"center\":false,\"centerDiagonal\":false,\"thirds\":false,\"golden\":false,\"goldenTriangleA\":false,\"goldenTriangleB\":false,\"harmoniousTriangleA\":false,\"harmoniousTriangleB\":false},\"display\":{\"size\":1,\"showName\":true,\"showSensor\":false},\"background\":null,\"trackTo\":{\"layerId\":null,\"up\":\"Y\"}}",
+        "keyframes": []
+       },
+       "cameraShot": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "{\"cameraId\":\"camera-plan-where-honey-comes-from-3\",\"controller\":\"parallax-drift\",\"easing\":\"smooth\",\"strength\":0.5,\"amount\":6,\"speed\":1.2,\"seed\":1,\"direction\":1,\"target\":null}",
+        "keyframes": []
+       },
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     }
+    ],
+    "tracks": [
+     {
+      "id": "camera-track-ais_plan-where-honey-comes-from_s1_c",
+      "name": "Camera",
+      "type": "object",
+      "order": 0,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "shot-plan-where-honey-comes-from-4-clip",
+        "name": "Camera 1 · parallax-drift",
+        "layerId": "shot-plan-where-honey-comes-from-4",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 6.4,
+        "sourceIn": 0,
+        "sourceOut": 6.4,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {}
+       }
+      ]
+     },
+     {
+      "id": "captions-2-lane",
+      "name": "Captions",
+      "type": "text",
+      "order": 1,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "captions-2-clip-2",
+        "name": "Caption s2-caption_1",
+        "layerId": "captions-2-cue-2",
+        "assetId": null,
+        "startTime": 0.04999999999999982,
+        "duration": 4.425000000000002,
+        "sourceIn": 0,
+        "sourceOut": 4.425000000000002,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "role": "caption"
+        }
+       },
+       {
+        "id": "captions-2-clip-3",
+        "name": "Caption s2-caption_2",
+        "layerId": "captions-2-cue-3",
+        "assetId": null,
+        "startTime": 4.475000000000001,
+        "duration": 1.4750000000000014,
+        "sourceIn": 0,
+        "sourceOut": 1.4750000000000014,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "role": "caption"
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i0_track_c",
+      "name": "Narration 2",
+      "type": "audio",
+      "order": 2,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i0_clip_c",
+        "name": "Narration 2",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i0_layer_c",
+        "assetId": "voice-75",
+        "startTime": 0,
+        "duration": 6,
+        "sourceIn": 0,
+        "sourceOut": 6,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "audio": {
+          "eq": {
+           "low": 0,
+           "mid": 0,
+           "high": 0
+          },
+          "compressor": {
+           "enabled": false,
+           "threshold": -24,
+           "ratio": 4,
+           "attack": 0.003,
+           "release": 0.25
+          },
+          "normalization": null,
+          "role": "speech",
+          "duck": {
+           "enabled": false,
+           "thresholdDb": -36,
+           "reductionDb": -12,
+           "attack": 0.05,
+           "hold": 0.15,
+           "release": 0.3
+          },
+          "gainDb": 0,
+          "pan": 0,
+          "fadeIn": 0,
+          "fadeOut": 0,
+          "muted": false,
+          "volumeKeys": []
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i1_track_c",
+      "name": "Music",
+      "type": "audio",
+      "order": 3,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i1_clip_c",
+        "name": "Music",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i1_layer_c",
+        "assetId": "music-calm-acoustic",
+        "startTime": 0,
+        "duration": 6.4,
+        "sourceIn": 4.533333333333333,
+        "sourceOut": 10.933333333333334,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "audio": {
+          "eq": {
+           "low": 0,
+           "mid": 0,
+           "high": 0
+          },
+          "compressor": {
+           "enabled": false,
+           "threshold": -24,
+           "ratio": 4,
+           "attack": 0.003,
+           "release": 0.25
+          },
+          "normalization": null,
+          "role": "music",
+          "duck": {
+           "enabled": true,
+           "thresholdDb": -36,
+           "reductionDb": -12,
+           "attack": 0.05,
+           "hold": 0.15,
+           "release": 0.3
+          },
+          "gainDb": 0,
+          "volume": 0.3,
+          "pan": 0,
+          "fadeIn": 0,
+          "fadeOut": 0,
+          "muted": false,
+          "volumeKeys": []
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i2_track_c",
+      "name": "bees buzzing",
+      "type": "audio",
+      "order": 4,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i2_clip_c",
+        "name": "bees buzzing",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i2_layer_c",
+        "assetId": "sfx-bees-buzzing",
+        "startTime": 0,
+        "duration": 2,
+        "sourceIn": 0,
+        "sourceOut": 2,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {}
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i3_track_c",
+      "name": "Number",
+      "type": "text",
+      "order": 5,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i3_clip_c",
+        "name": "Number",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i3_layer_c",
+        "assetId": null,
+        "startTime": 2.5,
+        "duration": 3.9000000000000004,
+        "sourceIn": 0,
+        "sourceOut": 3.9000000000000004,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "pop",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i4_track_c",
+      "name": "Number label",
+      "type": "text",
+      "order": 6,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i4_clip_c",
+        "name": "Number label",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i4_layer_c",
+        "assetId": null,
+        "startTime": 2.5,
+        "duration": 3.9000000000000004,
+        "sourceIn": 0,
+        "sourceOut": 3.9000000000000004,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "pop",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i5_track_c",
+      "name": "Lower third bar",
+      "type": "object",
+      "order": 7,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i5_clip_c",
+        "name": "Lower third bar",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i5_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 6.4,
+        "sourceIn": 0,
+        "sourceOut": 6.4,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "slide",
+           "duration": 0.6,
+           "direction": "right"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i6_track_c",
+      "name": "Lower third name",
+      "type": "text",
+      "order": 8,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i6_clip_c",
+        "name": "Lower third name",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i6_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 6.4,
+        "sourceIn": 0,
+        "sourceOut": 6.4,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "slide",
+           "duration": 0.6,
+           "direction": "right"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i7_track_c",
+      "name": "Lower third role",
+      "type": "text",
+      "order": 9,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i7_clip_c",
+        "name": "Lower third role",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i7_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 6.4,
+        "sourceIn": 0,
+        "sourceOut": 6.4,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "slide",
+           "duration": 0.6,
+           "direction": "right"
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s1_i8_track_c",
+      "name": "beehive bees working",
+      "type": "video",
+      "order": 10,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s1_i8_clip_c",
+        "name": "beehive bees working",
+        "layerId": "ais_plan-where-honey-comes-from_s1_i8_layer_c",
+        "assetId": "beehive-bees-working",
+        "startTime": 0,
+        "duration": 6.4,
+        "sourceIn": 0,
+        "sourceOut": 6.4,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "fade",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     }
+    ],
+    "markers": [
+     {
+      "id": "scene-transition-1",
+      "time": 0,
+      "label": "aive:scene-transition {\"type\":\"fade-black\",\"duration\":0.6}"
+     }
+    ],
+    "audioTracks": []
+   },
+   {
+    "id": "ais_plan-where-honey-comes-from_s2_c",
+    "name": "Close",
+    "width": 1920,
+    "height": 1080,
+    "fps": 30,
+    "duration": 4.5,
+    "backgroundColor": "#000000",
+    "layers": [
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_bg_c",
+      "name": "Scene background",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1920,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1080,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "rectangle",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#1b1a17"
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i9_layer_c",
+      "name": "Background spot",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         384,
+         54
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0.18,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1152,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 972,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "ellipse",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#f2a900"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close/bg#1",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i8_layer_c",
+      "name": "Background",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1920,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1080,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "rectangle",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#1b1a17"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close/bg",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i7_layer_c",
+      "name": "End card note",
+      "type": "text",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         153.6,
+         324
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1612.8,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 49.14000000000001,
+        "keyframes": []
+       },
+       "text": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Subscribe for more nature stories",
+        "keyframes": []
+       },
+       "fontSize": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 38,
+        "keyframes": []
+       },
+       "fontFamily": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Inter",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#fff7e6"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close/thanks#3",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i6_layer_c",
+      "name": "End card title",
+      "type": "text",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         153.6,
+         172.8
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1612.8,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 112.32000000000001,
+        "keyframes": []
+       },
+       "text": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Thank a bee",
+        "keyframes": []
+       },
+       "fontSize": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 86,
+        "keyframes": []
+       },
+       "fontFamily": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Inter",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#fff7e6"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close/thanks#2",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i5_layer_c",
+      "name": "End card video 2",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1036.8000000000002,
+         540
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0.35,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 729.6,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 410.4,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "rectangle",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#000000"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close/thanks#1",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i4_layer_c",
+      "name": "End card video 1",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         153.6,
+         540
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0.35,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 729.6,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 410.4,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "rectangle",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#000000"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close/thanks",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i3_layer_c",
+      "name": "Subscribe",
+      "type": "text",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         768,
+         864
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 384,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 56.160000000000004,
+        "keyframes": []
+       },
+       "text": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Subscribe",
+        "keyframes": []
+       },
+       "fontSize": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 43,
+        "keyframes": []
+       },
+       "fontFamily": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "Inter",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#ffffff"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close/cta#1",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i2_layer_c",
+      "name": "Subscribe button",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         729.6,
+         842.4
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 460.79999999999995,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 108,
+        "keyframes": []
+       },
+       "shapeKind": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "rectangle",
+        "keyframes": []
+       },
+       "manualColor_fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "boolean",
+        "value": true,
+        "keyframes": []
+       },
+       "fill": {
+        "animated": false,
+        "constraints": [],
+        "type": "color",
+        "keyframes": [],
+        "value": "#e53935"
+       },
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close/cta",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i1_layer_c",
+      "name": "Music",
+      "type": "audio",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close#music",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "music-calm-acoustic",
+      "children": []
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i0_layer_c",
+      "name": "Narration 3",
+      "type": "audio",
+      "startTime": 0,
+      "duration": 3.8,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "planRef": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "close#voice",
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": "voice-42",
+      "children": []
+     },
+     {
+      "id": "captions-3-cue-4",
+      "name": "Caption s3-caption_1",
+      "type": "group",
+      "startTime": 0.05000000000000071,
+      "duration": 3.6999999999999993,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         153.5,
+         810
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {},
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": [
+       {
+        "id": "captions-3-box-4",
+        "name": "Caption box",
+        "type": "shape",
+        "startTime": 0.05000000000000071,
+        "duration": 3.6999999999999993,
+        "transform": {
+         "position": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           0,
+           0
+          ],
+          "keyframes": []
+         },
+         "rotation": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0,
+          "keyframes": []
+         },
+         "scale": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           1,
+           1
+          ],
+          "keyframes": []
+         },
+         "opacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1,
+          "keyframes": []
+         }
+        },
+        "properties": {
+         "width": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1613,
+          "keyframes": []
+         },
+         "height": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 194,
+          "keyframes": []
+         },
+         "shapeKind": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "rectangle",
+          "keyframes": []
+         },
+         "fill": {
+          "animated": false,
+          "constraints": [],
+          "type": "color",
+          "keyframes": [],
+          "value": "#111111"
+         },
+         "fillOpacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0.9,
+          "keyframes": []
+         },
+         "cornerRadius": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 14,
+          "keyframes": []
+         }
+        },
+        "effects": [],
+        "masks": [],
+        "assetId": null,
+        "children": []
+       },
+       {
+        "id": "captions-3-text-4",
+        "name": "Caption: So next time you taste honey, thank a bee.",
+        "type": "text",
+        "startTime": 0.05000000000000071,
+        "duration": 3.6999999999999993,
+        "transform": {
+         "position": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           20,
+           20
+          ],
+          "keyframes": []
+         },
+         "rotation": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 0,
+          "keyframes": []
+         },
+         "scale": {
+          "animated": false,
+          "constraints": [],
+          "type": "vector2",
+          "value": [
+           1,
+           1
+          ],
+          "keyframes": []
+         },
+         "opacity": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1,
+          "keyframes": []
+         }
+        },
+        "properties": {
+         "width": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1573,
+          "keyframes": []
+         },
+         "height": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 154,
+          "keyframes": []
+         },
+         "text": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "So next time you taste honey,\nthank a bee.",
+          "keyframes": []
+         },
+         "fontSize": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 64,
+          "keyframes": []
+         },
+         "fill": {
+          "animated": false,
+          "constraints": [],
+          "type": "color",
+          "keyframes": [],
+          "value": "#ffffff"
+         },
+         "fontFamily": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "Poppins",
+          "keyframes": []
+         },
+         "fontWeight": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 800,
+          "keyframes": []
+         },
+         "textAlign": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "center",
+          "keyframes": []
+         },
+         "lineHeight": {
+          "animated": false,
+          "constraints": [],
+          "type": "number",
+          "value": 1.2,
+          "keyframes": []
+         },
+         "textCase": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "upper",
+          "keyframes": []
+         },
+         "captionCue": {
+          "animated": false,
+          "constraints": [],
+          "type": "string",
+          "value": "{\"version\":1,\"id\":\"s3-caption_1\",\"start\":10.983333333333334,\"end\":14.683333333333334,\"words\":[{\"text\":\"So\",\"start\":10.983333333333334,\"end\":11.241472868217055},{\"text\":\"next\",\"start\":11.241472868217055,\"end\":11.67170542635659},{\"text\":\"time\",\"start\":11.67170542635659,\"end\":12.101937984496125},{\"text\":\"you\",\"start\":12.101937984496125,\"end\":12.446124031007752},{\"text\":\"taste\",\"start\":12.446124031007752,\"end\":12.962403100775195},{\"text\":\"honey,\",\"start\":12.962403100775195,\"end\":13.564728682170543},{\"text\":\"thank\",\"start\":13.564728682170543,\"end\":14.081007751937985},{\"text\":\"a\",\"start\":14.081007751937985,\"end\":14.253100775193799},{\"text\":\"bee.\",\"start\":14.253100775193799,\"end\":14.683333333333334}],\"language\":\"en\",\"styleId\":\"bold-box\"}",
+          "keyframes": []
+         }
+        },
+        "effects": [],
+        "masks": [],
+        "assetId": null,
+        "children": []
+       }
+      ]
+     },
+     {
+      "id": "shot-plan-where-honey-comes-from-6",
+      "name": "Camera 1 · pull-out",
+      "type": "shape",
+      "startTime": 0,
+      "duration": 4.5,
+      "transform": {
+       "position": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         0,
+         0
+        ],
+        "keyframes": []
+       },
+       "rotation": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 0,
+        "keyframes": []
+       },
+       "scale": {
+        "animated": false,
+        "constraints": [],
+        "type": "vector2",
+        "value": [
+         1,
+         1
+        ],
+        "keyframes": []
+       },
+       "opacity": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "properties": {
+       "role": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "camera",
+        "keyframes": []
+       },
+       "cameraSpec": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "{\"id\":\"camera-plan-where-honey-comes-from-5\",\"name\":\"Camera 1\",\"type\":\"persp\",\"lensUnit\":\"mm\",\"focal\":50,\"orthoScale\":1,\"sensorFit\":\"auto\",\"sensor\":36,\"shiftX\":0,\"shiftY\":0,\"clipStart\":0.1,\"clipEnd\":100000,\"showLimits\":false,\"dof\":{\"enabled\":false,\"focusLayer\":null,\"distance\":0,\"fStop\":2.8,\"blades\":0,\"rotation\":0,\"ratio\":1},\"safeAreas\":{\"show\":false,\"title\":[0.1,0.05],\"action\":[0.035,0.035],\"centerCut\":false,\"centerTitle\":[0.175,0.05],\"centerAction\":[0.15,0.05]},\"passepartout\":{\"show\":true,\"alpha\":0.5},\"guides\":{\"center\":false,\"centerDiagonal\":false,\"thirds\":false,\"golden\":false,\"goldenTriangleA\":false,\"goldenTriangleB\":false,\"harmoniousTriangleA\":false,\"harmoniousTriangleB\":false},\"display\":{\"size\":1,\"showName\":true,\"showSensor\":false},\"background\":null,\"trackTo\":{\"layerId\":null,\"up\":\"Y\"}}",
+        "keyframes": []
+       },
+       "cameraShot": {
+        "animated": false,
+        "constraints": [],
+        "type": "string",
+        "value": "{\"cameraId\":\"camera-plan-where-honey-comes-from-5\",\"controller\":\"pull-out\",\"easing\":\"smooth\",\"strength\":0.5,\"amount\":6,\"speed\":1.2,\"seed\":1,\"direction\":1,\"target\":null}",
+        "keyframes": []
+       },
+       "width": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       },
+       "height": {
+        "animated": false,
+        "constraints": [],
+        "type": "number",
+        "value": 1,
+        "keyframes": []
+       }
+      },
+      "effects": [],
+      "masks": [],
+      "assetId": null,
+      "children": []
+     }
+    ],
+    "tracks": [
+     {
+      "id": "camera-track-ais_plan-where-honey-comes-from_s2_c",
+      "name": "Camera",
+      "type": "object",
+      "order": 0,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "shot-plan-where-honey-comes-from-6-clip",
+        "name": "Camera 1 · pull-out",
+        "layerId": "shot-plan-where-honey-comes-from-6",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {}
+       }
+      ]
+     },
+     {
+      "id": "captions-3-lane",
+      "name": "Captions",
+      "type": "text",
+      "order": 1,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "captions-3-clip-4",
+        "name": "Caption s3-caption_1",
+        "layerId": "captions-3-cue-4",
+        "assetId": null,
+        "startTime": 0.05000000000000071,
+        "duration": 3.6999999999999993,
+        "sourceIn": 0,
+        "sourceOut": 3.6999999999999993,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "role": "caption"
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i0_track_c",
+      "name": "Narration 3",
+      "type": "audio",
+      "order": 2,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i0_clip_c",
+        "name": "Narration 3",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i0_layer_c",
+        "assetId": "voice-42",
+        "startTime": 0,
+        "duration": 3.8,
+        "sourceIn": 0,
+        "sourceOut": 3.8,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "audio": {
+          "eq": {
+           "low": 0,
+           "mid": 0,
+           "high": 0
+          },
+          "compressor": {
+           "enabled": false,
+           "threshold": -24,
+           "ratio": 4,
+           "attack": 0.003,
+           "release": 0.25
+          },
+          "normalization": null,
+          "role": "speech",
+          "duck": {
+           "enabled": false,
+           "thresholdDb": -36,
+           "reductionDb": -12,
+           "attack": 0.05,
+           "hold": 0.15,
+           "release": 0.3
+          },
+          "gainDb": 0,
+          "pan": 0,
+          "fadeIn": 0,
+          "fadeOut": 0,
+          "muted": false,
+          "volumeKeys": []
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i1_track_c",
+      "name": "Music",
+      "type": "audio",
+      "order": 3,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i1_clip_c",
+        "name": "Music",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i1_layer_c",
+        "assetId": "music-calm-acoustic",
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 10.933333333333334,
+        "sourceOut": 15.433333333333334,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "audio": {
+          "eq": {
+           "low": 0,
+           "mid": 0,
+           "high": 0
+          },
+          "compressor": {
+           "enabled": false,
+           "threshold": -24,
+           "ratio": 4,
+           "attack": 0.003,
+           "release": 0.25
+          },
+          "normalization": null,
+          "role": "music",
+          "duck": {
+           "enabled": true,
+           "thresholdDb": -36,
+           "reductionDb": -12,
+           "attack": 0.05,
+           "hold": 0.15,
+           "release": 0.3
+          },
+          "gainDb": 0,
+          "volume": 0.3,
+          "pan": 0,
+          "fadeIn": 0,
+          "fadeOut": 0,
+          "muted": false,
+          "volumeKeys": []
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i2_track_c",
+      "name": "Subscribe button",
+      "type": "object",
+      "order": 4,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i2_clip_c",
+        "name": "Subscribe button",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i2_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "pop",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i3_track_c",
+      "name": "Subscribe",
+      "type": "text",
+      "order": 5,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i3_clip_c",
+        "name": "Subscribe",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i3_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "pop",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i4_track_c",
+      "name": "End card video 1",
+      "type": "object",
+      "order": 6,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i4_clip_c",
+        "name": "End card video 1",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i4_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "fade",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i5_track_c",
+      "name": "End card video 2",
+      "type": "object",
+      "order": 7,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i5_clip_c",
+        "name": "End card video 2",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i5_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "fade",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i6_track_c",
+      "name": "End card title",
+      "type": "text",
+      "order": 8,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i6_clip_c",
+        "name": "End card title",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i6_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "fade",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i7_track_c",
+      "name": "End card note",
+      "type": "text",
+      "order": 9,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i7_clip_c",
+        "name": "End card note",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i7_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "fade",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i8_track_c",
+      "name": "Background",
+      "type": "object",
+      "order": 10,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i8_clip_c",
+        "name": "Background",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i8_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "fade",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     },
+     {
+      "id": "ais_plan-where-honey-comes-from_s2_i9_track_c",
+      "name": "Background spot",
+      "type": "object",
+      "order": 11,
+      "enabled": true,
+      "locked": false,
+      "muted": false,
+      "clips": [
+       {
+        "id": "ais_plan-where-honey-comes-from_s2_i9_clip_c",
+        "name": "Background spot",
+        "layerId": "ais_plan-where-honey-comes-from_s2_i9_layer_c",
+        "assetId": null,
+        "startTime": 0,
+        "duration": 4.5,
+        "sourceIn": 0,
+        "sourceOut": 4.5,
+        "enabled": true,
+        "speed": 1,
+        "transitionMetadata": {},
+        "effectMetadata": {},
+        "metadata": {
+         "animation": {
+          "in": {
+           "preset": "fade",
+           "duration": 0.6
+          }
+         }
+        }
+       }
+      ]
+     }
+    ],
+    "markers": [
+     {
+      "id": "scene-transition-2",
+      "time": 0,
+      "label": "aive:scene-transition {\"type\":\"crossfade\",\"duration\":0.8}"
+     }
+    ],
+    "audioTracks": []
+   }
+  ],
+  "assets": [
+   {
+    "id": "voice-47",
+    "name": "voice-47",
+    "type": "audio",
+    "source": {
+     "kind": "local",
+     "reference": "media/voice-47"
+    },
+    "metadata": {
+     "mimeType": "application/octet-stream",
+     "size": 10
+    },
+    "duration": 4.133333333333333
+   },
+   {
+    "id": "music-calm-acoustic",
+    "name": "music-calm-acoustic",
+    "type": "audio",
+    "source": {
+     "kind": "local",
+     "reference": "media/music-calm-acoustic"
+    },
+    "metadata": {
+     "mimeType": "application/octet-stream",
+     "size": 10
+    },
+    "duration": 60
+   },
+   {
+    "id": "bee-flower-macro",
+    "name": "bee-flower-macro",
+    "type": "image",
+    "source": {
+     "kind": "local",
+     "reference": "media/bee-flower-macro"
+    },
+    "metadata": {
+     "mimeType": "application/octet-stream",
+     "size": 10
+    },
+    "width": 1920,
+    "height": 1080
+   },
+   {
+    "id": "voice-75",
+    "name": "voice-75",
+    "type": "audio",
+    "source": {
+     "kind": "local",
+     "reference": "media/voice-75"
+    },
+    "metadata": {
+     "mimeType": "application/octet-stream",
+     "size": 10
+    },
+    "duration": 6
+   },
+   {
+    "id": "sfx-bees-buzzing",
+    "name": "sfx-bees-buzzing",
+    "type": "audio",
+    "source": {
+     "kind": "local",
+     "reference": "media/sfx-bees-buzzing"
+    },
+    "metadata": {
+     "mimeType": "application/octet-stream",
+     "size": 10
+    },
+    "duration": 2
+   },
+   {
+    "id": "beehive-bees-working",
+    "name": "beehive-bees-working",
+    "type": "video",
+    "source": {
+     "kind": "local",
+     "reference": "media/beehive-bees-working"
+    },
+    "metadata": {
+     "mimeType": "application/octet-stream",
+     "size": 10
+    },
+    "width": 1920,
+    "height": 1080,
+    "duration": 12
+   },
+   {
+    "id": "voice-42",
+    "name": "voice-42",
+    "type": "audio",
+    "source": {
+     "kind": "local",
+     "reference": "media/voice-42"
+    },
+    "metadata": {
+     "mimeType": "application/octet-stream",
+     "size": 10
+    },
+    "duration": 3.8
+   }
+  ]
+ },
+ "flags": [],
+ "resolved": {
+  "open/flower": "asset:bee-flower-macro",
+  "hive/hive-video": "asset:beehive-bees-working"
+ }
+}

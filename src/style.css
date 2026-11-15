@@ -336,48 +336,31 @@ input[type='number'],
   position: relative;
   z-index: var(--z-toolbar);
   display: grid;
-  /* ROUND-B B0.1: the actions on the right never shrink under their own
-     width (they used to slide over the mode switch at 820 px with wider
-     fonts); the left side gives way instead, and clips its long name. */
-  grid-template-columns: minmax(0, 1fr) auto minmax(max-content, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   gap: var(--space-3);
   padding: 0 var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
   background: var(--panel);
 }
-.topbar-start {
-  overflow: clip;
-}
-.topbar .mode-switch button {
-  white-space: nowrap;
-}
-/* ROUND-B: the AI side of the Editor | AI switch. */
-.mode-switch .mode-ai {
-  display: inline-flex;
+/* ROUND-C1 T: the Editor | AI toggle, a segmented control like the mode
+   switch, in the centre slot beside it (the side groups keep their room at
+   1024 px). Below 1024 px Round A's top bar has no room for it, so it is
+   hidden there in Editor mode (shown in AI mode, to come back); on a phone
+   (under 768 px) it is hidden in both, as the mode switch is. The palette
+   command "Switch between Editor and AI mode" works at every size. */
+.topbar-center {
+  display: flex;
   align-items: center;
-  gap: 6px;
-  font-weight: var(--weight-semibold);
+  gap: var(--space-3);
+  min-inline-size: 0;
 }
-.mode-switch .mode-ai svg {
-  inline-size: var(--icon-size, 20px);
-  block-size: var(--icon-size, 20px);
+.layout-switch {
+  flex: none;
 }
-.mode-switch .mode-ai[aria-checked='true'] {
-  background: linear-gradient(120deg, #8b5cf6, #38bdf8);
-  color: #fff;
-}
-@media (max-width: 767px) {
-  #ask-director {
+@media (max-width: 1023px) {
+  .editor-shell:not(.ai-layout) .layout-switch {
     display: none;
-  }
-}
-@media (max-width: 899px) {
-  .topbar .save-status {
-    display: none;
-  }
-  .topbar {
-    gap: var(--space-2);
   }
 }
 .topbar-start,
@@ -3587,7 +3570,8 @@ button.color-swatch:hover {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-1);
   }
-  .mode-switch {
+  .mode-switch,
+  .topbar-center {
     display: none;
   }
   #project-name {
@@ -11778,6 +11762,14 @@ body:has(.modal-backdrop) .toast-stack {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* ROUND-C1 F3: the credit line and the count of other choices. */
+.plan-slot-credit {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
 }
 .plan-slot-actions {
   display: flex;

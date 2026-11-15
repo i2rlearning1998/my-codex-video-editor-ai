@@ -103,6 +103,18 @@ export const EDITOR_MARKERS = [
 // Director never makes the editor's first load bigger. The markers are
 // text only AI mode's own files hold.
 export const AI_MODE_MARKERS = ['Your video will appear here', 'aim-chip'];
+// ROUND-C1: the shared tools, the Director's planning loop, the Video Plan
+// v4 builder parts and the plan build and review screens are lazy chunks.
+// The editor's first load may not carry them, and it may not grow: its size
+// is held at or under what Round B measured (6,026,000 bytes of JS and CSS).
+export const ROUND_C1_LAZY_MARKERS = [
+  'There is no tool called',
+  'UNTRUSTED WEB TEXT',
+  'kept asking for research',
+  'Plan layer v4',
+  'it works only when the server is connected',
+];
+export const FIRST_LOAD_MAX_BYTES = 6026000;
 // P3U: the admin page is a fourth page. No other page may carry its code, and
 // it carries neither the editor nor the user panel's screens.
 export const ADMIN_MARKERS = [
@@ -169,6 +181,18 @@ if (existsSync(manifestPath)) {
   }
   firstBytes = sizeOf(editorFirst);
   allBytes = sizeOf(editor);
+  for (const file of filesOf(editorFirst)) {
+    const text = readFileSync(path.join(dist, file), 'utf8');
+    for (const marker of ROUND_C1_LAZY_MARKERS)
+      if (text.includes(marker))
+        problems.push(
+          `${file}: the editor's first load carries Round C1 code (${marker}); it must be a lazy chunk`,
+        );
+  }
+  if (firstBytes > FIRST_LOAD_MAX_BYTES)
+    problems.push(
+      `the editor's first load is ${firstBytes} bytes; it may not grow past ${FIRST_LOAD_MAX_BYTES} (Round B)`,
+    );
   for (const file of filesOf(editorFirst)) {
     const text = readFileSync(path.join(dist, file), 'utf8');
     for (const marker of ADMIN_MARKERS)

@@ -9,6 +9,7 @@ import type { OrbState } from '../contracts/p3';
 import {
   canUse,
   costById,
+  costOf,
   modelsForRole,
   styleById,
   text as sayText,
@@ -52,6 +53,7 @@ import { mountStudioForm } from '../panel/studio-form';
 import { assetView, mockAudio, mockImage } from '../panel/screens/studio';
 import { bestModels } from '../panel/screens/common';
 import { h, clear, put } from '../panel/dom';
+import { assetRuleFromBrief, referenceUrl } from '../director/brief-media';
 import { styleFromPlan } from '../project/style-from';
 import type { AssetSlot } from '../project/workspace';
 import type { Chat, SheetPart, Turn } from '../project/video-memory';
@@ -68,6 +70,7 @@ import {
 } from './canvas-read';
 import { propose, stillValid, suggestionsFor, type Proposal } from './propose';
 import { lang, t, type AiKey } from './strings';
+import { GRAPHIC_ASK } from './graphic-edit';
 
 export type DrawerTab = 'controls' | 'plan' | 'assets' | 'memory';
 export interface DirectorUi {
@@ -153,6 +156,10 @@ export class Director {
   #projectId = '';
   #queue: Send[] = [];
   #abort: AbortController | null = null;
+  /** ROUND-C1 F3: web pages this Video has read (the web rules count them). */
+  #pagesRead = 0;
+  /** ROUND-C1 F2: the plan being made (Stop aborts it). */
+  #planAbort: AbortController | null = null;
   #busy = false;
   /** The gateway server could not be reached at the last check. */
   #unreachable = false;
@@ -270,12 +277,37 @@ export class Director {
             ledger.refund(e.id, `${e.key}:reload`, 'interrupted');
       }
     }
+    // ROUND-C1 F2: planning cut off by a reload (during the model call or
+    // the frame check) made no plan: the Brief card is offered again and
+    // any open planning hold in this browser's ledger goes back in full.
+    const planCut = this.#flow.stage === 'plan' && !this.#flow.plan;
+    if (planCut) {
+      this.#flow.stage = 'brief';
+      if (!s.remote) {
+        const ledger = s.ledger(user.id);
+        const open = ledger.reservations();
+        for (const e of ledger.history())
+          if (
+            e.type === 'reserve' &&
+            e.key.startsWith(`plan-${this.#videoId}-`) &&
+            open.get(e.id)?.state === 'open'
+          )
+            ledger.refund(e.id, `${e.key}:reload`, 'interrupted');
+      }
+    }
     this.#open.clear();
     this.#chat = mem.currentChat(this.#videoId);
     if (!this.#chat.turns.length && this.#c.director.greeting)
       this.#director(this.#say(this.#c.director.greeting), {}, false);
     this.#renderThread();
     if (interrupted) this.#director(this.#line('build.interrupted'));
+    if (planCut) {
+      this.#saveFlow();
+      this.#director(this.#line('plan.interrupted'));
+      // The Brief card it came from is active again (Make the plan).
+      const b = this.#lastCard('brief');
+      if (b) this.#repaint(b.id);
+    }
     this.#reconcile(true);
     this.#saveFlow();
     // The panel's Home box hands over the first message.
@@ -965,12 +997,28 @@ export class Director {
     const { s, user, ctx } = this.#env;
     this.#refused = false;
     this.#ui.orb('thinking');
-    const wait = h('div', {
-      class: 'ai-msg',
-      'data-role': 'director',
-      id: 'ai-plan-working',
+    // ROUND-C1 F2: planning (with its frame and vision checks) can be
+    // stopped; a stop charges nothing and keeps the brief.
+    const stop = new AbortController();
+    this.#planAbort = stop;
+    const status = h('span', {
+      class: 'ai-plan-status',
       text: t('plan.working'),
     });
+    const stopButton = h('button', {
+      type: 'button',
+      class: 'ai-btn sm quiet ai-plan-stop',
+      id: 'ai-plan-stop',
+      text: t('plan.stop'),
+    });
+    stopButton.onclick = () => stop.abort();
+    const wait = h(
+      'div',
+      { class: 'ai-msg', 'data-role': 'director', id: 'ai-plan-working' },
+      status,
+      ' ',
+      stopButton,
+    );
     this.#ui.thread.append(wait);
     this.#scroll();
     try {
@@ -980,6 +1028,21 @@ export class Director {
         input.answers.accent = kit.colors[0];
       const style = this.#ws.effectiveStyle(this.#videoId);
       const memory = this.#mem.facts(this.#projectId).map((f) => f.text);
+      // ROUND-C1 F3 (C1.4.3): a link in the Brief card is read first by the
+      // fetchPage tool (wrapped as untrusted data); a page that cannot be
+      // read is said in one sentence and planning goes on without it.
+      let reference: string | undefined;
+      const link = referenceUrl(this.#flow.brief.reference);
+      if (link) {
+        status.textContent = this.#line('plan.readingLink');
+        const read = await this.#research('fetchPage', { url: link });
+        if (read.ok) reference = read.text;
+        else
+          this.#director(
+            this.#line('plan.linkFailed', { reason: clip(read.text, 200) }),
+          );
+        status.textContent = t('plan.working');
+      }
       const result = await llmPlan({
         gateway: s.gateway,
         config: this.#c,
@@ -1001,9 +1064,58 @@ export class Director {
         userId: user.id,
         modelId: this.#model(),
         key: `plan-${this.#videoId}-${Date.now().toString(36)}`,
+        // ROUND-C1: the brief's video type, the Project kit, the research
+        // tools and (tests only) the offline model's scripted answers.
+        videoType: this.#flow.typeId || undefined,
+        kit: this.#host.graphicsKit(),
+        research: (tool, input) => this.#research(tool, input),
+        reference,
+        ...(e2eSeen() ? { onAsk: e2eSeen()! } : {}),
+        // ROUND-C1 F2: sample frames of the new graphics, and the vision
+        // check's frames (both drawn off screen by the editor's renderer).
+        frames: async (p) => {
+          status.textContent = this.#line('plan.checkingFrames');
+          const { sampleGraphics } = await import('../ui/sample-frames');
+          return sampleGraphics(p, { signal: stop.signal });
+        },
+        visionFrames: async (p) => {
+          status.textContent = this.#line('plan.lookingFrames');
+          const { planFrames } = await import('../ui/sample-frames');
+          const { browserRenderFrames } = await import('../ui/render-frames');
+          // Through the shared tools (renderFrames), drawn by the browser.
+          return planFrames(p, {
+            signal: stop.signal,
+            tools: {
+              config: this.#c,
+              planId: s.planOf(user.id).id,
+              userId: user.id,
+              media: { builtin: {}, rest: async () => [] },
+              renderFrames: browserRenderFrames(stop.signal),
+              signal: stop.signal,
+            },
+          });
+        },
+        onStep: (step) => {
+          if (stop.signal.aborted)
+            throw new DOMException('The plan was stopped.', 'AbortError');
+          if (/^(research:|check-failed|frames-bad|vision-problems)/.test(step))
+            status.textContent = t('plan.working');
+        },
+        ...(e2eScript() ? { script: e2eScript()! } : {}),
       });
+      if (stop.signal.aborted)
+        throw new DOMException('The plan was stopped.', 'AbortError');
       await s.sync(user.id).catch(() => undefined);
       this.#ui.credits();
+      if (result.ok && result.notes?.length) {
+        const problems = result.notes.filter((n) => n !== 'vision-skipped');
+        if (result.notes.includes('vision-skipped'))
+          this.#director(this.#line('plan.visionSkipped'));
+        if (problems.length)
+          this.#director(
+            this.#line('plan.visionProblems', { problems: problems.join(' ') }),
+          );
+      }
       if (!result.ok) {
         this.#director(result.message, { tone: 'error' });
         if (!rewrite) this.#setStage('brief');
@@ -1015,6 +1127,20 @@ export class Director {
       const aspect = this.#flow.brief.aspect;
       if (aspect && aspect !== YOU_DECIDE && /^\d+:\d+$/.test(aspect))
         plan = { ...plan, meta: { ...plan.meta, aspect: aspect as never } };
+      // ROUND-C1 F3 (C1.3): the Brief card's "Pictures and footage" choice
+      // is the plan's asset rule (the owner's rules in director.assets).
+      const rule = assetRuleFromBrief(
+        this.#c,
+        this.#flow.brief.media === YOU_DECIDE
+          ? undefined
+          : this.#flow.brief.media,
+      );
+      if (rule)
+        plan = {
+          ...plan,
+          version: 4,
+          meta: { ...plan.meta, assets: rule },
+        } as VideoPlan;
       const checked = checkPlan(plan);
       if (checked.ok) plan = checked.plan;
       if (rewrite) this.#mem.countRewrite(this.#videoId);
@@ -1037,9 +1163,111 @@ export class Director {
       );
       if (old && old.id !== turn.id) this.#repaint(old.id);
       this.#ui.openDrawer('plan');
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') throw e;
+      await s.sync(user.id).catch(() => undefined);
+      this.#ui.credits();
+      this.#director(this.#line('plan.cancelled'));
+      if (!rewrite) this.#setStage('brief');
+      const b = this.#lastCard('brief');
+      if (b) this.#repaint(b.id);
     } finally {
+      if (this.#planAbort === stop) this.#planAbort = null;
       wait.remove();
     }
+  }
+  /** ROUND-C1: one research request through the shared tools (server or offline). */
+  async #research(
+    tool: string,
+    input: unknown,
+  ): Promise<{ ok: boolean; text: string }> {
+    const { s, user } = this.#env;
+    try {
+      if (s.gateway.tools) {
+        const out = (await s.gateway.tools(tool, input, this.#videoId)) as {
+          ok: boolean;
+          error?: string;
+          output?: unknown;
+        };
+        if (!out.ok) return { ok: false, text: out.error ?? 'failed' };
+        const o = out.output as {
+          wrapped?: string;
+          items?: { title: string; provider: string }[];
+        };
+        return {
+          ok: true,
+          text:
+            o.wrapped ??
+            JSON.stringify(
+              o.items
+                ? o.items
+                    .slice(0, 12)
+                    .map((i) => ({ title: i.title, provider: i.provider }))
+                : o,
+            ).slice(0, 6000),
+        };
+      }
+      // DEV and e2e pages only: pages from a test fixture, read by the same
+      // fetchPage (rules, page limit, untrusted wrapping) as the server's.
+      const pages = e2ePages();
+      if (tool === 'fetchPage' && pages) {
+        const { runTool } = await import('../tools');
+        const out = await runTool('fetchPage', input, {
+          config: this.#c,
+          planId: s.planOf(user.id).id,
+          userId: user.id,
+          media: { builtin: {}, rest: async () => [] },
+          pagesUsed: () => this.#pagesRead,
+          notePage: () => void this.#pagesRead++,
+          web: {
+            rest: async () => [],
+            resolve: async () => ['93.184.216.34'],
+            fetch: async (url: string) => {
+              const html = pages[url];
+              return html === undefined
+                ? new Response('Not found', { status: 404 })
+                : new Response(html, {
+                    status: 200,
+                    headers: { 'content-type': 'text/html; charset=utf-8' },
+                  });
+            },
+          } as never,
+        });
+        return out.ok
+          ? { ok: true, text: (out.output as { wrapped: string }).wrapped }
+          : { ok: false, text: out.error };
+      }
+      if (tool === 'searchMedia') {
+        const { searchMedia } = await import('../tools/media');
+        const { fixtureRunner } = await import('../tools/media');
+        const r = await searchMedia(input as never, {
+          providers: this.#c.mediaProviders,
+          planId: s.planOf(user.id).id,
+          runtime: { builtin: {}, rest: fixtureRunner(e2eMedia() ?? {}) },
+        });
+        return {
+          ok: true,
+          text: JSON.stringify(
+            r.items
+              .slice(0, 12)
+              .map((i) => ({ title: i.title, provider: i.provider })),
+          ),
+        };
+      }
+      return { ok: false, text: t('graphic.serverOnly') };
+    } catch (e) {
+      return { ok: false, text: (e as Error).message };
+    }
+  }
+  /** ROUND-C1: credits of the plan's new graphics (the owner's cost each). */
+  #graphicsCredits(plan: VideoPlan) {
+    const each = costOf(
+      this.#c,
+      this.#c.director.authoring.newGraphicCostId,
+      1,
+      'max',
+    );
+    return (plan.defs?.blocks.length ?? 0) * each;
   }
   async #setPlan(plan: VideoPlan) {
     const { s, user } = this.#env;
@@ -1052,7 +1280,9 @@ export class Director {
       s.connected(id),
     );
     this.#flow.plan = plan;
-    this.#flow.max = Math.ceil((base?.max ?? 0) + extra);
+    this.#flow.max = Math.ceil(
+      (base?.max ?? 0) + extra + this.#graphicsCredits(plan),
+    );
     this.#flow.sceneCosts = plan.scenes.map((_, i) =>
       Math.ceil(base?.scenes[i]?.max ?? 0),
     );
@@ -1277,6 +1507,7 @@ export class Director {
         }),
       ),
       this.#planScenes(true, turn),
+      this.#planGraphics(plan),
       h('p', {
         class: 'ai-muted',
         id: 'ai-plan-rewrites',
@@ -1318,6 +1549,35 @@ export class Director {
           },
         ),
       ),
+    );
+  }
+  /** ROUND-C1 C1.5: each new graphic: name, one line of what it shows, its cost (never its code). */
+  #planGraphics(plan: VideoPlan) {
+    const defs = plan.defs?.blocks ?? [];
+    if (!defs.length) return null;
+    const each = costOf(
+      this.#c,
+      this.#c.director.authoring.newGraphicCostId,
+      1,
+      'max',
+    );
+    return h(
+      'ul',
+      { class: 'ai-plan-graphics', id: 'ai-plan-graphics' },
+      ...defs.map((d) => {
+        const name =
+          (typeof d.meta?.name === 'string' ? d.meta.name : undefined) ??
+          /name:\s*['"]([^'"]{1,80})['"]/.exec(d.source)?.[1] ??
+          d.id;
+        return h(
+          'li',
+          { class: 'ai-plan-graphic', 'data-def': d.id },
+          h('span', { class: 'ai-badge', text: t('graphic.new') }),
+          h('strong', { text: clip(name, 60) }),
+          h('span', { class: 'ai-muted', text: clip(d.summary ?? '', 120) }),
+          h('span', { class: 'ai-cost', text: t('graphic.cost', { n: each }) }),
+        );
+      }),
     );
   }
   #approvePlan(turn: Turn) {
@@ -1563,13 +1823,17 @@ export class Director {
         ? null
         : h('p', { class: 'ai-muted', text: t('assets.nothing') }),
     );
-    const choices: [Slot['choice'], AiKey][] = [
-      ['make', 'assets.make'],
-      ['upload', 'assets.upload'],
-      ['prompt', 'assets.prompt'],
-      ['library', 'assets.library'],
-      ['later', 'assets.later'],
-    ];
+    // ROUND-C1 F3: "Use only my files" offers no AI-made file.
+    const onlyMine = !!this.#flow.plan?.meta.assets?.onlyMine;
+    const choices: [Slot['choice'], AiKey][] = (
+      [
+        ['make', 'assets.make'],
+        ['upload', 'assets.upload'],
+        ['prompt', 'assets.prompt'],
+        ['library', 'assets.library'],
+        ['later', 'assets.later'],
+      ] as [Slot['choice'], AiKey][]
+    ).filter(([c]) => !onlyMine || (c !== 'make' && c !== 'prompt'));
     for (const slot of slots) {
       const body = h('div', { class: 'ai-slot-body' });
       const row = h(
@@ -1707,6 +1971,22 @@ export class Director {
               })
             : null,
         ),
+        // ROUND-C1 F3: what Director picked, with the other choices, in
+        // the editor's Review & swap.
+        status === 'done' && this.#flow.plan
+          ? h(
+              'div',
+              { class: 'ai-row' },
+              Object.assign(
+                this.#button(
+                  'build.review',
+                  () => this.#host.openReview(this.#flow.plan!.meta.title),
+                  'sm quiet',
+                ),
+                { id: 'ai-build-review' },
+              ),
+            )
+          : null,
       );
       return;
     }
@@ -1852,6 +2132,14 @@ export class Director {
           const built = await this.#host.buildPlan(r.plan, {
             signal,
             progress: (step, state) => show(step, state),
+            media: {
+              config: this.#c,
+              planId: s.planOf(user.id).id,
+              videoId: this.#videoId,
+              ...(s.gateway.tools
+                ? { tools: s.gateway.tools.bind(s.gateway) }
+                : {}),
+            },
             ...(one
               ? { after: one.after }
               : this.#flow.sceneIds?.length
@@ -2083,6 +2371,11 @@ export class Director {
     }
     this.#reconcile();
     const sceneId = this.#host.session.source.composition.id;
+    // ROUND-C1 C1.5: writing or rewriting a graphic needs the model.
+    if (GRAPHIC_ASK.test(text)) {
+      this.#graphicAsk(text, selectedIds, o.allowed ?? []);
+      return;
+    }
     const result = propose({
       project: this.#state,
       sceneId,
@@ -2116,6 +2409,124 @@ export class Director {
     else if (result.kind === 'gone')
       this.#director(this.#line('proposal.gone'), { tone: 'note' });
     else void this.#cannot(text, selectedIds, result.alternatives);
+  }
+  /** ROUND-C1 C1.5: "change this graphic" / "make a new one here". */
+  #graphicAsk(
+    text: string,
+    selectedIds: readonly string[],
+    allowed: readonly string[],
+  ) {
+    const scene = this.#host.session.source.composition;
+    const layer =
+      scene.layers.find((l) => selectedIds.includes(l.id) && l.code) ?? null;
+    // A graphic the person changed by hand is never overwritten without asking.
+    const touched = this.#mem.touched(this.#videoId);
+    if (
+      layer &&
+      touched[layer.id] !== undefined &&
+      touched[layer.id] !== hashLayer(layer as never) &&
+      !allowed.includes(layer.id)
+    ) {
+      this.#card(
+        'ask',
+        {
+          layers: [{ id: layer.id, name: layer.name }],
+          text,
+          selectedIds: [...selectedIds],
+          state: 'open',
+        },
+        this.#line('handEdited.ask', { layer: layer.name }),
+      );
+      return;
+    }
+    const role = this.#c.director.roles.write;
+    const model = modelsForRole(this.#c, role).find(
+      (m) => this.#env.s.connected(m.id) && m.providerId !== 'mock',
+    );
+    if (!this.#env.s.remote || !model) {
+      this.#director(this.#line('graphic.needsModel'), { tone: 'note' });
+      return;
+    }
+    const max = Math.max(
+      1,
+      Math.ceil(
+        costOf(this.#c, this.#c.director.authoring.newGraphicCostId, 1, 'max'),
+      ),
+    );
+    this.#card(
+      'paid',
+      {
+        text,
+        selectedIds: [...selectedIds],
+        max,
+        model: model.id,
+        graphic: true,
+        state: 'open',
+      },
+      this.#line('paid.ask', { credits: max }),
+    );
+  }
+  /** The model writes the graphic; it becomes one proposal (one undo step). */
+  async #graphicModel(
+    text: string,
+    selectedIds: readonly string[],
+    modelId: string,
+    max: number,
+  ) {
+    const { s, user } = this.#env;
+    const role = this.#c.director.roles.write;
+    const scene = this.#host.session.source.composition;
+    const layer =
+      scene.layers.find((l) => selectedIds.includes(l.id) && l.code) ?? null;
+    this.#ui.orb('thinking');
+    const job = await s.gateway.startJob({
+      userId: user.id,
+      plan: s.planOf(user.id),
+      role,
+      modelId,
+      maxCredits: max,
+      key: `graphic-${Date.now().toString(36)}`,
+    });
+    try {
+      const { graphicEdit } = await import('./graphic-edit');
+      const r = await graphicEdit({
+        config: this.#c,
+        scene: scene as never,
+        layer: layer as never,
+        text,
+        time: this.#host.session.currentTime,
+        ask: async (system, content) =>
+          (
+            await job.call(role, modelId, {
+              system,
+              messages: [{ role: 'user', content }],
+              json: true,
+            })
+          ).text ?? '',
+      });
+      if (!r.ok) {
+        await job.fail();
+        this.#director(this.#line('graphic.failed'), { tone: 'error' });
+        return;
+      }
+      const credits = await job.finish(0);
+      this.offer({
+        id: `p-graphic-${Date.now().toString(36)}`,
+        summary: this.#line('graphic.ready', { name: r.name }),
+        label: r.label,
+        commands: r.commands,
+        layerIds: [r.layerId],
+        sceneId: scene.id,
+        credits,
+      });
+    } catch (e) {
+      await job.fail();
+      throw e;
+    } finally {
+      await s.sync(user.id).catch(() => undefined);
+      this.#ui.credits();
+      this.#ui.orb('idle');
+    }
   }
   /** Not something the offline rules can do: a real model may (with its cost), else alternatives. */
   async #cannot(
@@ -2465,10 +2876,18 @@ export class Director {
           'plan.approve',
           async () => {
             close('asked');
-            await this.#askModel(
-              String(state.text),
-              (state.selectedIds as string[]) ?? [],
-            );
+            if (state.graphic)
+              await this.#graphicModel(
+                String(state.text),
+                (state.selectedIds as string[]) ?? [],
+                String(state.model),
+                Number(state.max),
+              );
+            else
+              await this.#askModel(
+                String(state.text),
+                (state.selectedIds as string[]) ?? [],
+              );
           },
           'primary',
         ),
@@ -3243,4 +3662,38 @@ export class Director {
   get openProposals() {
     return this.#open.size;
   }
+}
+
+/** DEV and e2e pages only: the offline model's scripted answers (tests). */
+function e2eScript(): string[] | null {
+  if (!(import.meta.env.DEV || import.meta.env.MODE === 'e2e')) return null;
+  const w = window as { __AIVE_E2E_PLAN_SCRIPT__?: unknown };
+  return Array.isArray(w.__AIVE_E2E_PLAN_SCRIPT__) &&
+    w.__AIVE_E2E_PLAN_SCRIPT__.length
+    ? (w.__AIVE_E2E_PLAN_SCRIPT__ as string[])
+    : null;
+}
+/** DEV and e2e pages only: records what the planning model was sent. */
+function e2eSeen(): ((req: { messages: readonly unknown[] }) => void) | null {
+  if (!(import.meta.env.DEV || import.meta.env.MODE === 'e2e')) return null;
+  const w = window as { __AIVE_E2E_PLAN_SEEN__?: unknown[] };
+  return Array.isArray(w.__AIVE_E2E_PLAN_SEEN__)
+    ? (req) => void w.__AIVE_E2E_PLAN_SEEN__!.push(structuredClone(req))
+    : null;
+}
+/** DEV and e2e pages only: web pages by address for the fetchPage tool. */
+function e2ePages(): Record<string, string> | null {
+  if (!(import.meta.env.DEV || import.meta.env.MODE === 'e2e')) return null;
+  return (
+    (window as { __AIVE_E2E_PAGES__?: Record<string, string> })
+      .__AIVE_E2E_PAGES__ ?? null
+  );
+}
+/** DEV and e2e pages only: fixtures for REST providers without a gateway. */
+function e2eMedia(): Record<string, never[]> | null {
+  if (!(import.meta.env.DEV || import.meta.env.MODE === 'e2e')) return null;
+  return (
+    (window as { __AIVE_E2E_MEDIA__?: Record<string, never[]> })
+      .__AIVE_E2E_MEDIA__ ?? null
+  );
 }

@@ -1,0 +1,15 @@
+Scene 1: Water moves
+  - Scene background (shape)
+  - How rivers carve valleys (text)
+  - Orbit ring drops (code, tier C)
+  - Caption s1-caption_1 (group)
+Scene 2: Erosion
+  - Scene background (shape)
+  - Erosion bars (code, tier B)
+  - Deeper every year (text)
+  - Caption s2-caption_1 (group)
+Scene 3: The valley
+  - Scene background (shape)
+  - Rising bars bars2 (code, tier B)
+  - Orbit ring drops2 (code, tier C)
+  - Caption s3-caption_1 (group)

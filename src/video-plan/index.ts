@@ -4,6 +4,7 @@ export * from './kit';
 export * from './validate';
 export * from './timing';
 export * from './resolve';
+export type { AssetRule, AssetSource, MediaChoiceV4 } from './resolve-v4';
 export * from './build';
 export * from './kit-project';
 export * from './feel';

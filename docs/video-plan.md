@@ -1,4 +1,4 @@
-# Video Plan v2 and v3 (FINAL3 Part D, FIX4 V3)
+# Video Plan v2, v3 and v4 (FINAL3 Part D, FIX4 V3, ROUND-C1)
 
 A **Video Plan** describes a whole video by what it says and shows; the editor's auto-builder turns it into scenes in one step. It never names media slots: each media layer says what to look for (`mediaIntent`), and the builder finds it in the project's media, then stock. Version 1 compositions (Composition Spec plus slots, docs/COMPOSITION-ADAPTER.md) still import and still use the slot dialog.
 
@@ -47,6 +47,51 @@ A video is **one timeline with layers**, not a row of scenes. `meta.build: "time
 
 Rules the builder follows: the later layer of a scene covers the earlier one (kit backgrounds are always underneath, overlays on top); a rotated layer turns about its centre; arcs and the protractor are drawn as shapes (editable like any shape); a thought or speech bubble is a body shape, a tail and a text. `mediaIntent.type: "audio"` finds an audio file in the project's Media (audio is never searched online). A sample is in docs/samples/plan-v3-diagram.json.
 
+## Version 4: the plan can say what the editor can do (ROUND-C1)
+
+`"version": 4`. Versions 2 and 3 still read and build exactly the same project as before (snapshot tests in tests/round-c1/old-plans-same.test.ts). Every v4 field maps to a command or capability the editor already has; nothing in src/core or schema 9 changed. Every id is checked against the real catalog; an unknown id is a plain error that names the nearest valid ids (`there is no blend mode "multiplie". Nearest: blend.multiply, ...`).
+
+| Field (layer)                  | What                                                                               | Existing command or API                                  |
+| ------------------------------ | ---------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `name`                         | the layer's name                                                                   | `SET_LAYER_NAME`                                         |
+| `fx[]`                         | effects, filters, adjustments `{id, params}` (ids of the FX library)               | `SET_CLIP_FX` (src/core/fx.ts, src/fx)                   |
+| `grade`                        | `exposure`, `contrast`, `saturation`, `temperature` (-100..100)                    | `adjust.*` entries in the same `SET_CLIP_FX` stack       |
+| `blend`                        | a blend mode (`multiply` or `blend.multiply`)                                      | `plugin:layer-blend:SET` (src/blend)                     |
+| `chromaKey`                    | `color`, `similarity`, `smoothness`, `spill`                                       | `plugin:chroma-key:SET` (src/chroma)                     |
+| `mask`                         | `rect` or `ellipse` in percent of the layer, `feather`, `invert`                   | `plugin:layer-masks:SET` (src/masks)                     |
+| `transitionIn`                 | a clip transition (basic or `transition.*`)                                        | `SET_CLIP_TRANSITION`                                    |
+| `keyframes[]`                  | `x`, `y` (percent), `scale`, `rotation`, `opacity` at seconds from the layer start | `SET_PROPERTY` with keyframes                            |
+| `preset`                       | a Creator preset of the Project (`id`, `controls`)                                 | `presetCommands` (src/ui/creator-presets.ts)             |
+| `speed`, `reverse`, `sourceIn` | playback speed, reverse, where the source starts                                   | `SET_CLIP_SPEED`, `SET_CLIP_REVERSED`, `SET_CLIP_TIMING` |
+| `volume`, `fadeIn`, `fadeOut`  | sound of a video or sound layer                                                    | `plugin:audio:SET` (src/audio/settings.ts)               |
+| `font`, `letterSpacing`        | text font family and spacing                                                       | text properties via `SET_PROPERTY`                       |
+| `fit`                          | `fit`, `fill`, `stretch` for a picture or video                                    | scale and position (VID-004 rule)                        |
+| `group`                        | layers with the same group id become one group                                     | `GROUP`                                                  |
+| `order`                        | stacking inside the scene (higher on top)                                          | build order                                              |
+| `locked`                       | locked layer                                                                       | the `locked` property (D-126)                            |
+| `queries[]`, `minDuration`     | several searches tried in order; footage at least this long                        | the v4 media rule below                                  |
+| `mediaIntent.type: "sticker"`  | a sticker by kind                                                                  | the provider registry                                    |
+
+Scene: `transitionOut.type` may also be a pixel transition `transition.<id>` (set as the scene transition marker). Plan: `meta.videoType` (a type of the Platform Config), `meta.assets` `{order, aiImagesMax, aiVideosMax, onlyMine}` (default order mine, library, stock, ai), `music.sourceIn`.
+
+**Not expressible (BLOCKED):** a speed ramp (the editor has one speed per clip, `SET_CLIP_SPEED`; there is no time-remap command, and src/core may not change); lanes other than the build's own (each built layer gets its own lane; `order` sets the stacking); hide (there is no hide command, LYR-006 is not built).
+
+### New graphics: `defs.blocks[]`
+
+`{"id", "tier": "B" | "C", "source", "meta"?, "summary"?}`, at most 40 per plan, 32 settings each, source up to 32768 characters. A layer `{"kind": "block", "block": "<def id>", "params"}` uses it, in as many scenes as wanted. Tier B is checked by the block compiler (literal metadata, the drawing policy); Tier C by the Creator Pack checks and policy (init, renderFrame, a duration). A def may not take a built-in block's id, and two settings may not share a name. The settings become the layer's controllers (the code layer's own Controls). Every accepted def is also saved as a Creator Pack motion item (pack `plan-graphics`) in the Project's AI library: the Project's graphics kit, listed in the capability sheet and the AI panel, reusable by id.
+
+### Media on its own (replaces the FIX7 rule for v4)
+
+For each media layer the builder searches by KIND (`photo` → `stock-photo`, `video` → `stock-video`, `icon`, `sticker`/`emoji` → `sticker`, `audio` → `music`) through every enabled provider of the Platform Config's registry (src/tools searchMedia), in the asset rule's order: the person's own files (by name), the library, then stock. A pick must pass the checks: allowed licence (`director.assets.licences`), the right kind, long enough footage, big enough to fill the screen, not used by another layer. The pick is recorded with up to four alternatives and marked "picked by AI" (`picks`); footage is cut with `sourceIn` and the layer's length. Nothing usable: the layer becomes the named empty slot with the "needs asset" flag, and the reason offers rewording the search or a code graphic (or an AI picture when the rule allows). "Use only my files" searches nothing else. The credit lines of the stock used are returned with the build (`credits`). v2 and v3 plans keep the FIX7 rule unchanged.
+
+### Voices and captions by provider (v4, ROUND-C1 F4)
+
+`voice.provider` names a text-to-speech provider and `captions.provider` a speech-to-text provider of the registry (only ones the capability sheet lists for the person; another id is a plan error). A speech provider is a REST descriptor with a `speech` part: the POST path, the JSON field names for the text, voice, language and audio, and where the answer keeps the audio (base64) or the words with their times. Keys and fetching stay on the gateway (tools `speak` and `transcribe`). With no `voice.provider`, a v4 build uses the editor's own voice engine, and the first enabled voice provider only when no engine is ready. The captions provider times the words of a narration whose voice gave none. The voice's licence and credit stay on the narration file. With no speech provider set up, the offline captions (from the narration text) work as before.
+
+### The Brief card and the asset rule (ROUND-C1 F3)
+
+The Brief card's "Pictures and footage" choice becomes `meta.assets` (the rules are the owner's, `director.assets.briefChoices`): my files first, stock first, AI pictures allowed, or use only my files. "Use only my files" asks the person for every media file and offers nothing made by AI. A link in the Brief card is read first by `fetchPage` and given to the model wrapped as untrusted data.
+
 ## How it is built
 
 1. **Media**: the project's media first (by name), then stock: photos and videos from Pexels or Pixabay (the saved key), icons from Iconify, emoji from the sticker sets. Candidates are ranked by the query's words in their title and tags, the orientation and the kind, then by key, so the same plan picks the same media. The top four are kept as alternatives. When nothing is usable the layer becomes a fallback card ("Needs: ...") with a **needs asset** flag; the build never stops for media.
@@ -61,7 +106,7 @@ The build runs headless through the Composition Spec adapter, so it is determini
 
 ## Review & swap
 
-The build summary's **Review & swap** (also the palette's _Review video plan_) opens a left panel: per scene its length, Up, Down, Delete and Regenerate, the narration with **Update voice** (speaks it again and remakes that scene's captions and timing), and each media layer with its flag, up to four alternatives, **Search more** and **Use my own**. A swap keeps the layer's place, animation and the camera. **Export plan** downloads the plan with every choice (importing it builds the same video); **Compare to plan** lists where the project differs. The plan state is kept in this browser per project (`aive.videoPlan.<projectId>`), never in the project.
+The build summary's **Review & swap** (also the palette's _Review video plan_) opens a left panel: per scene its length, Up, Down, Delete and Regenerate, the narration with **Update voice** (speaks it again and remakes that scene's captions and timing), and each media layer with its flag, up to four alternatives, **Search more** and **Use my own**. Each found file says who chose it (**Picked by AI**, your choice, or your file found by name) with its credit line and how many other choices there are; a swap is one undo step and makes it your choice. A build made in AI mode opens it from the Built card. A swap keeps the layer's place, animation and the camera. **Export plan** downloads the plan with every choice (importing it builds the same video); **Compare to plan** lists where the project differs. The plan state is kept in this browser per project (`aive.videoPlan.<projectId>`), never in the project.
 
 ## Starter kit
 

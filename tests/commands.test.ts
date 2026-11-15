@@ -231,7 +231,7 @@ test('[KEY-001] every registered action has translated labels, enablement and an
       expect(engine.canUndo).toBe(false);
     // H2: the theme is a UI preference, never project history.
     else if (command.id === 'theme') expect(engine.canUndo).toBe(false);
-    else if (command.id === 'ai-mode' || command.id === 'ask-director') {
+    else if (command.id === 'ai-mode') {
       // ROUND-B: the layout is session state, never history.
       expect(session.layout, command.id).toBe('ai');
       expect(engine.canUndo, command.id).toBe(false);

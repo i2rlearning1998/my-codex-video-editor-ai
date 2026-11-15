@@ -350,10 +350,15 @@ import {
   type VideoPlan,
 } from '../video-plan';
 import { kitPreviewUrl } from '../video-plan/kit-preview';
+import { firstContentTime } from '../render/first-content';
 import type { FeelExtras } from '../themes/library';
-import { openPlanBuild, planServices, runPlanBuild } from './plan-build-dialog';
+// ROUND-C1: the plan build (dialog, services, v4 media) is a lazy chunk, so
+// the editor's first load does not grow with the Video Plan v4 code.
+const planBuildModule = () => import('./plan-build-dialog');
 import type { AiHost, AiMode } from '../ai-mode/host';
-import { planReviewPanel, type PlanReviewDeps } from './plan-review';
+import type { PlanReviewDeps } from './plan-review';
+// ROUND-C1: Review & swap is a lazy chunk too (with the plan builder).
+const planReviewModule = () => import('./plan-review');
 import {
   allSceneIds,
   bindPlanProject,
@@ -474,17 +479,21 @@ export function mountEditorShell(
             <span class="save-status" id="save-status-text"></span>
           </div>
         </div>
-        <div class="segmented mode-switch" id="mode-switch" role="radiogroup" aria-label="${t('mode.label')}">
-          <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
-          <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
-          <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
-          <button type="button" role="radio" data-layout="ai" id="mode-ai" class="mode-ai" aria-checked="false" title="${t('mode.aiTitle')}">${iconSvg('magic', 20)}<span>${t('mode.ai')}</span></button>
+        <div class="topbar-center">
+          <div class="segmented mode-switch" id="mode-switch" role="radiogroup" aria-label="${t('mode.label')}">
+            <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
+            <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
+            <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
+          </div>
+          <div class="segmented layout-switch" id="layout-switch" role="radiogroup" aria-label="${t('layout.label')}" title="${t('command.aiMode')}">
+            <button type="button" role="radio" id="layout-editor" data-layout-choice="editor" aria-checked="true">${t('mode.editor')}</button>
+            <button type="button" role="radio" id="mode-ai" data-layout-choice="ai" aria-checked="false" title="${t('mode.aiTitle')}">${t('mode.ai')}</button>
+          </div>
         </div>
         <div class="topbar-end top-actions">
           <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>
           <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')} (Ctrl+Y)">${iconSvg('redo')}</button>
           <span class="topbar-divider" aria-hidden="true"></span>
-          <button type="button" id="ask-director" class="icon-button" aria-label="${t('command.askDirector')}" title="${t('command.askDirector')}">${iconSvg('magic')}</button>
           <button type="button" id="cloud-sync" class="icon-button" data-state="off" aria-label="${t('cloud.label')}" title="${t('cloud.label')}">${iconSvg('upload')}<span class="cloud-dot" aria-hidden="true"></span></button>
           <button type="button" id="theme-toggle" class="icon-button" aria-label="${t('theme.label')}" title="${t('theme.label')}">${iconSvg('themeDark')}</button>
           <button type="button" id="export" class="primary">${iconSvg('export')}<span class="export-label">${t('action.export')}</span></button>
@@ -2421,15 +2430,17 @@ export function mountEditorShell(
   for (const button of modeButtons)
     button.onclick = () => {
       if (button.getAttribute('aria-disabled') === 'true') return;
-      // ROUND-B: from AI mode, a mode button returns to the editor layout.
-      session.setLayout('editor');
       session.setMode(button.dataset.mode as 'editor' | 'animation2d');
     };
   session.onChange(syncMode);
   // ROUND-B: Editor | AI. AI mode is another layout of this same editor
   // (same engine, selection, playhead and open scene); its Director UI is a
   // separate chunk loaded the first time AI mode opens.
-  const aiButton = element<HTMLButtonElement>('#mode-ai');
+  // ROUND-C1 T: one separate Editor | AI toggle; the mode switch above is
+  // Round A's, unchanged.
+  const layoutButtons = root.querySelectorAll<HTMLButtonElement>(
+    '#layout-switch [data-layout-choice]',
+  );
   let shownLayout: 'editor' | 'ai' = 'editor';
   let aiMode: AiMode | null = null;
   let aiLoading = false;
@@ -2437,14 +2448,16 @@ export function mountEditorShell(
   const LAYOUT_KEY = 'aive.layout.ai';
   const syncLayout = () => {
     const ai = session.layout === 'ai';
-    aiButton.setAttribute('aria-checked', String(ai));
-    if (ai)
-      for (const button of modeButtons)
-        button.setAttribute('aria-checked', 'false');
+    for (const button of layoutButtons)
+      button.setAttribute(
+        'aria-checked',
+        String(button.dataset.layoutChoice === session.layout),
+      );
     if (session.layout === shownLayout) return;
     shownLayout = session.layout;
+    // ROUND-C1 L1: AI mode is marked only by this class; data-layout is the
+    // workspace's responsive value (wide, medium, narrow, phone) alone.
     shellRoot.classList.toggle('ai-layout', ai);
-    shellRoot.dataset.layout = session.layout;
     try {
       // A reload comes back to the same layout of the same video.
       if (ai) sessionStorage.setItem(LAYOUT_KEY, engine.state.id);
@@ -2487,9 +2500,9 @@ export function mountEditorShell(
       safely(draw);
     });
   };
-  aiButton.onclick = () => session.setLayout('ai');
-  element<HTMLButtonElement>('#ask-director').onclick = () =>
-    session.setLayout('ai');
+  for (const button of layoutButtons)
+    button.onclick = () =>
+      session.setLayout(button.dataset.layoutChoice === 'ai' ? 'ai' : 'editor');
   session.onChange(syncLayout);
   // FINAL3 C3 (Blender's focus picker): with "Pick on canvas" on, the next
   // layer selected becomes the camera's Focus Object (depth of field on),
@@ -2955,8 +2968,8 @@ export function mountEditorShell(
         Asset | undefined) ?? null
     );
   };
-  const planBuildServices = () =>
-    planServices({
+  const planBuildServices = async () =>
+    (await planBuildModule()).planServices({
       assets: () => session.source.assets as unknown as readonly Asset[],
       importFile: importQuiet,
       sfx: catalogSfx,
@@ -3003,95 +3016,105 @@ export function mountEditorShell(
       themeById(themeId),
       themeId ? (feelExtras.get(themeId) ?? null) : null,
     );
-    openPlanBuild(plan, {
-      assets: () => session.source.assets as unknown as readonly Asset[],
-      importFile: importQuiet,
-      sfx: catalogSfx,
-      theme: planThemeById,
-      // FIX7: the AI card is saved once the build is complete, never before.
-      ...(keep ? { onCommit: async () => void (await keep()) } : {}),
-      discardAssets: (ids) => mediaPanel.discard(ids),
-      prepare: (project, signal, progress) =>
-        prepareBuilt(project as never, signal, progress),
-      addScenes: (result) => {
-        // FINAL3 V3.5: the plan's feel is listed in AI as a Theme.
-        if (plan.feel?.palette || plan.feel?.headingFont) {
-          const { theme } = feelTheme(plan);
-          const hash = [...plan.meta.title].reduce(
-            (h, c) => (h * 31 + c.charCodeAt(0)) >>> 0,
-            7,
-          );
-          const id = `feel-${hash.toString(36)}`;
-          const name = t('plan.feelName', { name: plan.meta.title }).slice(
-            0,
-            60,
-          );
-          void creatorLibrary
-            .add([
-              {
-                key: `plan-feel/${id}`,
-                packId: 'plan-feel',
-                packName: { en: plan.meta.title.slice(0, 60) },
-                packVersion: 1,
-                item: {
-                  id,
-                  name: { en: name },
-                  tags: ['feel'],
-                  type: 'theme',
-                  data: theme,
-                } as unknown as CreatorEntry['item'],
-                name,
-                addedAt: new Date().toISOString(),
-              },
-            ])
-            .catch(reportError);
-        }
-        const ids = addBuiltScenes(
-          result.project!,
-          t('plan.built', {
-            count: String(result.project!.compositions.length),
-          }),
-        );
-        // FX10: the person chose to replace the earlier build: its scenes go
-        // (one step, so Undo brings them back).
-        const gone = replace.filter((id) =>
-          engine.state.compositions.some((scene) => scene.id === id),
-        );
-        if (gone.length)
-          engine.commands.transaction(
-            'Replace built scenes',
-            gone.map((compositionId) => ({
-              type: 'DELETE_COMPOSITION' as const,
-              compositionId,
-            })),
-          );
-        void training.start(engine.state.id, result.plan ?? plan);
-        session.select(null);
-        const previous = planState(engine.state.id, result.plan!.meta.title);
-        savePlanState(engine.state.id, {
-          plan: result.plan!,
-          earlier: previous
-            ? allSceneIds(previous).filter((id) => !ids.includes(id))
-            : [],
-          alternatives: Object.fromEntries(
-            Object.entries(result.alternatives).map(([k, v]) => [k, [...v]]),
-          ),
-          flags: [...result.flags],
-          silent: result.silent,
-          sceneIds: ids,
-          pages: {},
-        });
-        aiPanel?.render();
-      },
-      review: () => openPlanReview(plan.meta.title),
-      report: reportError,
-    });
+    void planBuildModule()
+      .then(({ openPlanBuild }) =>
+        openPlanBuild(plan, {
+          assets: () => session.source.assets as unknown as readonly Asset[],
+          importFile: importQuiet,
+          sfx: catalogSfx,
+          theme: planThemeById,
+          // FIX7: the AI card is saved once the build is complete, never before.
+          ...(keep ? { onCommit: async () => void (await keep()) } : {}),
+          discardAssets: (ids) => mediaPanel.discard(ids),
+          prepare: (project, signal, progress) =>
+            prepareBuilt(project as never, signal, progress),
+          addScenes: (result) => {
+            // FINAL3 V3.5: the plan's feel is listed in AI as a Theme.
+            if (plan.feel?.palette || plan.feel?.headingFont) {
+              const { theme } = feelTheme(plan);
+              const hash = [...plan.meta.title].reduce(
+                (h, c) => (h * 31 + c.charCodeAt(0)) >>> 0,
+                7,
+              );
+              const id = `feel-${hash.toString(36)}`;
+              const name = t('plan.feelName', { name: plan.meta.title }).slice(
+                0,
+                60,
+              );
+              void creatorLibrary
+                .add([
+                  {
+                    key: `plan-feel/${id}`,
+                    packId: 'plan-feel',
+                    packName: { en: plan.meta.title.slice(0, 60) },
+                    packVersion: 1,
+                    item: {
+                      id,
+                      name: { en: name },
+                      tags: ['feel'],
+                      type: 'theme',
+                      data: theme,
+                    } as unknown as CreatorEntry['item'],
+                    name,
+                    addedAt: new Date().toISOString(),
+                  },
+                ])
+                .catch(reportError);
+            }
+            const ids = addBuiltScenes(
+              result.project!,
+              t('plan.built', {
+                count: String(result.project!.compositions.length),
+              }),
+            );
+            // FX10: the person chose to replace the earlier build: its scenes go
+            // (one step, so Undo brings them back).
+            const gone = replace.filter((id) =>
+              engine.state.compositions.some((scene) => scene.id === id),
+            );
+            if (gone.length)
+              engine.commands.transaction(
+                'Replace built scenes',
+                gone.map((compositionId) => ({
+                  type: 'DELETE_COMPOSITION' as const,
+                  compositionId,
+                })),
+              );
+            void training.start(engine.state.id, result.plan ?? plan);
+            session.select(null);
+            const previous = planState(
+              engine.state.id,
+              result.plan!.meta.title,
+            );
+            savePlanState(engine.state.id, {
+              plan: result.plan!,
+              earlier: previous
+                ? allSceneIds(previous).filter((id) => !ids.includes(id))
+                : [],
+              alternatives: Object.fromEntries(
+                Object.entries(result.alternatives).map(([k, v]) => [
+                  k,
+                  [...v],
+                ]),
+              ),
+              flags: [...result.flags],
+              silent: result.silent,
+              sceneIds: ids,
+              pages: {},
+              ...(result.picks ? { picks: { ...result.picks } } : {}),
+            });
+            aiPanel?.render();
+          },
+          review: () => openPlanReview(plan.meta.title),
+          report: reportError,
+        }),
+      )
+      .catch(reportError);
   };
   /** FINAL3 V3: Review & swap, a left side panel. */
   const planReviewDeps = (title?: string): PlanReviewDeps => ({
     ...(title !== undefined ? { title } : {}),
-    poster: (sceneId) =>
-      scenePosterUrl(engine, session, sceneId, frames, 160, 1),
+    poster: (sceneId) => scenePosterUrl(engine, session, sceneId, frames, 160),
     project: () => engine.state,
     run: (label, commands) =>
       safely(() => {
@@ -3123,7 +3146,7 @@ export function mountEditorShell(
         () => null,
       );
       return {
-        ...planBuildServices(),
+        ...(await planBuildServices()),
         ...(plan?.meta.themeId
           ? { theme: await planThemeById(plan.meta.themeId) }
           : {}),
@@ -3146,15 +3169,25 @@ export function mountEditorShell(
           : { voiceUnavailable: t('plan.noVoice') }),
       };
     },
-    importCandidate: (candidate) =>
-      planBuildServices().importCandidate(candidate),
+    importCandidate: async (candidate) => {
+      // ROUND-C1 F3: a pick from a provider the owner added in config
+      // carries its own download details (kept with the alternatives).
+      const p = candidate.payload as
+        { download?: unknown; mediaType?: unknown } | undefined;
+      if (
+        candidate.source === 'stock' &&
+        typeof p?.download === 'string' &&
+        typeof p.mediaType === 'string'
+      ) {
+        const { importRegistryPick } = await import('./plan-media');
+        return importRegistryPick(candidate, importQuiet);
+      }
+      return (await planBuildServices()).importCandidate(candidate);
+    },
     searchMore: async (intent, page) => [
-      ...(await planBuildServices().resolve.stock(
-        intent.query,
-        intent.type,
-        intent.orientation,
-        page,
-      )),
+      ...(await (
+        await planBuildServices()
+      ).resolve.stock(intent.query, intent.type, intent.orientation, page)),
     ],
     pickFile: (accept) =>
       new Promise((resolve) => {
@@ -3172,10 +3205,19 @@ export function mountEditorShell(
     report: reportError,
     rerender: () => sidePanels.refresh(),
   });
+  // ROUND-C1 L2: Review & swap belongs to the AI category (AI > Video
+  // plans). Every caller opens that category and the left panel first, so
+  // Back returns to the AI list and another category closes the review.
   const openPlanReview = (title?: string) =>
-    sidePanels.show('plan-review', t('plan.reviewTitle'), () =>
-      planReviewPanel(planReviewDeps(title)),
-    );
+    void planReviewModule()
+      .then(({ planReviewPanel }) => {
+        if (activeCategory !== 'AI') openCategory('AI');
+        else workspace?.setOpen('left', true);
+        sidePanels.show('plan-review', t('plan.reviewTitle'), () =>
+          planReviewPanel(planReviewDeps(title)),
+        );
+      })
+      .catch(reportError);
   // FIX7: media added to the project later fill the plan slots that wait
   // for a file with that name (nothing else is ever filled on its own).
   let knownAssets = new Set(engine.state.assets.map((asset) => asset.id));
@@ -3186,6 +3228,7 @@ export function mountEditorShell(
     relinking = true;
     try {
       let total = 0;
+      const { planReviewPanel } = await planReviewModule();
       for (let round = 0; round < 8; round++) {
         if (!planState(engine.state.id)?.flags.length) break;
         let api: { fillMissing(): Promise<number> } | undefined;
@@ -3889,6 +3932,68 @@ export function mountEditorShell(
       ...(template.thumbnail ? { thumbnail: template.thumbnail } : {}),
     };
   };
+  // ROUND-C1 C1.2: a plan's accepted new graphics become Creator Pack
+  // motion items (tier B or C) in this Project's AI library: the Project's
+  // graphics kit, reusable by id and shown in the editor's AI panel.
+  let lastPlanBuild: import('../video-plan').PlanBuildResult | null = null;
+  void lastPlanBuild;
+  const GRAPHICS_PACK = 'plan-graphics';
+  const saveGraphics = async (
+    items: readonly {
+      readonly id: string;
+      readonly name: string;
+      readonly summary?: string | undefined;
+      readonly item: unknown;
+      readonly meta?: Readonly<Record<string, unknown>> | undefined;
+    }[],
+  ) => {
+    await creatorLibrary.ready;
+    const entries: CreatorEntry[] = [];
+    for (const one of items) {
+      const item = one.item as CreatorEntry['item'];
+      if (item.type !== 'motion') continue;
+      const meta = (one.meta ?? item.data.meta) as Record<string, unknown>;
+      entries.push({
+        key: `${GRAPHICS_PACK}/${item.id}`,
+        packId: GRAPHICS_PACK,
+        packName: { en: 'New graphics', hi: 'नए ग्राफ़िक' },
+        packVersion: 1,
+        item,
+        name: one.name,
+        addedAt: new Date().toISOString(),
+        motionMeta: {
+          ...meta,
+          name: one.name,
+          category: (meta.category as string | undefined) ?? 'AI',
+          params: (meta.params as unknown[] | undefined) ?? [],
+          ...(one.summary ? { summary: one.summary } : {}),
+        } as unknown as NonNullable<CreatorEntry['motionMeta']>,
+      });
+    }
+    if (entries.length) await creatorLibrary.add(entries);
+  };
+  const graphicsKit = () =>
+    creatorLibrary
+      .list()
+      .filter(
+        (e) =>
+          e.packId === GRAPHICS_PACK && !e.removed && e.item.type === 'motion',
+      )
+      .map((e) => {
+        const item = e.item as Extract<
+          CreatorEntry['item'],
+          { type: 'motion' }
+        >;
+        const summary = (e.motionMeta as { summary?: string } | undefined)
+          ?.summary;
+        return {
+          id: item.id,
+          name: e.name,
+          tier: item.data.tier,
+          params: (e.motionMeta?.params ?? []).map((p) => p.name),
+          ...(summary ? { summary } : {}),
+        };
+      });
   // R2: code templates saved before R2 (Templates > Code animations) move to
   // the AI category, once; layers already placed keep their own code.
   void creatorLibrary.ready.then(async () => {
@@ -5066,7 +5171,12 @@ export function mountEditorShell(
         ids[0]!,
         frames,
         256,
-        first ? Math.min(first.duration * 0.4, 2.5) : 0,
+        first
+          ? Math.max(
+              firstContentTime(first as never),
+              Math.min(first.duration * 0.4, 2.5),
+            )
+          : 0,
       );
       return {
         status,
@@ -8588,7 +8698,7 @@ export function mountEditorShell(
       safely(draw);
     },
     poster: (sceneId, width) =>
-      scenePosterUrl(engine, session, sceneId, frames, width, 1),
+      scenePosterUrl(engine, session, sceneId, frames, width),
     togglePlayback: () => commandContext.togglePlayback(),
     openExport: () => safely(openExport),
     back: () => history.back(),
@@ -8609,6 +8719,7 @@ export function mountEditorShell(
       );
       const before = new Set(session.source.assets.map((asset) => asset.id));
       try {
+        const { runPlanBuild } = await planBuildModule();
         const result = await runPlanBuild(
           plan,
           {
@@ -8616,6 +8727,7 @@ export function mountEditorShell(
             importFile: importQuiet,
             sfx: catalogSfx,
             theme: planThemeById,
+            ...(options.media ? { media: options.media } : {}),
           },
           (progress) =>
             options.progress(progress.step, progress.state, progress.detail),
@@ -8639,10 +8751,55 @@ export function mountEditorShell(
           ...(options.after ? { after: options.after } : {}),
           ...(options.replace ? { replace: options.replace } : {}),
         });
+        // ROUND-C1 C1.6: the stage shows the first moment with content, not
+        // the blank frame of a fade-in from 0:00.
+        const opened = engine.state.compositions.find(
+          (c) => c.id === session.source.composition.id,
+        );
+        if (opened && sceneIds.includes(opened.id))
+          session.setCurrentTime(firstContentTime(opened as never));
+        // ROUND-C1: the plan's new graphics go to the AI library (Project kit).
+        if (result.defs?.length)
+          await saveGraphics(
+            result.defs
+              .filter((d) => d.ok && d.item)
+              .map((d) => ({
+                id: d.id,
+                name: d.name ?? d.id,
+                summary: plan.defs?.blocks.find((b) => b.id === d.id)?.summary,
+                item: d.item,
+                meta: d.meta,
+              })),
+          ).catch(reportError);
+        lastPlanBuild = result;
+        // ROUND-C1 F3: the build keeps its plan state, so Review & swap shows
+        // what Director picked (and its alternatives) for a build made here.
+        {
+          const previous = planState(engine.state.id, result.plan!.meta.title);
+          savePlanState(engine.state.id, {
+            plan: result.plan!,
+            earlier: previous
+              ? allSceneIds(previous).filter((id) => !sceneIds.includes(id))
+              : [],
+            alternatives: Object.fromEntries(
+              Object.entries(result.alternatives).map(([k, v]) => [k, [...v]]),
+            ),
+            flags: [...result.flags],
+            silent: result.silent,
+            sceneIds,
+            pages: {},
+            ...(result.picks ? { picks: { ...result.picks } } : {}),
+          });
+        }
         return {
           sceneIds,
           silent: result.silent,
           missing: result.flags.map((flag) => flag.name ?? flag.key),
+          picked: Object.values(result.picks ?? {}).filter((p) => p.by === 'ai')
+            .length,
+          credits: (result.credits ?? []).map(
+            (c) => `${c.title}: ${c.attribution} (${c.provider}, ${c.licence})`,
+          ),
         };
       } catch (error) {
         // All or nothing: what the build imported is taken away again.
@@ -8714,6 +8871,12 @@ export function mountEditorShell(
       await actions.projects.open(videoId);
     },
     markAi: () => markAiProject(engine.state.id),
+    saveGraphics,
+    graphicsKit,
+    openReview: (title: string) => {
+      session.setLayout('editor');
+      openPlanReview(title);
+    },
   };
   // Another Video opened in AI mode: a reload comes back to that one.
   engine.on('state:changed', (event) => {
@@ -8821,6 +8984,44 @@ export function mountEditorShell(
         a();
         b();
       };
+    },
+    /** ROUND-C1: the Video's cover: its first scene at the first moment with content. */
+    coverThumb: (width = 192) => {
+      const first = engine.state.compositions[0];
+      if (!first) return '';
+      // ROUND-C1 F1: never extra drawing while playing (the stage's picture
+      // is the thumbnail then, as before), and a scene with video uses the
+      // stage's picture too (its frames belong to the stage's decoders).
+      const hasVideo = (layers: readonly unknown[]): boolean =>
+        (
+          layers as readonly {
+            type: string;
+            assetId?: string | null;
+            children: readonly unknown[];
+          }[]
+        ).some(
+          (l) => (l.type === 'video' && !!l.assetId) || hasVideo(l.children),
+        );
+      if (session.playing || hasVideo(first.layers)) return '';
+      // ROUND-C1 F1 (PB-009, PB-010): the cover is drawn on every autosave.
+      // Video frames come from the stage's own decoders (one element per
+      // layer), so asking them for another time re-seeks the playing or
+      // paused picture. The cover never asks for video: a scene showing
+      // video at its cover time falls back to the stage's own canvas.
+      let video = false;
+      const still: FrameProvider | undefined = frames
+        ? {
+            frame: (request, playing) => {
+              if (request.kind === 'video') {
+                video = true;
+                return null;
+              }
+              return frames.frame(request, playing);
+            },
+          }
+        : undefined;
+      const url = scenePosterUrl(engine, session, first.id, still, width) ?? '';
+      return video ? '' : url;
     },
     libraryIndex: () => ({
       media: (engine.state.assets as unknown as readonly Asset[])

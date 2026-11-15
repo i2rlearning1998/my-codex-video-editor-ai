@@ -1,4 +1,5 @@
 // P2-R2 Part C: the planning model, its checks, repair and refusals.
+import { liveCapabilitySheet } from '../../src/tools/capabilities';
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import {
@@ -98,7 +99,8 @@ describe('P2-R2 Director planner', () => {
       plan: pro,
       locale: 'en',
     });
-    const sheet = capabilitySheet();
+    // ROUND-C1: the sheet is built from the code AND the live config (v2).
+    const sheet = liveCapabilitySheet(c, { planId: pro.id });
     expect(p.system).toContain(sheet.text);
     expect(p.system).toContain(`version ${sheet.version}`);
     expect(p.system).toContain(style.playbookText.split('\n')[0]!);
@@ -106,9 +108,11 @@ describe('P2-R2 Director planner', () => {
     expect(p.system).not.toMatch(/\{\{/);
     expect(sheet.text).toContain('angle-proof');
     // The docs copy is the same text (npm run docs:capability-sheet).
+    // ROUND-C1: the code part, then the live part for the default config.
     expect(readFileSync('docs/CAPABILITY-SHEET.md', 'utf8')).toContain(
-      sheet.text,
+      capabilitySheet().text,
     );
+    expect(sheet.text.startsWith(capabilitySheet().text)).toBe(true);
     const plan = await goodPlan();
     const h = harness(
       () => '```json\n' + JSON.stringify({ plan, upgrades: [] }) + '\n```',
@@ -134,8 +138,32 @@ describe('P2-R2 Director planner', () => {
       plan: pro,
       locale: 'en',
     });
-    expect(p.system).toBe(
-      `OWNER TEXT ${style.name.en}: ${style.blurb.en} | 12`,
+    // ROUND-C1: the owner's text is used exactly; a template saved before
+    // Round C1 (no {{rulebook}} place) gets the config's rulebook, video-type
+    // playbook, authoring guide and research rule after it.
+    expect(
+      p.system.startsWith(
+        `OWNER TEXT ${style.name.en}: ${style.blurb.en} | 12\nRULEBOOK\n`,
+      ),
+    ).toBe(true);
+    expect(p.system).toContain(changed.director.rulebook[0]!.en);
+    changed.director.prompts!.plan =
+      'OWNER TEXT {{style}} | {{maxScenes}} {{rulebook}} {{typePlaybook}} {{authoring}} {{research}}';
+    changed.director.rulebook = [
+      { id: 'one', en: 'Rule one.', hi: 'नियम एक।' },
+    ];
+    changed.director.authoring.guide = 'GUIDE';
+    changed.director.research.enabled = false;
+    const exact = planPrompt({
+      config: changed,
+      style,
+      answers,
+      notes: [],
+      plan: pro,
+      locale: 'en',
+    });
+    expect(exact.system).toBe(
+      `OWNER TEXT ${style.name.en}: ${style.blurb.en} | 12 - Rule one. Video type: general. No playbook is written for it yet. GUIDE No research: answer with the plan.`,
     );
   });
 

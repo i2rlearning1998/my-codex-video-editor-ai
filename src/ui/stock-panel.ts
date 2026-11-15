@@ -16,6 +16,7 @@ import { iconSvg } from './icons';
 import { drags } from './drag-controller';
 import { createMenu, placeMenuAt, type MenuController } from './context-menu';
 import { stockProvidersFor, KEYS_CHANGED } from './services';
+import { signedInUserId } from '../auth-gate';
 import { openModal, type ModalHandle } from './components/modal';
 import { developerMode } from './developer-mode';
 import { diagnosticsButton } from './diagnostics';
@@ -238,6 +239,7 @@ if (typeof document !== 'undefined')
   });
 let menuElement: HTMLElement | null = null;
 let menu: MenuController | null = null;
+let registryApplied = false;
 let audio: HTMLAudioElement | null = null;
 let playing: string | null = null;
 
@@ -247,7 +249,23 @@ export function mountStock(
   tab: StockTab,
   deps: StockDeps,
 ): void {
+  // ROUND-C1: the provider registry is loaded once (lazily); when it adds
+  // or hides providers, the panel is drawn again.
+  void import('./registry-providers')
+    .then((m) =>
+      m.loadRegistryProviders(signedInUserId(window.localStorage) ?? 'local'),
+    )
+    .then((changed) => {
+      if (changed && !registryApplied) {
+        registryApplied = true;
+        document.dispatchEvent(new Event(KEYS_CHANGED));
+      }
+    });
   const providers = stockProvidersFor(KIND[tab]);
+  if (!providers.length) {
+    host.replaceChildren();
+    return;
+  }
   const state = stateOf(tab, providers);
   const provider = () =>
     providers.find((p) => p.id === state.providerId) ?? providers[0]!;

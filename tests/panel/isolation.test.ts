@@ -31,6 +31,11 @@ const PANEL_SIDE = [
   // import or a type-only import (checked below), and the bundle check
   // proves it is not in the editor's first load.
   'src/ai-mode',
+  // ROUND-C1 (D-425): the shared tools serve the Director, the gateway and
+  // (lazily, for a v4 build's media) the editor. The editor reaches them only
+  // through the lazy plan build; the bundle check's ROUND_C1_LAZY_MARKERS
+  // prove they are not in the editor's first load.
+  'src/tools',
 ];
 
 describe('P2-R1 page isolation', () => {

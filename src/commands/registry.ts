@@ -536,14 +536,6 @@ export const commands: readonly RegisteredCommand[] = Object.freeze([
       session.setLayout(session.layout === 'ai' ? 'editor' : 'ai'),
   },
   {
-    // ROUND-B: AI mode with the selection carried over.
-    id: 'ask-director',
-    labelKey: 'command.askDirector',
-    shortcut: '',
-    isEnabled: ({ session }) => session.layout !== 'ai',
-    run: ({ session }) => session.setLayout('ai'),
-  },
-  {
     id: 'stop',
     labelKey: 'command.stop',
     shortcut: '',

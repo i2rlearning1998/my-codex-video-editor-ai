@@ -58,7 +58,7 @@ test('[RDB-006] Editor | AI switch: the top bar button and the palette command c
   // The selection is a chip in the message box.
   await expect(page.locator('#ai-chips [data-chip="layer"]')).toHaveCount(1);
   // Back with the Editor side of the switch.
-  await page.locator('#mode-switch [data-mode="editor"]').click();
+  await page.locator('#layout-editor').click();
   await expect(page.locator('.editor-shell')).not.toHaveClass(/ai-layout/);
   now = await hook(page);
   expect(now.session.layout).toBe('editor');
@@ -130,7 +130,7 @@ test('[RDB-007] AI mode layout: the Director column, the stage, the scene ribbon
     '#canvas-footer',
     '#context-toolbar',
     '#selection-actions',
-    '#ask-director',
+    '#mode-switch',
   ])
     await expect(page.locator(hidden).first(), hidden).toBeHidden();
   // The drawer closes and the stage grows.
@@ -458,18 +458,39 @@ test('[RDB-011] quick strip: Format, Look, Voice, Music and Captions each become
   }
 });
 
-test('[RDB-012] Export opens from AI mode; the editor chat dock is gone; Ask Director in Editor mode (top bar and canvas menu) opens AI mode with the selection carried over', async ({
+test('[RDB-012] Export opens from AI mode; the editor chat dock is gone; Editor mode shows no Ask Director (top bar, canvas menu, palette), only the Editor | AI toggle, which carries the selection over', async ({
   page,
 }) => {
   await ready(page);
   // No dock and no dock toggle any more.
   await expect(page.locator('#chat-toggle')).toHaveCount(0);
   await expect(page.locator('#chat-dock')).toHaveCount(0);
-  // Top bar button.
+  // Owner decision 2026-11-15: no Ask Director in Editor mode.
+  await expect(page.locator('#ask-director')).toHaveCount(0);
   const at = await toScreen(page, 200, 250);
   await page.mouse.click(at.x, at.y);
   const selected = (await hook(page)).session.selectedIds;
-  await page.locator('#ask-director').click();
+  expect(selected).toHaveLength(1);
+  await page.mouse.click(at.x, at.y, { button: 'right' });
+  await expect(page.locator('#canvas-context-menu')).toBeVisible();
+  await expect(
+    page.locator('#canvas-context-menu [data-action="ask-director"]'),
+  ).toHaveCount(0);
+  await expect(page.locator('#canvas-context-menu')).not.toContainText(
+    'Ask Director',
+  );
+  await page.keyboard.press('Escape');
+  await menuAction(page, '#open-palette');
+  await page.keyboard.type('Ask Director');
+  await expect(page.locator('#command-palette')).toBeVisible();
+  await expect(page.locator('#palette-ask-director')).toHaveCount(0);
+  await expect(page.locator('#palette-results')).not.toContainText(
+    'Ask Director',
+  );
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.editor-shell')).not.toHaveClass(/ai-layout/);
+  // The toggle carries the selection over.
+  await page.locator('#mode-ai').click();
   await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/);
   await expect(page.locator('#ai-thread .ai-msg').first()).toBeVisible();
   expect((await hook(page)).session.selectedIds).toEqual(selected);
@@ -479,20 +500,9 @@ test('[RDB-012] Export opens from AI mode; the editor chat dock is gone; Ask Dir
   await expect(page.locator('.modal-dialog #export-png')).toBeVisible();
   await page.locator('.modal-dialog .modal-close').click();
   await expect(page.locator('.modal-dialog')).toHaveCount(0);
-  // Back to the editor; the canvas menu entry.
-  await page.locator('#mode-switch [data-mode="editor"]').click();
-  await page.mouse.click(at.x, at.y, { button: 'right' });
-  await page
-    .locator('#canvas-context-menu [data-action="ask-director"]')
-    .click();
-  await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/);
-  expect((await hook(page)).session.selectedIds).toEqual(selected);
-  // Also from the main menu's palette command.
-  await page.locator('#mode-switch [data-mode="editor"]').click();
-  await menuAction(page, '#open-palette');
-  await page.keyboard.type('Ask Director');
-  await page.keyboard.press('Enter');
-  await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/);
+  // The same toggle brings the editor back.
+  await page.locator('#layout-editor').click();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(/ai-layout/);
 });
 
 test('[RDB-013] the slim timeline is read-only: a clip click selects its layer, a click on empty time seeks, Play plays; nothing is added to history', async ({

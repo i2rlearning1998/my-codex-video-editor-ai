@@ -229,6 +229,34 @@ export function defaultFieldLibrary(): {
         type: 'text',
       },
       {
+        // ROUND-C1 F3 (C1.3): where pictures and footage may come from. Each
+        // choice is an asset rule in director.assets.briefChoices.
+        id: 'media',
+        label: L('Pictures and footage', 'तस्वीरें और फ़ुटेज'),
+        type: 'choice',
+        options: [
+          o(
+            'mine-first',
+            'My files first, then stock',
+            'पहले मेरी फ़ाइलें, फिर स्टॉक',
+          ),
+          o('stock-first', 'Stock first', 'पहले स्टॉक'),
+          o('ai-pictures', 'AI pictures allowed', 'AI तस्वीरें भी चलेंगी'),
+          o('only-mine', 'Use only my files', 'सिर्फ़ मेरी फ़ाइलें'),
+        ],
+        hints: {
+          'only-mine': [
+            'only my files',
+            'only my own',
+            'use only my',
+            'no stock',
+            'सिर्फ़ मेरी',
+          ],
+          'ai-pictures': ['ai pictures', 'ai images', 'generate pictures'],
+          'stock-first': ['stock footage', 'stock photos'],
+        },
+      },
+      {
         id: 'notes',
         label: L('Anything else', 'और कुछ'),
         type: 'longtext',
@@ -257,6 +285,7 @@ export function defaultFieldLibrary(): {
           { id: 'captions' },
           { id: 'aspect' },
           { id: 'reference' },
+          { id: 'media' },
         ],
       },
       {
@@ -317,6 +346,7 @@ export function defaultFieldLibrary(): {
           { id: 'hook' },
           { id: 'music' },
           { id: 'voice' },
+          { id: 'media' },
         ],
       },
       {
@@ -330,6 +360,7 @@ export function defaultFieldLibrary(): {
           { id: 'language', required: true },
           { id: 'music' },
           { id: 'captions' },
+          { id: 'media' },
         ],
       },
       {
@@ -342,6 +373,43 @@ export function defaultFieldLibrary(): {
           { id: 'captions' },
           { id: 'music' },
           { id: 'brand' },
+          { id: 'media' },
+        ],
+      },
+      {
+        // ROUND-C1 C1.7: video types for later Styles are data.
+        id: 'documentary',
+        name: L('Documentary', 'डॉक्यूमेंट्री'),
+        keywords: [
+          'documentary',
+          'history of',
+          'the story of',
+          'डॉक्यूमेंट्री',
+          'इतिहास',
+        ],
+        blocks: [
+          { id: 'topic', required: true },
+          { id: 'language', required: true },
+          { id: 'length', required: true },
+          { id: 'script' },
+          { id: 'voice' },
+          { id: 'music' },
+          { id: 'captions' },
+          { id: 'aspect' },
+          { id: 'reference' },
+          { id: 'media' },
+        ],
+      },
+      {
+        id: 'logo-intro',
+        name: L('Logo reveal and intro', 'लोगो रिवील और इंट्रो'),
+        keywords: ['logo reveal', 'intro', 'logo animation', 'लोगो'],
+        blocks: [
+          { id: 'brand', required: true },
+          { id: 'length' },
+          { id: 'music' },
+          { id: 'aspect' },
+          { id: 'look' },
         ],
       },
       {
@@ -356,6 +424,7 @@ export function defaultFieldLibrary(): {
           { id: 'voice' },
           { id: 'music' },
           { id: 'notes' },
+          { id: 'media' },
         ],
       },
     ],
@@ -441,6 +510,50 @@ export const DIRECTOR_LINES: Record<string, LT> = {
   'cannot.make': L(
     'I cannot make that here. I can do one of these instead.',
     'यह मैं यहाँ नहीं बना सकता। इसकी जगह इनमें से कुछ कर सकता हूँ।',
+  ),
+  'plan.checkingFrames': L(
+    'Drawing sample frames of the new graphics to check them…',
+    'नए ग्राफ़िक की जाँच के लिए नमूना फ़्रेम बना रहा हूँ…',
+  ),
+  'plan.lookingFrames': L(
+    'Looking at the frames of the built video…',
+    'बने हुए वीडियो के फ़्रेम देख रहा हूँ…',
+  ),
+  'plan.cancelled': L(
+    'I stopped making the plan. Nothing was charged; your brief is kept.',
+    'मैंने प्लान बनाना रोक दिया। कुछ नहीं कटा; आपका ब्रीफ़ रखा है।',
+  ),
+  'plan.readingLink': L(
+    'Reading the page you linked…',
+    'आपके दिए लिंक का पेज पढ़ रहा हूँ…',
+  ),
+  'plan.linkFailed': L(
+    'I could not read the page you linked ({reason}), so I planned without it.',
+    'आपके दिए लिंक का पेज नहीं पढ़ सका ({reason}), इसलिए उसके बिना प्लान बनाया।',
+  ),
+  'plan.interrupted': L(
+    'The page was reloaded while I was making the plan, so none was made and nothing was charged. Here is your brief again.',
+    'प्लान बनाते समय पेज दोबारा खुला, इसलिए कोई प्लान नहीं बना और कुछ नहीं कटा। यह रहा आपका ब्रीफ़ फिर से।',
+  ),
+  'plan.visionSkipped': L(
+    'I could not look at the frames myself: this model cannot see pictures. The layout checks still ran.',
+    'मैं फ़्रेम ख़ुद नहीं देख सका: यह मॉडल तस्वीरें नहीं देख सकता। लेआउट की जाँच फिर भी हुई।',
+  ),
+  'plan.visionProblems': L(
+    'Looking at the frames, I still see: {problems}',
+    'फ़्रेम देखकर मुझे अब भी यह दिखता है: {problems}',
+  ),
+  'graphic.needsModel': L(
+    'Writing or redrawing a graphic needs the real Director model, which is not connected here; I can still change its colours, speed and settings.',
+    'ग्राफ़िक लिखने या दोबारा बनाने के लिए असली Director मॉडल चाहिए, जो यहाँ जुड़ा नहीं है; मैं फिर भी इसके रंग, गति और सेटिंग बदल सकता हूँ।',
+  ),
+  'graphic.ready': L(
+    'Here is "{name}". Apply puts it on the canvas as one step.',
+    'यह रहा "{name}"। Apply इसे एक ही कदम में कैनवास पर रख देगा।',
+  ),
+  'graphic.failed': L(
+    'I could not make a graphic that passes the checks, so nothing was charged.',
+    'मैं जाँच में पास होने वाला ग्राफ़िक नहीं बना सका, इसलिए कुछ नहीं कटा।',
   ),
   'handEdited.ask': L(
     'You changed "{layer}" by hand. May I change it too?',

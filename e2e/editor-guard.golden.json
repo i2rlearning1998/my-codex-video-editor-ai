@@ -1,0 +1,6090 @@
+{
+ "recordedFrom": "origin/claude/round-a-panel",
+ "sizes": {
+  "1920x940": {
+   "fresh": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:Templates": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:Elements": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:Text": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:Media": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:Draw": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      1759,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      80,
+      650,
+      1832,
+      282
+     ],
+     ".statusbar": [
+      75,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      1757,
+      484
+     ]
+    }
+   },
+   "category:Scene": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:Record": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:Audio": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:AI": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:MyTemplates": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "category:Theme": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "leftCollapsed": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      1759,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      80,
+      650,
+      1832,
+      282
+     ],
+     ".statusbar": [
+      75,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      1757,
+      484
+     ]
+    }
+   },
+   "leftReopened": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "timelineCollapsed": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      788
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      788
+     ],
+     ".timeline": [
+      468,
+      848,
+      1444,
+      84
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      726
+     ]
+    }
+   },
+   "timelineExpanded": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "animation2d": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "animationBack": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "scenes": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "selected": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   },
+   "rightOpen": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1063,
+      590
+     ],
+     ".inspector": [
+      1539,
+      52,
+      300,
+      590
+     ],
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1061,
+      484
+     ]
+    }
+   },
+   "rightCollapsed": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1912,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      880
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      880
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      1371,
+      590
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1847,
+      52,
+      65,
+      590
+     ],
+     ".timeline": [
+      468,
+      650,
+      1444,
+      282
+     ],
+     ".statusbar": [
+      463,
+      935,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      1369,
+      484
+     ]
+    }
+   }
+  },
+  "1440x900": {
+   "fresh": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      320,
+      840
+     ],
+     ".preview-panel": [
+      408,
+      52,
+      951,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      408,
+      622,
+      1024,
+      270
+     ],
+     ".statusbar": [
+      403,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      409,
+      113,
+      949,
+      456
+     ]
+    }
+   },
+   "category:Templates": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "category:Elements": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "category:Text": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "category:Media": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "category:Draw": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      1279,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      80,
+      622,
+      1352,
+      270
+     ],
+     ".statusbar": [
+      75,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      1277,
+      456
+     ]
+    }
+   },
+   "category:Scene": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      320,
+      840
+     ],
+     ".preview-panel": [
+      408,
+      52,
+      951,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      408,
+      622,
+      1024,
+      270
+     ],
+     ".statusbar": [
+      403,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      409,
+      113,
+      949,
+      456
+     ]
+    }
+   },
+   "category:Record": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      320,
+      840
+     ],
+     ".preview-panel": [
+      408,
+      52,
+      951,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      408,
+      622,
+      1024,
+      270
+     ],
+     ".statusbar": [
+      403,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      409,
+      113,
+      949,
+      456
+     ]
+    }
+   },
+   "category:Audio": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      320,
+      840
+     ],
+     ".preview-panel": [
+      408,
+      52,
+      951,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      408,
+      622,
+      1024,
+      270
+     ],
+     ".statusbar": [
+      403,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      409,
+      113,
+      949,
+      456
+     ]
+    }
+   },
+   "category:AI": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "category:MyTemplates": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "category:Theme": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      320,
+      840
+     ],
+     ".preview-panel": [
+      408,
+      52,
+      951,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      408,
+      622,
+      1024,
+      270
+     ],
+     ".statusbar": [
+      403,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      409,
+      113,
+      949,
+      456
+     ]
+    }
+   },
+   "leftCollapsed": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      1279,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      80,
+      622,
+      1352,
+      270
+     ],
+     ".statusbar": [
+      75,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      1277,
+      456
+     ]
+    }
+   },
+   "leftReopened": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "timelineCollapsed": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      748
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      748
+     ],
+     ".timeline": [
+      468,
+      808,
+      964,
+      84
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      686
+     ]
+    }
+   },
+   "timelineExpanded": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "animation2d": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "animationBack": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "scenes": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "selected": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   },
+   "rightOpen": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      583,
+      562
+     ],
+     ".inspector": [
+      1059,
+      52,
+      300,
+      562
+     ],
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      581,
+      456
+     ]
+    }
+   },
+   "rightCollapsed": {
+    "layout": "wide",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1432,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      840
+     ],
+     ".library": [
+      80,
+      52,
+      380,
+      840
+     ],
+     ".preview-panel": [
+      468,
+      52,
+      891,
+      562
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1367,
+      52,
+      65,
+      562
+     ],
+     ".timeline": [
+      468,
+      622,
+      964,
+      270
+     ],
+     ".statusbar": [
+      463,
+      895,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      469,
+      113,
+      889,
+      456
+     ]
+    }
+   }
+  },
+  "1280x800": {
+   "fresh": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:Templates": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:Elements": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:Text": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:Media": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:Draw": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      1119,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      80,
+      552,
+      1192,
+      240
+     ],
+     ".statusbar": [
+      75,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      1117,
+      386
+     ]
+    }
+   },
+   "category:Scene": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:Record": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:Audio": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:AI": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:MyTemplates": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "category:Theme": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "leftCollapsed": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      1119,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      80,
+      552,
+      1192,
+      240
+     ],
+     ".statusbar": [
+      75,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      1117,
+      386
+     ]
+    }
+   },
+   "leftReopened": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "timelineCollapsed": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      648
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      648
+     ],
+     ".timeline": [
+      368,
+      708,
+      904,
+      84
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      586
+     ]
+    }
+   },
+   "timelineExpanded": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "animation2d": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "animationBack": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "scenes": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "selected": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "rightOpen": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": [
+      923,
+      52,
+      280,
+      504
+     ],
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   },
+   "rightCollapsed": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1272,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      740
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      740
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      831,
+      492
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      1207,
+      52,
+      65,
+      492
+     ],
+     ".timeline": [
+      368,
+      552,
+      904,
+      240
+     ],
+     ".statusbar": [
+      363,
+      795,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      829,
+      386
+     ]
+    }
+   }
+  },
+  "1024x768": {
+   "fresh": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:Templates": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:Elements": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:Text": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:Media": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:Draw": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      863,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      80,
+      520,
+      936,
+      240
+     ],
+     ".statusbar": [
+      75,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      861,
+      354
+     ]
+    }
+   },
+   "category:Scene": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:Record": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:Audio": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:AI": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:MyTemplates": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "category:Theme": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "leftCollapsed": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      863,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      80,
+      520,
+      936,
+      240
+     ],
+     ".statusbar": [
+      75,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      861,
+      354
+     ]
+    }
+   },
+   "leftReopened": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "timelineCollapsed": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      616
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      616
+     ],
+     ".timeline": [
+      368,
+      676,
+      648,
+      84
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      554
+     ]
+    }
+   },
+   "timelineExpanded": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "animation2d": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "animationBack": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "scenes": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "selected": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "rightOpen": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": [
+      667,
+      52,
+      280,
+      472
+     ],
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   },
+   "rightCollapsed": {
+    "layout": "medium",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      1016,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      708
+     ],
+     ".library": [
+      80,
+      52,
+      280,
+      708
+     ],
+     ".preview-panel": [
+      368,
+      52,
+      575,
+      460
+     ],
+     ".inspector": null,
+     "#rail-right": [
+      951,
+      52,
+      65,
+      460
+     ],
+     ".timeline": [
+      368,
+      520,
+      648,
+      240
+     ],
+     ".statusbar": [
+      363,
+      763,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      369,
+      113,
+      573,
+      354
+     ]
+    }
+   }
+  },
+  "390x844": {
+   "fresh": {
+    "layout": "phone",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      382,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      596
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      302,
+      596
+     ],
+     ".inspector": null,
+     "#rail-right": null,
+     ".timeline": [
+      8,
+      656,
+      374,
+      180
+     ],
+     ".statusbar": [
+      3,
+      839,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      300,
+      449
+     ]
+    }
+   },
+   "category:Templates": {
+    "layout": "phone",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      382,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      596
+     ],
+     ".library": [
+      0,
+      324,
+      390,
+      520
+     ],
+     ".preview-panel": [
+      80,
+      52,
+      302,
+      596
+     ],
+     ".inspector": null,
+     "#rail-right": null,
+     ".timeline": [
+      8,
+      656,
+      374,
+      180
+     ],
+     ".statusbar": [
+      3,
+      839,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      300,
+      449
+     ]
+    }
+   },
+   "category:Elements": {
+    "layout": "phone",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      382,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      596
+     ],
+     ".library": [
+      0,
+      324,
+      390,
+      520
+     ],
+     ".preview-panel": [
+      80,
+      52,
+      302,
+      596
+     ],
+     ".inspector": null,
+     "#rail-right": null,
+     ".timeline": [
+      8,
+      656,
+      374,
+      180
+     ],
+     ".statusbar": [
+      3,
+      839,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      300,
+      449
+     ]
+    }
+   },
+   "category:Text": {
+    "layout": "phone",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      382,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      596
+     ],
+     ".library": [
+      0,
+      324,
+      390,
+      520
+     ],
+     ".preview-panel": [
+      80,
+      52,
+      302,
+      596
+     ],
+     ".inspector": null,
+     "#rail-right": null,
+     ".timeline": [
+      8,
+      656,
+      374,
+      180
+     ],
+     ".statusbar": [
+      3,
+      839,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      300,
+      449
+     ]
+    }
+   },
+   "category:Media": {
+    "layout": "phone",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      382,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      596
+     ],
+     ".library": [
+      0,
+      324,
+      390,
+      520
+     ],
+     ".preview-panel": [
+      80,
+      52,
+      302,
+      596
+     ],
+     ".inspector": null,
+     "#rail-right": null,
+     ".timeline": [
+      8,
+      656,
+      374,
+      180
+     ],
+     ".statusbar": [
+      3,
+      839,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      300,
+      449
+     ]
+    }
+   },
+   "category:Draw": {
+    "layout": "phone",
+    "boxes": {
+     ".topbar": [
+      4,
+      0,
+      382,
+      48
+     ],
+     "#rail-left": [
+      8,
+      52,
+      64,
+      596
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      52,
+      302,
+      596
+     ],
+     ".inspector": null,
+     "#rail-right": null,
+     ".timeline": [
+      8,
+      656,
+      374,
+      180
+     ],
+     ".statusbar": [
+      3,
+      839,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      113,
+      300,
+      449
+     ]
+    }
+   },
+   "category:Scene": "skipped",
+   "category:Record": "skipped",
+   "category:Audio": "skipped",
+   "category:AI": "skipped",
+   "category:MyTemplates": "skipped",
+   "category:Theme": "skipped",
+   "leftCollapsed": "skipped",
+   "timelineCollapsed": "skipped",
+   "animation2d": "skipped",
+   "scenes": {
+    "layout": "phone",
+    "boxes": {
+     ".topbar": [
+      4,
+      -4,
+      382,
+      48
+     ],
+     "#rail-left": [
+      8,
+      48,
+      64,
+      596
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      48,
+      302,
+      596
+     ],
+     ".inspector": null,
+     "#rail-right": null,
+     ".timeline": [
+      8,
+      652,
+      374,
+      180
+     ],
+     ".statusbar": [
+      3,
+      835,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      109,
+      300,
+      449
+     ]
+    }
+   },
+   "selected": {
+    "layout": "phone",
+    "boxes": {
+     ".topbar": [
+      4,
+      -4,
+      382,
+      48
+     ],
+     "#rail-left": [
+      8,
+      48,
+      64,
+      596
+     ],
+     ".library": null,
+     ".preview-panel": [
+      80,
+      48,
+      302,
+      596
+     ],
+     ".inspector": [
+      0,
+      320,
+      390,
+      520
+     ],
+     "#rail-right": null,
+     ".timeline": [
+      8,
+      652,
+      374,
+      180
+     ],
+     ".statusbar": [
+      3,
+      835,
+      40,
+      1
+     ],
+     "#composition-canvas": [
+      81,
+      109,
+      300,
+      449
+     ]
+    }
+   },
+   "rightOpen": "skipped"
+  }
+ },
+ "topbarControls": {
+  "1920x940": {
+   "menu-trigger": [
+    12,
+    8,
+    32,
+    32
+   ],
+   "save-status-dot": [
+    150,
+    21,
+    6,
+    6
+   ],
+   "project-name": [
+    164,
+    8,
+    97,
+    32
+   ],
+   "project-name-input": null,
+   "save-status-text": [
+    270,
+    14,
+    84,
+    19
+   ],
+   "mode-switch": [
+    816,
+    4,
+    287,
+    40
+   ],
+   "mode:editor": [
+    820,
+    8,
+    60,
+    32
+   ],
+   "mode:animation2d": [
+    883,
+    8,
+    107,
+    32
+   ],
+   "mode:animation3d": [
+    992,
+    8,
+    108,
+    32
+   ],
+   "undo": [
+    1601,
+    8,
+    32,
+    32
+   ],
+   "redo": [
+    1637,
+    8,
+    32,
+    32
+   ],
+   "chat-toggle": [
+    1686,
+    8,
+    32,
+    32
+   ],
+   "cloud-sync": [
+    1722,
+    8,
+    32,
+    32
+   ],
+   "theme-toggle": [
+    1758,
+    8,
+    32,
+    32
+   ],
+   "export": [
+    1802,
+    8,
+    106,
+    32
+   ]
+  },
+  "1440x900": {
+   "menu-trigger": [
+    12,
+    8,
+    32,
+    32
+   ],
+   "save-status-dot": [
+    150,
+    21,
+    6,
+    6
+   ],
+   "project-name": [
+    164,
+    8,
+    97,
+    32
+   ],
+   "project-name-input": null,
+   "save-status-text": [
+    270,
+    14,
+    84,
+    19
+   ],
+   "mode-switch": [
+    576,
+    4,
+    287,
+    40
+   ],
+   "mode:editor": [
+    580,
+    8,
+    60,
+    32
+   ],
+   "mode:animation2d": [
+    643,
+    8,
+    107,
+    32
+   ],
+   "mode:animation3d": [
+    752,
+    8,
+    108,
+    32
+   ],
+   "undo": [
+    1121,
+    8,
+    32,
+    32
+   ],
+   "redo": [
+    1157,
+    8,
+    32,
+    32
+   ],
+   "chat-toggle": [
+    1206,
+    8,
+    32,
+    32
+   ],
+   "cloud-sync": [
+    1242,
+    8,
+    32,
+    32
+   ],
+   "theme-toggle": [
+    1278,
+    8,
+    32,
+    32
+   ],
+   "export": [
+    1322,
+    8,
+    106,
+    32
+   ]
+  },
+  "1280x800": {
+   "menu-trigger": [
+    12,
+    8,
+    32,
+    32
+   ],
+   "save-status-dot": [
+    150,
+    21,
+    6,
+    6
+   ],
+   "project-name": [
+    164,
+    8,
+    97,
+    32
+   ],
+   "project-name-input": null,
+   "save-status-text": [
+    270,
+    14,
+    84,
+    19
+   ],
+   "mode-switch": [
+    496,
+    4,
+    287,
+    40
+   ],
+   "mode:editor": [
+    500,
+    8,
+    60,
+    32
+   ],
+   "mode:animation2d": [
+    563,
+    8,
+    107,
+    32
+   ],
+   "mode:animation3d": [
+    672,
+    8,
+    108,
+    32
+   ],
+   "undo": [
+    961,
+    8,
+    32,
+    32
+   ],
+   "redo": [
+    997,
+    8,
+    32,
+    32
+   ],
+   "chat-toggle": [
+    1046,
+    8,
+    32,
+    32
+   ],
+   "cloud-sync": [
+    1082,
+    8,
+    32,
+    32
+   ],
+   "theme-toggle": [
+    1118,
+    8,
+    32,
+    32
+   ],
+   "export": [
+    1162,
+    8,
+    106,
+    32
+   ]
+  },
+  "1024x768": {
+   "menu-trigger": [
+    12,
+    8,
+    32,
+    32
+   ],
+   "save-status-dot": [
+    56,
+    21,
+    6,
+    6
+   ],
+   "project-name": [
+    70,
+    8,
+    97,
+    32
+   ],
+   "project-name-input": null,
+   "save-status-text": [
+    175,
+    14,
+    84,
+    19
+   ],
+   "mode-switch": [
+    368,
+    4,
+    287,
+    40
+   ],
+   "mode:editor": [
+    372,
+    8,
+    60,
+    32
+   ],
+   "mode:animation2d": [
+    435,
+    8,
+    107,
+    32
+   ],
+   "mode:animation3d": [
+    544,
+    8,
+    108,
+    32
+   ],
+   "undo": [
+    705,
+    8,
+    32,
+    32
+   ],
+   "redo": [
+    741,
+    8,
+    32,
+    32
+   ],
+   "chat-toggle": [
+    790,
+    8,
+    32,
+    32
+   ],
+   "cloud-sync": [
+    826,
+    8,
+    32,
+    32
+   ],
+   "theme-toggle": [
+    862,
+    8,
+    32,
+    32
+   ],
+   "export": [
+    906,
+    8,
+    106,
+    32
+   ]
+  },
+  "390x844": {
+   "menu-trigger": [
+    12,
+    4,
+    34,
+    40
+   ],
+   "save-status-dot": [
+    58,
+    21,
+    6,
+    6
+   ],
+   "project-name": [
+    72,
+    8,
+    80,
+    32
+   ],
+   "project-name-input": null,
+   "save-status-text": null,
+   "mode-switch": null,
+   "mode:editor": null,
+   "mode:animation2d": null,
+   "mode:animation3d": null,
+   "undo": [
+    156,
+    4,
+    40,
+    40
+   ],
+   "redo": null,
+   "chat-toggle": [
+    200,
+    4,
+    40,
+    40
+   ],
+   "cloud-sync": [
+    244,
+    4,
+    40,
+    40
+   ],
+   "theme-toggle": [
+    288,
+    4,
+    40,
+    40
+   ],
+   "export": [
+    332,
+    4,
+    46,
+    40
+   ]
+  }
+ },
+ "lists": {
+  "topbar": [
+   "button#menu-trigger|Main menu",
+   "button#editor|Editor",
+   "button#animation2d|2D Animation",
+   "button#animation3d|3D Animation",
+   "button#undo|Undo project command",
+   "button#redo|Redo project command",
+   "button#chat-toggle|Chat with Director",
+   "button#cloud-sync|Cloud storage",
+   "button#theme-toggle|Theme",
+   "button#export|Export"
+  ],
+  "menu": [
+   "button#new-project|New project",
+   "button#open-projects|Projects",
+   "button#example|Open example",
+   "label#open-project-label|Open project",
+   "input#import|",
+   "button#save|Save locally",
+   "button#export-json|Export project JSON (.json)",
+   "button#open-palette|Command paletteCtrl+K",
+   "button#view-snap|Snap to clips and markers",
+   "button#view-loop|Loop playback",
+   "button#language-toggle|हिन्दी",
+   "button#theme-menu|Theme: Dark",
+   "button#open-brief|Copy AI brief",
+   "button#open-settings|Settings",
+   "button#open-shortcuts|Keyboard shortcutsCtrl+/",
+   "button#about|About",
+   "button#|Copy debug report"
+  ],
+  "panel:Templates": [
+   "h2#left-panel-title|Templates",
+   "button#|Show or hide the side panel",
+   "input#browse-search-templates|Search templates",
+   "h3#|All Templates",
+   "button#see-all|See all All Templates",
+   "button#|YouTube intro",
+   "button#|Lesson slide",
+   "button#|Quote card",
+   "button#|Top 3 list",
+   "button#|Thumbnail",
+   "button#|End screen",
+   "button#|Chapter title",
+   "button#|Compare",
+   "button#|Announcement",
+   "button#|Quiz question",
+   "button#|Event",
+   "button#|Recipe card",
+   "h3#|Video Templates",
+   "button#see-all|See all Video Templates",
+   "button#|YouTube intro",
+   "button#|End screen",
+   "button#|Chapter title",
+   "button#|Event",
+   "h3#|Graphics Templates",
+   "button#see-all|See all Graphics Templates",
+   "button#|Quote card",
+   "button#|Announcement",
+   "button#|Recipe card",
+   "h3#|Social media Templates",
+   "button#see-all|See all Social media Templates",
+   "button#|Thumbnail",
+   "h3#|Education Templates",
+   "button#see-all|See all Education Templates",
+   "button#|Lesson slide",
+   "button#|Top 3 list",
+   "button#|Compare",
+   "button#|Quiz question"
+  ],
+  "panel:Elements": [
+   "h2#left-panel-title|Elements",
+   "button#|Show or hide the side panel",
+   "input#browse-search-elements|Search shapes and graphics",
+   "h3#|Browse categories",
+   "button#|Shapes",
+   "button#|Graphics",
+   "button#|Photos",
+   "button#|Videos",
+   "button#|Icons",
+   "button#|Stickers",
+   "button#|Audio",
+   "button#|Tables",
+   "button#|3D",
+   "button#|Animations",
+   "button#|Charts",
+   "button#|Frames",
+   "button#|Grids",
+   "h3#|Shapes",
+   "button#see-all|See all Shapes",
+   "button#|Rectangle",
+   "button#|Rounded rectangle",
+   "button#|Ellipse",
+   "button#|Line",
+   "button#|Arrow",
+   "button#|Triangle",
+   "button#|Diamond",
+   "button#|Pentagon",
+   "button#|Hexagon",
+   "button#|Heptagon",
+   "button#|Octagon",
+   "button#|Nonagon",
+   "button#|Decagon",
+   "button#|Dodecagon",
+   "button#|Star 4",
+   "button#|Star 4 soft",
+   "button#|Star 5",
+   "button#|Star 5 soft",
+   "button#|Star 6",
+   "button#|Star 6 soft",
+   "button#|Star 8",
+   "button#|Star 8 soft",
+   "button#|Star 10",
+   "button#|Star 10 soft",
+   "h3#|Graphics",
+   "button#see-all|See all Graphics",
+   "button#|Sunrise",
+   "button#|Ocean",
+   "button#|Violet dusk",
+   "button#|Mint",
+   "button#|Peach",
+   "button#|Night sky",
+   "button#|Candy",
+   "button#|Lagoon",
+   "button#|Lavender",
+   "button#|Ember",
+   "button#|Forest",
+   "button#|Slate",
+   "button#|Rose gold",
+   "button#|Sky",
+   "button#|Citrus",
+   "button#|Aurora",
+   "button#|Spotlight",
+   "button#|Glow",
+   "button#|Deep sea",
+   "button#|Halo",
+   "button#|Tropical",
+   "button#|Neon",
+   "button#|Dawn",
+   "button#|Sunset strip"
+  ],
+  "panel:Text": [
+   "h2#left-panel-title|Text",
+   "button#|Show or hide the side panel",
+   "input#browse-search-text|Search text styles",
+   "button#add-text-box|Add a text box",
+   "button#magic-write|Magic Write",
+   "button#|Bold heading",
+   "button#|Subheading",
+   "button#|Body text",
+   "h3#|Font combinations",
+   "button#see-all|See all Font combinations",
+   "button#|Headline and line",
+   "button#|Title and date",
+   "button#|Lesson title",
+   "button#|Centered title",
+   "button#|Playfair and Inter",
+   "button#|Bebas and Montserrat",
+   "button#|Pacifico and Poppins",
+   "button#|Cinzel and Cormorant",
+   "h3#|Plain text",
+   "button#see-all|See all Plain text",
+   "button#|Minimal",
+   "button#|Title case",
+   "button#|Caption",
+   "button#|Tahoma clean",
+   "button#|Times classic",
+   "button#|Footnote",
+   "h3#|Text styles",
+   "button#see-all|See all Text styles",
+   "button#|Serif title",
+   "button#|Elegant italic",
+   "button#|Spaced caps",
+   "button#|Typewriter",
+   "button#|Underlined",
+   "button#|Quote",
+   "button#|Retro",
+   "button#|Label",
+   "button#|Call to action",
+   "button#|Question",
+   "button#|Light on dark",
+   "h3#|Titles",
+   "button#see-all|See all Titles",
+   "button#|Big number",
+   "button#|Neon",
+   "button#|Wide spaced",
+   "button#|Pop title",
+   "button#|Slide-up title",
+   "button#|Typewriter title",
+   "button#|Zoom title",
+   "button#|Wipe title",
+   "button#|Fade title",
+   "h3#|Two line",
+   "button#see-all|See all Two line",
+   "button#|Strike price",
+   "button#|Step",
+   "button#|Fact"
+  ],
+  "panel:Media": [
+   "h2#left-panel-title|Media",
+   "button#|Show or hide the side panel",
+   "label#|",
+   "input#asset-search|Search",
+   "button#media-folder-new|New folder",
+   "button#import-media|Import",
+   "button#import-menu|Import options",
+   "button#media-dropzone|Drop files here, or click to choose",
+   "button#|All",
+   "button#|Images",
+   "button#|Videos",
+   "button#|Audio",
+   "label#|SortDate addedNewest firstNameLongest first",
+   "select#media-sort|Date addedNewest firstNameLongest first",
+   "button#video|00:06Footage 1080p",
+   "button#media-more|More options",
+   "button#media-plus|Add to Scene",
+   "button#image|ImageLandscape photo",
+   "button#media-more|More options",
+   "button#media-plus|Add to Scene",
+   "button#audio|00:20Music 20s",
+   "button#media-more|More options",
+   "button#media-plus|Add to Scene"
+  ],
+  "panel:Draw": [
+   "button#draw-palette-close|Close draw tools",
+   "button#|Select (V)",
+   "button#|Draw",
+   "button#|Shape",
+   "button#|Line",
+   "button#|Sticky note",
+   "button#|Text",
+   "button#palette-signature|Signature",
+   "button#|Table"
+  ],
+  "panel:Scene": [
+   "h2#left-panel-title|Scene",
+   "button#|Show or hide the side panel",
+   "button#|New collection",
+   "input#|Search layers",
+   "button#|",
+   "button#|",
+   "button#|Hide Main",
+   "button#|Lock Main",
+   "button#|Mute Main",
+   "button#|",
+   "button#|Hide Intro",
+   "button#|Lock Intro",
+   "button#|Mute Intro",
+   "button#|",
+   "button#|Hide Photo",
+   "button#|Lock Photo"
+  ],
+  "panel:Record": [
+   "h2#left-panel-title|Record & create",
+   "button#|Show or hide the side panel",
+   "h3#|Record",
+   "button#|Screen and camera",
+   "button#|Camera",
+   "button#|Screen",
+   "button#|Audio",
+   "h3#|Create",
+   "button#|Text to speech"
+  ],
+  "panel:Audio": [
+   "h2#left-panel-title|Audio",
+   "button#|Show or hide the side panel",
+   "button#|Sound effects",
+   "button#|Music",
+   "button#|My audio",
+   "h3#|Sound effects",
+   "input#|Search sounds"
+  ],
+  "panel:AI": [
+   "h2#left-panel-title|AI",
+   "button#|Show or hide the side panel",
+   "label#|",
+   "input#ai-search|Search AI items",
+   "button#ai-folder-new|New folder",
+   "button#ai-new-video|New AI video",
+   "button#ai-import|Import",
+   "button#ai-copy-brief|Copy AI brief",
+   "button#ai-import-library|Import AI templates from your AI libraries",
+   "h3#ai-state-title|No AI items yet"
+  ],
+  "panel:MyTemplates": [
+   "h2#left-panel-title|My Templates",
+   "button#|Show or hide the side panel",
+   "label#|",
+   "input#mine-search|Search My Templates",
+   "button#mine-folder-new|New folder",
+   "button#mine-import-library|Import Templates from your Cloud",
+   "h3#mine-state-title|Nothing saved yet"
+  ],
+  "panel:Theme": [
+   "h2#left-panel-title|Theme",
+   "button#|Show or hide the side panel",
+   "label#|Also override manual colors",
+   "input#library-theme-override|",
+   "h3#|Built-in themes",
+   "button#|AaClean Light",
+   "button#|AaDark Neon",
+   "button#|AaDocumentary",
+   "button#|AaPlayful Pop",
+   "button#|AaCorporate Blue",
+   "button#|AaWarm Story",
+   "button#|AaMinimal Mono",
+   "button#|AaCinematic Teal",
+   "h3#|My themes",
+   "input#library-theme-save-name|Theme name",
+   "button#library-theme-save|Save current as theme"
+  ],
+  "palette": [
+   "input#|Search commands",
+   "button#palette-new-project|New project",
+   "button#palette-tool-select|Select tool V",
+   "button#palette-tool-text|Add text T",
+   "button#palette-tool-rectangle|Add rectangle R",
+   "button#palette-tool-ellipse|Add ellipse E",
+   "button#palette-projects|Projects",
+   "button#palette-palette|Command palette Ctrl+K",
+   "button#palette-shortcuts|Keyboard shortcuts Ctrl+/",
+   "button#palette-theme|Switch theme (dark, light, system)",
+   "button#palette-undo|Undo Ctrl+Z",
+   "button#palette-redo|Redo Ctrl+Shift+Z / Ctrl+Y",
+   "button#palette-save|Save locally Ctrl+S",
+   "button#palette-duplicate|Duplicate Ctrl+D",
+   "button#palette-delete|Delete Delete / Backspace",
+   "button#palette-ripple-delete|Ripple delete Shift+Delete",
+   "button#palette-split|Split S",
+   "button#palette-marker|Add marker M",
+   "button#palette-group|Group Ctrl+G",
+   "button#palette-ungroup|Ungroup Ctrl+Shift+G",
+   "button#palette-arrange-front|Bring to front",
+   "button#palette-arrange-forward|Bring forward Ctrl+]",
+   "button#palette-arrange-backward|Send backward Ctrl+[",
+   "button#palette-arrange-back|Send to back",
+   "button#palette-combine-union|Union",
+   "button#palette-combine-subtract|Subtract",
+   "button#palette-combine-intersect|Intersect",
+   "button#palette-combine-exclude|Exclude",
+   "button#palette-toggle-enabled|Toggle enabled",
+   "button#palette-cut|Cut Ctrl+X",
+   "button#palette-copy|Copy Ctrl+C",
+   "button#palette-paste|Paste Ctrl+V",
+   "button#palette-link|Link clips",
+   "button#palette-unlink|Unlink clips",
+   "button#palette-detach-audio|Detach audio",
+   "button#palette-reverse|Reverse",
+   "button#palette-freeze|Freeze frame F",
+   "button#palette-edit-duration|Edit duration",
+   "button#palette-rename-clip|Rename",
+   "button#palette-clip-mute|Mute",
+   "button#palette-more-options|More options",
+   "button#palette-code-edit|Edit code",
+   "button#palette-code-settings|Animation settings",
+   "button#palette-code-rerender|Re-render",
+   "button#palette-code-export|Export",
+   "button#palette-code-duplicate|Duplicate as copy",
+   "button#palette-clip-transcribe|Transcribe",
+   "button#palette-clip-auto-captions|Auto captions",
+   "button#palette-nest-clips|Nest clips",
+   "button#palette-enter-nested|Open nested clip",
+   "button#palette-unnest-clip|Un-nest",
+   "button#palette-align-left|Align left",
+   "button#palette-align-center|Align center",
+   "button#palette-align-right|Align right",
+   "button#palette-align-top|Align top",
+   "button#palette-align-middle|Align middle",
+   "button#palette-align-bottom|Align bottom",
+   "button#palette-distribute-horizontal|Distribute horizontally",
+   "button#palette-distribute-vertical|Distribute vertically",
+   "button#palette-keyframe-previous|Previous keyframe ,",
+   "button#palette-keyframe-next|Next keyframe .",
+   "button#palette-copy-style|Copy style",
+   "button#palette-paste-style|Paste style",
+   "button#palette-align-to-canvas|Relative to canvas",
+   "button#palette-speed-slower|Speed: slower",
+   "button#palette-speed-faster|Speed: faster",
+   "button#palette-speed-normal|Speed: normal (1×)",
+   "button#palette-clip-nudge-left|Move clip one frame earlier (Shift: ten) Alt+←",
+   "button#palette-clip-nudge-right|Move clip one frame later (Shift: ten) Alt+→",
+   "button#palette-clip-track-up|Move clip to the track above Alt+↑",
+   "button#palette-clip-track-down|Move clip to the track below Alt+↓",
+   "button#palette-trim-start|Trim clip start to playhead [",
+   "button#palette-trim-end|Trim clip end to playhead ]",
+   "button#palette-cut-previous|Jump to previous cut ↑",
+   "button#palette-cut-next|Jump to next cut ↓",
+   "button#palette-select-all|Select all Ctrl+A",
+   "button#palette-zoom-in|Zoom in Ctrl+=",
+   "button#palette-zoom-out|Zoom out Ctrl+-",
+   "button#palette-zoom-fit|Zoom to fit Ctrl+0",
+   "button#palette-zoom-fill|Zoom to fill",
+   "button#palette-zoom-actual|Zoom to 100% Ctrl+1",
+   "button#palette-hand-tool|Hand tool H",
+   "button#palette-play|Play or pause Space",
+   "button#palette-plan-review|Review video plan",
+   "button#palette-stop|Stop (back to the start)"
+  ],
+  "shortcuts": [
+   "h2#|Keyboard shortcuts",
+   "p#|New project: No shortcut",
+   "p#|Select tool: V",
+   "p#|Add text: T",
+   "p#|Add rectangle: R",
+   "p#|Add ellipse: E",
+   "p#|Projects: No shortcut",
+   "p#|Command palette: Ctrl+K",
+   "p#|Keyboard shortcuts: Ctrl+/",
+   "p#|Switch theme (dark, light, system): No shortcut",
+   "p#|Undo: Ctrl+Z",
+   "p#|Redo: Ctrl+Shift+Z / Ctrl+Y",
+   "p#|Save locally: Ctrl+S",
+   "p#|Duplicate: Ctrl+D",
+   "p#|Delete: Delete / Backspace",
+   "p#|Ripple delete: Shift+Delete",
+   "p#|Split: S",
+   "p#|Add marker: M",
+   "p#|Group: Ctrl+G",
+   "p#|Ungroup: Ctrl+Shift+G",
+   "p#|Bring to front: No shortcut",
+   "p#|Bring forward: Ctrl+]",
+   "p#|Send backward: Ctrl+[",
+   "p#|Send to back: No shortcut",
+   "p#|Union: No shortcut",
+   "p#|Subtract: No shortcut",
+   "p#|Intersect: No shortcut",
+   "p#|Exclude: No shortcut",
+   "p#|Toggle enabled: No shortcut",
+   "p#|Cut: Ctrl+X",
+   "p#|Copy: Ctrl+C",
+   "p#|Paste: Ctrl+V",
+   "p#|Link clips: No shortcut",
+   "p#|Unlink clips: No shortcut",
+   "p#|Detach audio: No shortcut",
+   "p#|Reverse: No shortcut",
+   "p#|Freeze frame: F",
+   "p#|Edit duration: No shortcut",
+   "p#|Rename: No shortcut",
+   "p#|Mute: No shortcut",
+   "p#|More options: No shortcut",
+   "p#|Edit code: No shortcut",
+   "p#|Animation settings: No shortcut",
+   "p#|Re-render: No shortcut",
+   "p#|Export: No shortcut",
+   "p#|Duplicate as copy: No shortcut",
+   "p#|Transcribe: No shortcut",
+   "p#|Auto captions: No shortcut",
+   "p#|Nest clips: No shortcut",
+   "p#|Open nested clip: No shortcut",
+   "p#|Un-nest: No shortcut",
+   "p#|Align left: No shortcut",
+   "p#|Align center: No shortcut",
+   "p#|Align right: No shortcut",
+   "p#|Align top: No shortcut",
+   "p#|Align middle: No shortcut",
+   "p#|Align bottom: No shortcut",
+   "p#|Distribute horizontally: No shortcut",
+   "p#|Distribute vertically: No shortcut",
+   "p#|Previous keyframe: ,",
+   "p#|Next keyframe: .",
+   "p#|Copy style: No shortcut",
+   "p#|Paste style: No shortcut",
+   "p#|Relative to canvas: No shortcut",
+   "p#|Speed: slower: No shortcut",
+   "p#|Speed: faster: No shortcut",
+   "p#|Speed: normal (1×): No shortcut",
+   "p#|Move clip one frame earlier (Shift: ten): Alt+←",
+   "p#|Move clip one frame later (Shift: ten): Alt+→",
+   "p#|Move clip to the track above: Alt+↑",
+   "p#|Move clip to the track below: Alt+↓",
+   "p#|Trim clip start to playhead: [",
+   "p#|Trim clip end to playhead: ]",
+   "p#|Jump to previous cut: ↑",
+   "p#|Jump to next cut: ↓",
+   "p#|Select all: Ctrl+A",
+   "p#|Zoom in: Ctrl+=",
+   "p#|Zoom out: Ctrl+-",
+   "p#|Zoom to fit: Ctrl+0",
+   "p#|Zoom to fill: No shortcut",
+   "p#|Zoom to 100%: Ctrl+1",
+   "p#|Hand tool: H",
+   "p#|Play or pause: Space",
+   "p#|Review video plan: No shortcut",
+   "p#|Stop (back to the start): No shortcut",
+   "button#|Close"
+  ],
+  "timelineToolbar": [
+   "button#ai-tools|AI tools",
+   "button#split|Split",
+   "button#duplicate|Duplicate",
+   "button#marker|+ Marker",
+   "button#first-frame|First frame (Home)",
+   "button#back-5|Back 5 seconds",
+   "button#frame-back|Previous frame",
+   "button#play|Play or pause",
+   "button#frame-forward|Next frame",
+   "button#forward-5|Forward 5 seconds",
+   "button#last-frame|Last frame (End)",
+   "button#loop|Loop playback",
+   "button#snap|Snap to clips and markers",
+   "button#zoom-out|Timeline zoom out",
+   "button#zoom-in|Timeline zoom in",
+   "button#zoom-fit|Fit the timeline",
+   "button#collapse-timeline|Collapse the timeline"
+  ],
+  "canvasMenuEmpty": [
+   "button#paste|PasteCtrl+V",
+   "button#add-scene|Add scene",
+   "button#duplicate-scene|Duplicate scene",
+   "button#delete-scene|Delete scene",
+   "button#save-scene-to-mine|Save scene to My Templates",
+   "button#canvas-size|Canvas size",
+   "button#guides|Guides"
+  ],
+  "contextToolbar": [
+   "button#|Replace",
+   "button#|Crop",
+   "button#|Flip",
+   "button#|Transparency",
+   "button#|Animate",
+   "button#|Position",
+   "button#|Copy style"
+  ],
+  "rightTabs": [
+   "button#Properties|Video",
+   "button#Fade|Fade",
+   "button#Filters|Filters",
+   "button#Effects|Effects",
+   "button#Adjust|Adjust colors",
+   "button#Speed|Speed",
+   "button#Audio|Audio",
+   "button#Animate|Animate",
+   "button#Captions|Auto Caption"
+  ],
+  "canvasMenuLayer": [
+   "button#duplicate|DuplicateCtrl+D",
+   "button#copy|CopyCtrl+C",
+   "button#delete|DeleteDelete",
+   "button#freeze|Freeze frame",
+   "button#clip-menu|Clip",
+   "button#arrange|Layer",
+   "button#align|Align",
+   "button#style-menu|Style",
+   "button#lock|Lock",
+   "button#save-to-mine|Save to My Templates",
+   "button#more-menu|More"
+  ]
+ }
+}
