@@ -344,9 +344,24 @@ input[type='number'],
   background: var(--panel);
 }
 /* ROUND-C1 T: the Editor | AI toggle, a segmented control like the mode
-   switch, first in the actions on the right. */
+   switch, in the centre slot beside it (the side groups keep their room at
+   1024 px). Below 1024 px Round A's top bar has no room for it, so it is
+   hidden there in Editor mode (shown in AI mode, to come back); on a phone
+   (under 768 px) it is hidden in both, as the mode switch is. The palette
+   command "Switch between Editor and AI mode" works at every size. */
+.topbar-center {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-inline-size: 0;
+}
 .layout-switch {
   flex: none;
+}
+@media (max-width: 1023px) {
+  .editor-shell:not(.ai-layout) .layout-switch {
+    display: none;
+  }
 }
 .topbar-start,
 .topbar-end {
@@ -3555,7 +3570,8 @@ button.color-swatch:hover {
     grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-1);
   }
-  .mode-switch {
+  .mode-switch,
+  .topbar-center {
     display: none;
   }
   #project-name {

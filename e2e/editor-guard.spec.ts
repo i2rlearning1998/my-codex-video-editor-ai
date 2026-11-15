@@ -16,7 +16,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import type { Page } from '@playwright/test';
-import { test, expect, hook } from './fixtures';
+import { test, expect, hook, artboard, toScreen } from './fixtures';
 import {
   SIZES,
   category,
@@ -102,8 +102,6 @@ async function sameAsFresh(page: Page, where: string, key: string) {
   expect(shotDiffs(where, shot, fresh(key)), where).toEqual([]);
 }
 
-test.describe.configure({ mode: 'serial' });
-
 test('[RDC1-100] the Editor equals Round A: every panel box at five sizes and every state, and every menu, palette, panel, toolbar and shortcut list item by item', async ({
   page,
 }, testInfo) => {
@@ -111,6 +109,7 @@ test('[RDC1-100] the Editor equals Round A: every panel box at five sizes and ev
   await realStart(page);
   const diffs: string[] = [];
   const shifts: string[] = [];
+  const toggles: string[] = [];
   for (const size of SIZES) {
     const key = sizeKey(size);
     const states = await statesAt(page, size, FIXTURE);
@@ -125,6 +124,27 @@ test('[RDC1-100] the Editor equals Round A: every panel box at five sizes and ev
     await page.goto('/');
     await ready(page);
     const controls = await topbarControls(page);
+    // The toggle fits beside the mode switch and inside the window from
+    // 1024 px up, without squeezing the existing controls.
+    if (size[0] >= 1024) {
+      const toggle = controls['layout-switch'];
+      const modes = controls['mode-switch'];
+      if (!toggle || !modes)
+        diffs.push(`${key}: toggle or mode switch not shown`);
+      else {
+        if (toggle[0] < modes[0] + modes[2])
+          diffs.push(`${key}: the toggle overlaps the mode switch`);
+        if (toggle[0] + toggle[2] > size[0])
+          diffs.push(`${key}: the toggle is outside the window`);
+        const undo = controls.undo;
+        if (undo && toggle[0] + toggle[2] > undo[0])
+          diffs.push(`${key}: the toggle overlaps the actions on the right`);
+        const status = controls['save-status-text'];
+        if (status && status[0] + status[2] > modes[0])
+          diffs.push(`${key}: the project title runs under the mode switch`);
+      }
+      toggles.push(`${key}: ${JSON.stringify(toggle)}`);
+    }
     for (const [id, box] of Object.entries(golden.topbarControls[key]!)) {
       if (id === 'chat-toggle') continue;
       const now = controls[id] ?? null;
@@ -138,7 +158,8 @@ test('[RDC1-100] the Editor equals Round A: every panel box at five sizes and ev
       const dx = now[0] - box[0];
       if (
         Math.abs(now[1] - box[1]) > TOLERANCE ||
-        Math.abs(now[3] - box[3]) > TOLERANCE
+        Math.abs(now[3] - box[3]) > TOLERANCE ||
+        now[2] < box[2] - TOLERANCE
       )
         diffs.push(
           `${key} top bar ${id}: ${JSON.stringify(now)} (Round A ${JSON.stringify(box)})`,
@@ -156,6 +177,7 @@ test('[RDC1-100] the Editor equals Round A: every panel box at five sizes and ev
     type: 'top-bar-shifts',
     description: shifts.join('; ') || 'none',
   });
+  console.log(`EDITOR-GUARD toggle boxes: ${toggles.join('; ')}`);
   console.log(`EDITOR-GUARD top bar shifts: ${shifts.join('; ') || 'none'}`);
   expect(diffs).toEqual([]);
 });
@@ -174,22 +196,38 @@ test('[RDC1-101] after every return from AI mode the Editor equals Round A: Edit
     await toEditor(page);
     await sameAsFresh(page, `${sizeKey(size)} after AI`, sizeKey(size));
   }
-  // A resize while in AI mode, then back.
+  // A resize while in AI mode, then back: the Editor equals the same
+  // resizes done without AI mode (Round A keeps a panel's width while the
+  // layout stays the same, so a fresh page is not the reference here).
+  const resizes: (readonly [number, number])[][] = [
+    [[1280, 800]],
+    [
+      [1024, 768],
+      [1440, 900],
+    ],
+    [[1440, 900]],
+  ];
+  for (const steps of resizes) {
+    const run = async (viaAi: boolean) => {
+      await page.setViewportSize({ width: 1920, height: 940 });
+      await page.goto('/');
+      await ready(page);
+      if (viaAi) await toAi(page);
+      for (const [width, height] of steps) {
+        await page.setViewportSize({ width, height });
+        await settle(page);
+      }
+      if (viaAi) await toEditor(page);
+      return settle(page);
+    };
+    const plain = await run(false);
+    const via = await run(true);
+    const label = `1920 then ${steps.map((step) => step[0]).join(', ')} in AI`;
+    expect(shotDiffs(label, via, plain), label).toEqual([]);
+  }
+  // A reload while in AI mode (on a saved video), then back.
   await page.setViewportSize({ width: 1920, height: 940 });
-  await page.goto('/');
-  await ready(page);
-  await toAi(page);
-  await page.setViewportSize({ width: 1280, height: 800 });
-  await toEditor(page);
-  await sameAsFresh(page, '1280x800 after a resize in AI', '1280x800');
-  await page.setViewportSize({ width: 1920, height: 940 });
-  await toAi(page);
-  await page.setViewportSize({ width: 1024, height: 768 });
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await toEditor(page);
-  await sameAsFresh(page, '1440x900 after two resizes in AI', '1440x900');
-  // A reload while in AI mode, then back.
-  await page.setViewportSize({ width: 1920, height: 940 });
+  await openFixture(page, FIXTURE);
   await toAi(page);
   await page.reload();
   await ready(page);
@@ -239,25 +277,20 @@ test('[RDC1-101] a Video built in AI mode (opened from Home with ?ai=1), then ba
   test.setTimeout(300_000);
   await realStart(page);
   await builtVideo(page);
-  expect(page.url()).toMatch(/ai=1/);
+  // (Home opens the new Video with ?ai=1; the editor drops it after use.)
+  await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/);
   await toEditor(page);
   await sameAsFresh(page, '1920x940 after a build in AI', '1920x940');
 });
 
 async function selectedLayer(page: Page) {
-  const box = (await page.locator('#composition-canvas').boundingBox())!;
-  for (const [fx, fy] of [
-    [0.5, 0.5],
-    [0.3, 0.4],
-    [0.6, 0.3],
-    [0.5, 0.7],
-  ] as const) {
-    const at = { x: box.x + box.width * fx, y: box.y + box.height * fy };
-    await page.mouse.click(at.x, at.y);
-    const ids = (await hook(page)).session.selectedIds;
-    if (ids.length) return { at, id: ids[0]! };
-  }
-  throw new Error('no layer under the test points');
+  // The fixture's "Intro" layer (composition 100..500, 100..325, shown from
+  // 0 s), through the artboard on screen.
+  const at = await toScreen(page, 300, 212);
+  await page.mouse.click(at.x, at.y);
+  const ids = (await hook(page)).session.selectedIds;
+  if (!ids.length) throw new Error('no layer under the test point');
+  return { at, id: ids[0]! };
 }
 const layerPos = async (page: Page, id: string) => {
   const layer = (await hook(page)).project.compositions
@@ -269,6 +302,21 @@ const layerPos = async (page: Page, id: string) => {
 /** The Editor's own actions; returns what each one did. */
 async function editorActions(page: Page) {
   const done: Record<string, unknown> = {};
+  // After the panels stop moving, from the scene's start each time (a seek
+  // of the last round moves it).
+  await settle(page);
+  const ruler0 = (await page.locator('.timeline-ruler').first().boundingBox())!;
+  await page.mouse.click(ruler0.x + 20, ruler0.y + ruler0.height / 2);
+  await expect
+    .poll(async () => (await hook(page)).session.time)
+    .toBeLessThan(0.5);
+  // The canvas view is the same as in a fresh editor.
+  const board = await artboard(page);
+  done.artboard = [
+    Math.round(board.x),
+    Math.round(board.y),
+    Math.round(board.scale * 1000),
+  ];
   const { at, id } = await selectedLayer(page);
   done.select = true;
   const before = await layerPos(page, id);
@@ -295,7 +343,19 @@ async function editorActions(page: Page) {
   await expect.poll(async () => (await hook(page)).session.playing).toBe(true);
   await page.keyboard.press('Space');
   await expect.poll(async () => (await hook(page)).session.playing).toBe(false);
-  done.play = true;
+  // Paused by the key, not by reaching the end of the 5 s scene.
+  done.play = (await hook(page)).session.time < 4.5;
+  // Back to the start with a ruler click (playback may have reached the end).
+  const start = (await page.locator('.timeline-ruler').first().boundingBox())!;
+  await page.mouse.click(start.x + 20, start.y + start.height / 2);
+  await expect
+    .poll(async () => (await hook(page)).session.time)
+    .toBeLessThan(0.5);
+  const again = await selectedLayer(page);
+  await page.mouse.click(again.at.x, again.at.y, { button: 'right' });
+  await expect(page.locator('#canvas-context-menu')).toBeVisible();
+  done.menu = await page.locator('#canvas-context-menu [data-action]').count();
+  await page.keyboard.press('Escape');
   const ruler = (await page.locator('.timeline-ruler').first().boundingBox())!;
   await page.mouse.click(
     ruler.x + ruler.width * 0.4,
@@ -305,11 +365,6 @@ async function editorActions(page: Page) {
     .poll(async () => (await hook(page)).session.time)
     .toBeGreaterThan(0);
   done.seek = true;
-  const again = await selectedLayer(page);
-  await page.mouse.click(again.at.x, again.at.y, { button: 'right' });
-  await expect(page.locator('#canvas-context-menu')).toBeVisible();
-  done.menu = await page.locator('#canvas-context-menu [data-action]').count();
-  await page.keyboard.press('Escape');
   return done;
 }
 
@@ -323,6 +378,15 @@ test("[RDC1-102] after every return from AI mode the Editor's own actions work a
   await openFixture(page, FIXTURE);
   await category(page, 'Media');
   const freshResult = await editorActions(page);
+  expect(freshResult).toMatchObject({
+    select: true,
+    drag: true,
+    undo: true,
+    shortcut: true,
+    play: true,
+    seek: true,
+  });
+  expect(freshResult.menu).toBeGreaterThan(5);
   await page.keyboard.press('Escape');
   for (let i = 0; i < 3; i++) {
     await toAi(page);

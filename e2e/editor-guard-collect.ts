@@ -145,6 +145,12 @@ export async function category(page: Page, name: string): Promise<boolean> {
 /** Leaves any open popover, palette, menu or draw palette. */
 async function calm(page: Page) {
   for (let i = 0; i < 2; i++) await page.keyboard.press('Escape');
+  // The main menu closes from its own button.
+  if (
+    (await page.locator('#menu-trigger').getAttribute('aria-expanded')) ===
+    'true'
+  )
+    await page.locator('#menu-trigger').click();
 }
 
 export async function openFixture(page: Page, file: string) {
@@ -232,7 +238,7 @@ export async function statesAt(
     out.selected = await settle(page);
     if (await clickIf(page, '#rail-right [data-section]')) {
       out.rightOpen = await settle(page);
-      if (await clickIf(page, '[data-panel="right"]'))
+      if (await clickIf(page, '#right-panel-collapse'))
         out.rightCollapsed = await settle(page);
       else out.rightCollapsed = 'skipped';
     } else out.rightOpen = 'skipped';

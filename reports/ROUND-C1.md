@@ -246,6 +246,67 @@ D-425 to D-435 in docs/DECISIONS.md.
 
 - Branch `claude/round-c1-power`, draft PR #54 to `claude/round-b-ai-mode`.
 
+## 11. Layout fix (briefs/ROUND-C1-LAYOUT-FIX.md, D-436)
+
+Owner decision 2026-11-15: the Editor is Round A's editor. The only AI control it shows is one "Editor | AI" toggle.
+
+| Item | Status | Proof |
+| --- | --- | --- |
+| R. Ask Director removed (top bar, canvas menu, `ask-director` command, owner menu entry, CSS, strings, tests) | DONE | RDB-012 rewritten: the button, menu entry and palette row are gone; tests/commands.test.ts |
+| T. Separate Editor \| AI toggle; mode switch as Round A | DONE | RDC1-100 (lists and boxes), RDB-006, RDB-007 |
+| S. Round B top bar CSS reverted (grid columns, `.topbar-start` clip, nowrap, 899 px and 767 px rules) | DONE | `git diff origin/claude/round-a-panel -- src/style.css` keeps only the toggle's rules and the F3 credit line |
+| Protected: AI, My Templates and Theme rail categories | DONE (untouched) | RDC1-100 compares every panel's labels with Round A |
+| L1. `data-layout` no longer overwritten | DONE | RDC1-101: 1920, 1440, 1280, 1024 after AI; resizes and a reload in AI; five round trips; 390 and 700 px keep their value |
+| L2. Review video plan in the AI category, all callers | DONE | RDC1-103: the Built card, the palette with Scene open, the palette with the left panel closed; Back returns to the AI list; Text closes it |
+| G. Golden recorded on origin/claude/round-a-panel | DONE | e2e/editor-guard.golden.json (recorded by e2e/editor-guard.record.ts in a worktree of 38b1578; byte for byte, Prettier ignores it) |
+| G. Boxes and lists guard | DONE | RDC1-100 |
+| G. AI round trips | DONE | RDC1-101 (two tests) |
+| G. Actions after a return | DONE | RDC1-102 (select, drag, undo, Ctrl+D, Space play and pause, ruler seek, canvas menu; same as a fresh editor, three returns) |
+| L3. Collisions listed | DONE | below |
+| L4. Measured | DONE (no change needed) | below |
+
+Where the toggle is: in the top bar's centre slot, right of the mode switch, 12 px apart (a `.topbar-center` wrapper; the grid columns are Round A's). The right-hand actions had only about 70 px free at 1024 px, too little for the 107 px toggle. The centre slot gives both side groups room at 1024 px and wider.
+
+Top bar shifts, measured by RDC1-100 against Round A:
+
+- Mode switch: 59 to 60 px to the left at 1920, 1440, 1280 and 1024 px (the toggle's width).
+- Undo and Redo: 36 px to the right at those four widths, and 44 px at 390 px (the removed chat button).
+- At 390 px, the save dot and the project name move 6 px to the right and are no longer squeezed.
+- Nothing else in the top bar moved, and no control got narrower.
+- Toggle boxes: 1920 px [1056, 4, 107, 40]; 1440 px [816, 4, 107, 40]; 1280 px [736, 4, 107, 40]; 1024 px [608, 4, 107, 40].
+
+Below 1024 px:
+
+- In Editor mode the toggle is hidden there, because Round A's top bar has no room for it. At 820 px it overlapped Undo (LAY-013).
+- In AI mode the toggle is shown, so you can come back.
+- On a phone (under 768 px) it is hidden in both modes, as the mode switch is.
+- The palette command "Switch between Editor and AI mode" works at every size.
+- Round A behaviour, not fixed: none seen in this sandbox (LAY-013 and LAY-014 pass at 820 px). The wide-font overlap at 820 px reported for Round B would be Round A's.
+
+L3, places where two parts write the same thing:
+
+- `data-layout` on `.editor-shell`: workspace.ts paint() and shell.ts syncLayout both wrote it. FIXED: only the workspace writes it now.
+- `ai-layout`: shell.ts syncLayout only. Safe.
+- `ai-drawer-closed`: src/ai-mode only. Safe.
+- `data-editor-mode`: shell.ts syncMode only. Safe.
+- `right-empty`: shell.ts only (one right-panel routine); AI mode does not touch it. Safe.
+- `library-collapsed`, `inspector-collapsed`, `left-drawer`, `right-drawer`, `right-gone`, `right-reserved`, `timeline-collapsed`, `timeline-animating`, `resizing`: workspace.ts only. Safe.
+- `--left-col`, `--right-col`, `--rail-col`, `--left-open`, `--right-open`, `--rail-width`, `--right-rail-col`, `--right-rail-width`, `--left-panel`: workspace.ts only. Safe.
+- `mode-fade`, `strip-hidden`, `drop-highlight`, `shell-booting`: one writer each. Safe.
+
+L4: one state change with 400 layers and one heavy library item waiting costs 0.9 to 2.7 ms for `usesAsset` (JSON of the compositions: 235 to 549 KB). Measured in Node 22, from three fixtures repeated to 400 layers, frozen like the engine's state, averaged over 200 runs. That is under 4 ms, so the code is unchanged. With two items waiting the cost doubles; that is noted, not changed.
+
+Specs run locally (the full suite was NOT run locally, by the brief):
+
+- e2e/editor-guard.spec.ts: 5 passed. e2e/round-b-shell.spec.ts and e2e/round-b-rough.spec.ts: all passed (29 with the guard).
+- The specs that look at the top bar: h2-shell (LAY-013 and LAY-014, after the below-1024 fix), h4-panels, t7-readable, tall-p1, u3-menus and p3-integration all passed.
+- Format check, typecheck and build passed. Editor first load: 5,991,754 bytes.
+- Unit tests: 1,673 passed, 3 skipped, 2 failed. The 2 are the `tests/blocks/worker.test.ts` sandbox failures; they also fail on Round B here and pass on CI.
+
+L4 measured in Node, not in the browser. The golden at 390 px skips the steps a phone cannot reach the same way (a rail category beyond the first five, collapsing panels, 2D Animation), and does so the same way on both trees.
+
+CI: CI_PLACEHOLDER
+
 ## Owner tick-list (owner fills this in and sends it to Claude)
 
 | ID | OK / BUG / MISSING / CHANGE | One sentence |

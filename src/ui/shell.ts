@@ -479,16 +479,18 @@ export function mountEditorShell(
             <span class="save-status" id="save-status-text"></span>
           </div>
         </div>
-        <div class="segmented mode-switch" id="mode-switch" role="radiogroup" aria-label="${t('mode.label')}">
-          <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
-          <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
-          <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
-        </div>
-        <div class="topbar-end top-actions">
+        <div class="topbar-center">
+          <div class="segmented mode-switch" id="mode-switch" role="radiogroup" aria-label="${t('mode.label')}">
+            <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
+            <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
+            <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
+          </div>
           <div class="segmented layout-switch" id="layout-switch" role="radiogroup" aria-label="${t('layout.label')}" title="${t('command.aiMode')}">
             <button type="button" role="radio" id="layout-editor" data-layout-choice="editor" aria-checked="true">${t('mode.editor')}</button>
             <button type="button" role="radio" id="mode-ai" data-layout-choice="ai" aria-checked="false" title="${t('mode.aiTitle')}">${t('mode.ai')}</button>
           </div>
+        </div>
+        <div class="topbar-end top-actions">
           <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>
           <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')} (Ctrl+Y)">${iconSvg('redo')}</button>
           <span class="topbar-divider" aria-hidden="true"></span>
