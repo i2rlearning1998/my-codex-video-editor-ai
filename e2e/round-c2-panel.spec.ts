@@ -5,6 +5,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { test, expect, allowError } from './fixtures';
 import { signUp } from './p2-helpers';
+import { startAi } from './round-b-helpers';
 import { startC2Stack, type C2Stack } from './round-c2-stack';
 
 const CALLBACK = 'https://claude.ai/api/mcp/auth_callback';
@@ -195,4 +196,29 @@ test('[RDC2-042] what Claude makes shows in the panel with "Made with Claude", o
   await expect(page.locator('#video-door #claude-status')).toHaveText(
     'Connected',
   );
+});
+
+test("[RDC2-043] AI mode's chat list shows Claude's steps on this Video, newest first, read-only; Editor mode shows nothing new", async ({
+  page,
+}) => {
+  test.setTimeout(180_000);
+  const videoId = await startAi(page);
+  await page.evaluate((id) => {
+    localStorage.setItem(
+      `aive.claude.activity.${id}`,
+      JSON.stringify([
+        { at: '2026-11-15T10:00:00.000Z', text: 'Made the plan' },
+        { at: '2026-11-15T10:01:00.000Z', text: 'Built the video' },
+      ]),
+    );
+  }, videoId);
+  await page.locator('#ai-chats').click();
+  const steps = page.locator('[data-claude-activity]');
+  await expect(steps).toHaveCount(2);
+  await expect(steps.first().locator('span')).toHaveText('Built the video');
+  await expect(steps.locator('button, a, input')).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await page.locator('#layout-editor').click();
+  await expect(page.locator('.editor-shell')).not.toHaveClass(/ai-layout/);
+  await expect(page.locator('[data-claude-activity]')).toHaveCount(0);
 });
