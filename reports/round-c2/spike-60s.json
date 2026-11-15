@@ -1,0 +1,49 @@
+{
+  "browser": "153.0.8010.12",
+  "card": {
+    "progress": 1800,
+    "startedAt": 120.39999999990687,
+    "workerBlob": "error: refused",
+    "workerOrigin": "refused: SecurityError: Failed to construct 'Worker': Script at 'http://127.0.0.1:33545/mcp/card/probe-worker.js' cannot be accessed from origin 'http://127.0.0.1:36017'.",
+    "opfs": "available",
+    "indexedDb": "available",
+    "webcodecs": true,
+    "encodeH264": true,
+    "encodeAac": false,
+    "encodeVp9": true,
+    "encodeOpus": true,
+    "heapBefore": 17519922,
+    "phase:preparing": 19,
+    "phase:encoding": 432,
+    "renderMs": 31600,
+    "bytes": 38441864,
+    "container": "webm",
+    "videoCodec": "vp9",
+    "audioCodec": "opus",
+    "heapAfter": 170204313,
+    "player": "data",
+    "downloadCapability": true,
+    "exportDone": false,
+    "frames": 6,
+    "submitFrames": true,
+    "updateModelContext": "accepted",
+    "engine": [
+      {
+        "name": "/mcp/card/card.js",
+        "bytes": 36,
+        "ms": 5
+      },
+      {
+        "name": "/mcp/card/chunks/card.js",
+        "bytes": 624264,
+        "ms": 7
+      },
+      {
+        "name": "/mcp/card/chunks/render-job.js",
+        "bytes": 563918,
+        "ms": 5
+      }
+    ],
+    "finished": true
+  }
+}

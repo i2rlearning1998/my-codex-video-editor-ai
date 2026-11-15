@@ -5,6 +5,22 @@
 // providers. Secrets are never stored: a REST provider names a key-vault
 // entry (`keyRef`), the gateway reads the key on the server.
 import { z } from 'zod';
+import { RULEBOOK_C2 } from './texts/rulebook';
+import { AUTHORING_GUIDE } from './texts/authoring-guide';
+import { CHAPTER_01 } from './texts/creator-playbook-01-audience-and-goal';
+import { CHAPTER_02 } from './texts/creator-playbook-02-story-and-script';
+import { CHAPTER_03 } from './texts/creator-playbook-03-look-and-feel';
+import { CHAPTER_04 } from './texts/creator-playbook-04-media-and-sound';
+import { CHAPTER_05 } from './texts/creator-playbook-05-camera-and-motion';
+import { CHAPTER_06 } from './texts/creator-playbook-06-review-and-publish';
+import { PLAYBOOK_EXPLAINER } from './texts/playbook-explainer';
+import { PLAYBOOK_DOCUMENTARY } from './texts/playbook-documentary';
+import { PLAYBOOK_SHORT_REEL } from './texts/playbook-short-reel';
+import { PLAYBOOK_ENHANCE_RECORDING } from './texts/playbook-enhance-recording';
+import { PLAYBOOK_LOGO_INTRO } from './texts/playbook-logo-intro';
+import { PLAYBOOK_PRODUCT_PROMO } from './texts/playbook-product-promo';
+import { PLAYBOOK_EDU_ANIMATION } from './texts/playbook-edu-animation';
+import { PLAYBOOK_STORY_COMIC } from './texts/playbook-story-comic';
 
 const id = z
   .string()
@@ -316,6 +332,16 @@ const RULEBOOK: { id: string; en: string; hi: string }[] = [
     hi: 'नए ग्राफ़िक के लिए पहले टियर A, फिर टियर B, फिर टियर C।',
   },
 ];
+/**
+ * ROUND-C2 (D-438): the architect's rulebook (T1). An id of the Round C1
+ * rulebook keeps its place in T1's order with T1's text (its Hindi line is
+ * dropped, as it no longer matches); the other Round C1 items follow.
+ */
+export function defaultRulebook(): { id: string; en: string; hi?: string }[] {
+  const c2 = RULEBOOK_C2.map((r) => ({ id: r.id, en: r.en }));
+  const rest = RULEBOOK.filter((r) => !c2.some((n) => n.id === r.id));
+  return [...c2, ...rest.map((r) => ({ ...r }))];
+}
 export const rulebookSchema = z
   .array(
     z.object({
@@ -325,13 +351,13 @@ export const rulebookSchema = z
     }),
   )
   .max(60)
-  .default(() => RULEBOOK.map((r) => ({ ...r })));
+  .default(() => defaultRulebook());
 
 /** Authoring guide texts the planner reads (owner-edited; samples here). */
 export const authoringSchema = z
   .object({
     /** Text added to the plan prompt when the plan may define new graphics. */
-    guide: z.string().max(20000).default(''),
+    guide: z.string().max(20000).default(AUTHORING_GUIDE),
     /** Cost id of one new graphic (shown on the Plan card). */
     newGraphicCostId: z.string().max(48).default('new-graphic'),
     /** Defs one plan may hold. */
@@ -400,4 +426,72 @@ export const assetRulesSchema = z
   .default({});
 
 /** `director.playbooks[videoTypeId]`: owner-written text per video type. */
-export const playbooksSchema = z.record(id, z.string().max(20000)).default({});
+export const playbooksSchema = z
+  .record(id, z.string().max(20000))
+  .default(() => defaultPlaybooks());
+
+/**
+ * ROUND-C2 (D-439): T4's playbooks, each on the video type of
+ * `director.fieldLibrary.types` with the closest name (no type was missing).
+ */
+export function defaultPlaybooks(): Record<string, string> {
+  return {
+    explainer: PLAYBOOK_EXPLAINER,
+    documentary: PLAYBOOK_DOCUMENTARY,
+    short: PLAYBOOK_SHORT_REEL,
+    recording: PLAYBOOK_ENHANCE_RECORDING,
+    'logo-intro': PLAYBOOK_LOGO_INTRO,
+    product: PLAYBOOK_PRODUCT_PROMO,
+    lesson: PLAYBOOK_EDU_ANIMATION,
+    story: PLAYBOOK_STORY_COMIC,
+  };
+}
+
+/** ROUND-C2: the creator playbook chapters (T3), id to text. */
+export const CREATOR_CHAPTERS = [
+  '01-audience-and-goal',
+  '02-story-and-script',
+  '03-look-and-feel',
+  '04-media-and-sound',
+  '05-camera-and-motion',
+  '06-review-and-publish',
+] as const;
+export function defaultCreatorPlaybook(): Record<string, string> {
+  const texts = [
+    CHAPTER_01,
+    CHAPTER_02,
+    CHAPTER_03,
+    CHAPTER_04,
+    CHAPTER_05,
+    CHAPTER_06,
+  ];
+  return Object.fromEntries(CREATOR_CHAPTERS.map((c, i) => [c, texts[i]!]));
+}
+export const creatorPlaybookSchema = z
+  .record(
+    z.string().regex(/^[0-9]{2}-[a-z-]{1,44}$/, 'chapter id: 01-name'),
+    z.string().max(20000),
+  )
+  .default(() => defaultCreatorPlaybook());
+
+/**
+ * ROUND-C2 (2.5): the Claude connector. `tools[toolId]` switches one tool
+ * and says whether it is free or charged at a cost id of `costs`.
+ */
+export const mcpToolRuleSchema = z.object({
+  enabled: z.boolean().default(true),
+  cost: z.string().min(1).max(48).default('free'),
+});
+export const mcpSchema = z
+  .object({
+    enabled: z.boolean().default(true),
+    /** Dev-only proof tools (the Part 1 export-card spike). */
+    proofTools: z.boolean().default(false),
+    tools: z.record(z.string().max(48), mcpToolRuleSchema).default({}),
+    /** Longest video the chat export card renders (seconds). */
+    exportMaxSeconds: z.number().int().min(5).max(600).default(120),
+    /** Calls per person per minute. */
+    ratePerMinute: z.number().int().min(1).max(600).default(60),
+  })
+  .default({});
+export type McpRules = z.infer<typeof mcpSchema>;

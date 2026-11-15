@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "vite build && node scripts/assert-editor-bundle.mjs",
+    "build": "vite build && vite build --config vite.card.ts && node scripts/assert-editor-bundle.mjs",
     "check": "npm run format:check && npm run typecheck && npm test && npm run build",
     "e2e": "playwright test",
     "e2e:headed": "playwright test --headed",
@@ -48,12 +48,14 @@
   },
   "dependencies": {
     "@huggingface/transformers": "4.3.1",
+    "@modelcontextprotocol/sdk": "1.32.2",
     "@supabase/supabase-js": "2.117.3",
     "mediabunny": "1.59.1",
     "polygon-clipping": "0.15.7",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@modelcontextprotocol/ext-apps": "1.7.5",
     "@playwright/test": "^1.63.0",
     "@types/node": "^20.19.43",
     "jsdom": "^26.1.0",

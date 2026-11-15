@@ -1,0 +1,6 @@
+// ROUND-C2 (TEXTS of briefs/ROUND-C2.md, written by the architect). Strings
+// only, no logic: the defaults the owner's Admin edits override.
+// "[platform]" is filled from src/brand/brand.ts where the text is used.
+// T3. Creator playbook chapter 02-story-and-script.
+export const CHAPTER_02 =
+  'A good script is a question answered in steps. Open with the hook (what is surprising or unknown), state the question in plain words, answer it in small steps where each step is shown, give the answer a moment, then close with one line the viewer can repeat. Write for the ear: short sentences, one idea each, words people actually say. Numbers need a picture. Jokes and surprises go where attention drops (about every 20 to 30 seconds). Split into scenes by idea, not by time; then give each scene a duration from its words (about 2.5 words per second in English, a little less in Hindi, plus a breath between ideas). Write the on-screen text separately and shorter than the speech; never print the narration on screen word for word unless the style is karaoke captions. Check every fact before writing it down.' as const;

@@ -105,7 +105,9 @@ async function decodeImage(blob: Blob): Promise<ImageBitmap | null> {
     await image.decode();
     return await createImageBitmap(image);
   } catch {
-    return null;
+    // ROUND-C2: a sandboxed card may not load blob: images; raster files
+    // decode straight from their bytes.
+    return createImageBitmap(blob).catch(() => null);
   } finally {
     URL.revokeObjectURL(url);
   }
@@ -134,10 +136,17 @@ export function startExport(
       cancelled: () => boolean,
     ): Promise<void>;
     onCodeProgress?(progress: ExportProgress): void;
+    /**
+     * ROUND-C2 (D-437): renders in this page instead of a worker (the MCP
+     * export card, where a sandboxed frame may not start one). The file
+     * stays in memory; fonts load from `fontBase`.
+     */
+    inPage?: { readonly fontBase: string };
   },
 ): ExportRun {
   let worker: Worker | null = null;
   let cancelled = false;
+  let stopPage: (() => void) | null = null;
   let settle: ((result: ExportResult | null) => void) | null = null;
   const result = (async (): Promise<ExportResult | null> => {
     const settings = validateSettings(
@@ -215,38 +224,61 @@ export function startExport(
         channels: audio.channels.map((channel) => channel.slice()),
       },
     };
+    let finish: {
+      resolve(result: ExportResult | null): void;
+      reject(error: Error): void;
+    } | null = null;
+    const finished = new Promise<ExportResult | null>((resolve, reject) => {
+      settle = resolve;
+      finish = { resolve, reject };
+    });
+    const onMessage = async (message: WorkerMessage) => {
+      const { resolve, reject } = finish!;
+      if (message.type === 'progress') deps.onProgress(message);
+      else if (message.type === 'cancelled') resolve(null);
+      else if (message.type === 'error') reject(new Error(message.message));
+      else if (message.type === 'done') {
+        const file = message.bytes
+          ? new Blob([message.bytes], { type: MIME[message.container] })
+          : await store?.read(message.key!);
+        if (!file) {
+          reject(new Error('The exported file could not be read back'));
+          return;
+        }
+        resolve({
+          container: message.container,
+          videoCodec: message.videoCodec,
+          audioCodec: message.audioCodec,
+          fileName: `${settings.fileName}.${message.container}`,
+          file: file.type
+            ? file
+            : file.slice(0, file.size, MIME[message.container]),
+        });
+      }
+    };
+    if (deps.inPage) {
+      const { renderJob } = await import('./render-job');
+      let stop = false;
+      stopPage = () => (stop = true);
+      void renderJob(job, {
+        post: (message) => void onMessage(message),
+        cancelled: () => stop,
+        fontBase: deps.inPage.fontBase,
+        opfs: false,
+      }).catch((error: unknown) =>
+        finish!.reject(
+          error instanceof Error ? error : new Error(String(error)),
+        ),
+      );
+      return await finished;
+    }
     worker = new Worker(new URL('./worker.ts', import.meta.url), {
       type: 'module',
     });
-    const finished = new Promise<ExportResult | null>((resolve, reject) => {
-      settle = resolve;
-      worker!.onerror = (event) =>
-        reject(new Error(event.message || 'Export worker failed'));
-      worker!.onmessage = async (event: MessageEvent<WorkerMessage>) => {
-        const message = event.data;
-        if (message.type === 'progress') deps.onProgress(message);
-        else if (message.type === 'cancelled') resolve(null);
-        else if (message.type === 'error') reject(new Error(message.message));
-        else if (message.type === 'done') {
-          const file = message.bytes
-            ? new Blob([message.bytes], { type: MIME[message.container] })
-            : await store?.read(message.key!);
-          if (!file) {
-            reject(new Error('The exported file could not be read back'));
-            return;
-          }
-          resolve({
-            container: message.container,
-            videoCodec: message.videoCodec,
-            audioCodec: message.audioCodec,
-            fileName: `${settings.fileName}.${message.container}`,
-            file: file.type
-              ? file
-              : file.slice(0, file.size, MIME[message.container]),
-          });
-        }
-      };
-    });
+    worker.onerror = (event) =>
+      finish!.reject(new Error(event.message || 'Export worker failed'));
+    worker.onmessage = (event: MessageEvent<WorkerMessage>) =>
+      void onMessage(event.data);
     worker.postMessage({ type: 'start', job }, [
       ...Object.values(images),
       ...Object.values(gifs).flatMap((gif) => gif.frames),
@@ -263,6 +295,7 @@ export function startExport(
     result,
     cancel() {
       cancelled = true;
+      stopPage?.();
       worker?.postMessage({ type: 'cancel' });
       // A worker stuck in a long decode still ends; the file is removed below.
       setTimeout(() => {

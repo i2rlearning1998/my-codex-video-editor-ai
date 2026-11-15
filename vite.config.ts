@@ -52,7 +52,14 @@ export default defineConfig(({ command }) => ({
   // FINAL2 U11: the lazy Whisper runner is pre-bundled too, so its first use
   // never makes the dev server reload the page.
   optimizeDeps: {
-    include: ['mediabunny', 'typescript', '@huggingface/transformers'],
+    // ROUND-C2: the MCP host harness (e2e/mcp-host) imports the ext-apps
+    // bridge; pre-bundled so the dev server never reloads mid-test.
+    include: [
+      'mediabunny',
+      'typescript',
+      '@huggingface/transformers',
+      '@modelcontextprotocol/ext-apps/app-bridge',
+    ],
   },
   // FIX3 2.2: the captions worker loads transformers lazily (a split chunk),
   // which needs ES-module workers; every worker here is created as a module.

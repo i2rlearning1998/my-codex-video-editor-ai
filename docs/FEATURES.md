@@ -1636,3 +1636,9 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC1-101 | P0 | W10 | Verified | After every return from AI mode (a round trip, a resize or a reload while in AI, five round trips, a Video built in AI mode opened from Home with ?ai=1) the Editor equals Round A; data-layout stays the workspace's own value (390 and 700 px too) |
 | RDC1-102 | P0 | W10 | Verified | After a return from AI mode the Editor's own actions work as in a fresh editor: select, drag, undo, a shortcut, play and pause, seek, the canvas menu |
 | RDC1-103 | P0 | W10 | Verified | Review video plan opens in the AI category from every caller (AI mode's Built card, the palette, a closed left panel); Back returns to the AI list; another category closes it |
+
+## RDC2: Round C2 (Claude as Director: the MCP connector, the export card, Admin; briefs/ROUND-C2.md)
+
+| ID | Priority | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| RDC2-001 | P0 | W10 | Verified | Export-card spike: the card resource renders a 10, 60 and 120 s 1080x1920 video on the device inside a sandboxed iframe (allow-scripts, then allow-same-origin) under the host's CSP, over the ext-apps bridge; workers, OPFS, IndexedDB, encoders, the engine and a 1080p file loading, the player (blob or data URL), downloads up to 100 MB, hidden and scrolled-away rendering, a host without downloadFile and frames back to Claude are measured (reports/ROUND-C2-SPIKE.md) |

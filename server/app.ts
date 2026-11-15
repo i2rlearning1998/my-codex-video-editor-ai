@@ -39,6 +39,7 @@ import {
 import { mockPayment } from '../src/payments';
 import { AuthError, signLocalToken, type Caller } from './auth';
 import { createServerTools } from './tools';
+import { createMcpMount, McpHttpError } from './mcp/mount';
 import { providerConnected, serverAdapters, type Env } from './adapters';
 import { storeConfig } from './config';
 import { People } from './state';
@@ -252,6 +253,14 @@ export function createServerApp(o: ServerOptions) {
     resolve: o.toolRuntime?.resolve,
     usage: people.usageLog(),
     now,
+  });
+  // ROUND-C2: the Claude connector (/mcp, OAuth, the export card).
+  const mcp = createMcpMount({
+    env: o.env,
+    now,
+    store: o.store,
+    config: async () => (await cfg.get()).config,
+    log,
   });
   const gateway = createGateway({
     config: () => cfg.current().config,
@@ -1068,7 +1077,10 @@ export function createServerApp(o: ServerOptions) {
         res.statusCode = status;
         return void res.end();
       }
-      if (origin && !origins.has(origin))
+      // ROUND-C2: the export card's files are read from a sandboxed frame
+      // (origin "null" or the host's sandbox origin) with a signed ticket and
+      // no cookies; they are open to any origin (server/mcp/card.ts).
+      if (origin && !origins.has(origin) && !path.startsWith('/mcp/card/'))
         throw new HttpError(403, 'origin', 'This site may not use the server.');
       const ip = clientIp(req);
       if (hitWindow(ipHits, ip, ipPerMinute))
@@ -1108,6 +1120,11 @@ export function createServerApp(o: ServerOptions) {
         return writeReply(res, result);
       }
       // P3-ENGINE:end
+      // ROUND-C2: the connector reads its own body (larger, JSON-RPC).
+      if (mcp.owns(path)) {
+        await mcp.handle(req, res, path);
+        return;
+      }
       // P3-INTEGRATION:begin
       if (req.method === 'POST' && path === '/v1/run')
         await o.authenticate(req.headers.authorization);
@@ -1278,12 +1295,20 @@ export function createServerApp(o: ServerOptions) {
       // P3-ENGINE:end
       if (e instanceof AuthError)
         hitWindow(badAuth, clientIp(req), badAuthPerMinute);
-      if (e instanceof HttpError) status = e.status;
+      if (e instanceof McpHttpError) {
+        status = e.status;
+        // ROUND-C2 (2.2): a refused connector call names where to sign in.
+        if (status === 401 && !res.headersSent)
+          res.setHeader(
+            'www-authenticate',
+            `Bearer resource_metadata="${mcp.resourceMetadataUrl(req)}"`,
+          );
+      } else if (e instanceof HttpError) status = e.status;
       else if (e instanceof AuthError) status = 401;
       else if (e instanceof GatewayError) status = statusOf(e.code);
       else status = 500;
       const code =
-        e instanceof HttpError
+        e instanceof HttpError || e instanceof McpHttpError
           ? e.code
           : e instanceof GatewayError
             ? e.code

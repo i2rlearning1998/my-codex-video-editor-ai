@@ -1,0 +1,89 @@
+{
+  "browser": "153.0.8010.12",
+  "sandbox": "allow-scripts",
+  "card": {
+    "progress": 300,
+    "startedAt": 127.80000000004657,
+    "workerBlob": "error: refused",
+    "workerOrigin": "refused: SecurityError: Failed to construct 'Worker': Script at 'http://127.0.0.1:35371/mcp/card/probe-worker.js' cannot be accessed from origin 'null'.",
+    "opfs": "unavailable: SecurityError",
+    "indexedDb": "unavailable: SecurityError",
+    "webcodecs": true,
+    "encodeH264": true,
+    "encodeAac": false,
+    "encodeVp9": true,
+    "encodeOpus": true,
+    "heapBefore": 8596923,
+    "phase:preparing": 13,
+    "phase:encoding": 61,
+    "renderMs": 4866,
+    "bytes": 6339580,
+    "container": "webm",
+    "videoCodec": "vp9",
+    "audioCodec": "opus",
+    "heapAfter": 32063525,
+    "player": "data",
+    "downloadCapability": true,
+    "exportDone": false,
+    "frames": 6,
+    "submitFrames": true,
+    "updateModelContext": "accepted",
+    "engine": [
+      {
+        "name": "/mcp/card/card.js",
+        "bytes": 36,
+        "ms": 6
+      },
+      {
+        "name": "/mcp/card/chunks/card.js",
+        "bytes": 624264,
+        "ms": 7
+      },
+      {
+        "name": "/mcp/card/chunks/render-job.js",
+        "bytes": 563918,
+        "ms": 5
+      }
+    ],
+    "finished": true
+  },
+  "host": {
+    "calls": [
+      "export_done",
+      "submit_frames"
+    ],
+    "contextUpdates": 1,
+    "downloads": 0
+  },
+  "downloads": [
+    {
+      "mb": 1,
+      "ok": true,
+      "ms": 23,
+      "base64Chars": 1398104,
+      "heapDelta": 0
+    },
+    {
+      "mb": 10,
+      "ok": true,
+      "ms": 130,
+      "base64Chars": 13981016,
+      "heapDelta": 22862226
+    },
+    {
+      "mb": 50,
+      "ok": true,
+      "ms": 649,
+      "base64Chars": 69905068,
+      "heapDelta": 110799049
+    },
+    {
+      "mb": 100,
+      "ok": true,
+      "ms": 1779,
+      "base64Chars": 139810136,
+      "heapDelta": 192245277
+    }
+  ],
+  "framesForClaude": 6
+}
