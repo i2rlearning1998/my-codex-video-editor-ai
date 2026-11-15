@@ -121,6 +121,8 @@ One full `npm run verify` at the end of the finish (sandbox, Node 22, Playwright
 - E2E: 825 passed, 0 failed, 0 flaky (1.9 h). No spec had to be re-run.
 - Test-hook check: passed. Ledger: passed (warnings only, about rows the round did not touch).
 
+CI, checked once (run 43706108577 on `fe6ea58`, the last code commit; later commits only change docs): the unit tests passed there (so the 2 worker failures happen only in the sandbox). E2E: 819 passed, 2 flaky (RDC1-091 and TL-096, both drag-timing tests that passed on retry), 4 failed. The 4 failures are the DEV-012 screenshot baselines, which stay BLOCKED until the UI phase (D-430). `export-mp4` passed. The PR-event run of the same commit stopped at `npm ci` (a runner install failure; it ran no tests).
+
 Bundle (`scripts/assert-editor-bundle.mjs`): editor first load Round B 6,026,000 bytes in 8 chunks; Round C1 5,991,926 bytes in 9 chunks (plan build, Review & swap, the v4 builder, the frame renderer and the speech tools are lazy); with its lazy chunks 8,414,699 bytes. The check fails above 6,026,000 bytes or if Round C1 code is in the first load.
 
 ### 3.1 Proof videos (real Chromium 141, offline model with scripted answers, fake providers)
