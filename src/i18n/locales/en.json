@@ -2863,7 +2863,7 @@
   "importLib.kind.video": "Video",
   "importLib.kind.audio": "Audio",
   "command.aiMode": "Switch between Editor and AI mode",
-  "command.askDirector": "Ask Director",
+  "layout.label": "Editor or AI mode",
   "mode.ai": "AI",
   "mode.aiTitle": "AI mode: make and change the video with Director",
   "mode.nowAi": "AI mode: Director is here",

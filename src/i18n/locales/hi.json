@@ -2863,7 +2863,7 @@
   "importLib.kind.video": "वीडियो",
   "importLib.kind.audio": "ऑडियो",
   "command.aiMode": "एडिटर और AI मोड के बीच बदलें",
-  "command.askDirector": "Director से पूछें",
+  "layout.label": "एडिटर या AI मोड",
   "mode.ai": "AI",
   "mode.aiTitle": "AI मोड: Director के साथ वीडियो बनाएँ और बदलें",
   "mode.nowAi": "AI मोड: Director यहाँ है",

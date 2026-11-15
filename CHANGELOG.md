@@ -8,6 +8,7 @@
 - Director: research step, untrusted web text, rulebook v2, playbook slots, authoring guide, graphics repair and frame fix, "change this graphic" (D-429).
 - Layout validator and first-content posters and covers; editor first load smaller than Round B (D-430). Schema 9 unchanged; no new npm dependencies.
 - Finish: the project cover no longer re-seeks the stage's video (PB-009 and PB-010 pass again); LAY-048's test waits for the expand animation (D-431). New graphics are drawn off screen and checked before the Plan card, with Stop and a vision check when the model can see (D-432). Review & swap says Picked by AI with credits and other choices; the Brief card sets the asset rule and reads a linked page as untrusted (D-433). Voices and captions from providers the owner adds (D-434).
+- Layout fix (owner decision, D-436): the Editor is Round A's editor again. Ask Director is gone from the top bar, the canvas menu and the palette; one separate Editor | AI toggle enters AI mode; the mode switch and the top bar CSS are Round A's. The editor's layout no longer breaks after a visit to AI mode (data-layout belongs to the workspace). Review video plan opens in the AI category. A permanent Editor guard compares the Editor with a golden recorded on Round A (RDC1-100 to RDC1-103).
 
 ## Round B: AI mode in the editor, Style chat, panel UI pass (14 Nov)
 

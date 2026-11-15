@@ -22,8 +22,7 @@ test.setTimeout(240_000);
 
 const lastDirector = (page: Page) =>
   page.locator('#ai-thread .ai-msg[data-role="director"]').last();
-const toEditor = (page: Page) =>
-  page.locator('#mode-switch [data-mode="editor"]').click();
+const toEditor = (page: Page) => page.locator('#layout-editor').click();
 const toAiMode = async (page: Page) => {
   await page.locator('#mode-ai').click();
   await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/);

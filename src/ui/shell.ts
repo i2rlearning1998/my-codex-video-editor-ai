@@ -483,13 +483,15 @@ export function mountEditorShell(
           <button type="button" role="radio" data-mode="editor" aria-checked="true">${t('mode.editor')}</button>
           <button type="button" role="radio" data-mode="animation2d" aria-checked="false">${t('mode.animation2d')}</button>
           <button type="button" role="radio" data-mode="animation3d" aria-checked="false" aria-disabled="true" title="${t('mode.animation3dPlanned')}">${t('mode.animation3d')}</button>
-          <button type="button" role="radio" data-layout="ai" id="mode-ai" class="mode-ai" aria-checked="false" title="${t('mode.aiTitle')}">${iconSvg('magic', 20)}<span>${t('mode.ai')}</span></button>
         </div>
         <div class="topbar-end top-actions">
+          <div class="segmented layout-switch" id="layout-switch" role="radiogroup" aria-label="${t('layout.label')}" title="${t('command.aiMode')}">
+            <button type="button" role="radio" id="layout-editor" data-layout-choice="editor" aria-checked="true">${t('mode.editor')}</button>
+            <button type="button" role="radio" id="mode-ai" data-layout-choice="ai" aria-checked="false" title="${t('mode.aiTitle')}">${t('mode.ai')}</button>
+          </div>
           <button type="button" id="undo" class="icon-button" aria-label="${t('action.undo')}" title="${t('action.undo')} (Ctrl+Z)">${iconSvg('undo')}</button>
           <button type="button" id="redo" class="icon-button" aria-label="${t('action.redo')}" title="${t('action.redo')} (Ctrl+Y)">${iconSvg('redo')}</button>
           <span class="topbar-divider" aria-hidden="true"></span>
-          <button type="button" id="ask-director" class="icon-button" aria-label="${t('command.askDirector')}" title="${t('command.askDirector')}">${iconSvg('magic')}</button>
           <button type="button" id="cloud-sync" class="icon-button" data-state="off" aria-label="${t('cloud.label')}" title="${t('cloud.label')}">${iconSvg('upload')}<span class="cloud-dot" aria-hidden="true"></span></button>
           <button type="button" id="theme-toggle" class="icon-button" aria-label="${t('theme.label')}" title="${t('theme.label')}">${iconSvg('themeDark')}</button>
           <button type="button" id="export" class="primary">${iconSvg('export')}<span class="export-label">${t('action.export')}</span></button>
@@ -2426,15 +2428,17 @@ export function mountEditorShell(
   for (const button of modeButtons)
     button.onclick = () => {
       if (button.getAttribute('aria-disabled') === 'true') return;
-      // ROUND-B: from AI mode, a mode button returns to the editor layout.
-      session.setLayout('editor');
       session.setMode(button.dataset.mode as 'editor' | 'animation2d');
     };
   session.onChange(syncMode);
   // ROUND-B: Editor | AI. AI mode is another layout of this same editor
   // (same engine, selection, playhead and open scene); its Director UI is a
   // separate chunk loaded the first time AI mode opens.
-  const aiButton = element<HTMLButtonElement>('#mode-ai');
+  // ROUND-C1 T: one separate Editor | AI toggle; the mode switch above is
+  // Round A's, unchanged.
+  const layoutButtons = root.querySelectorAll<HTMLButtonElement>(
+    '#layout-switch [data-layout-choice]',
+  );
   let shownLayout: 'editor' | 'ai' = 'editor';
   let aiMode: AiMode | null = null;
   let aiLoading = false;
@@ -2442,14 +2446,16 @@ export function mountEditorShell(
   const LAYOUT_KEY = 'aive.layout.ai';
   const syncLayout = () => {
     const ai = session.layout === 'ai';
-    aiButton.setAttribute('aria-checked', String(ai));
-    if (ai)
-      for (const button of modeButtons)
-        button.setAttribute('aria-checked', 'false');
+    for (const button of layoutButtons)
+      button.setAttribute(
+        'aria-checked',
+        String(button.dataset.layoutChoice === session.layout),
+      );
     if (session.layout === shownLayout) return;
     shownLayout = session.layout;
+    // ROUND-C1 L1: AI mode is marked only by this class; data-layout is the
+    // workspace's responsive value (wide, medium, narrow, phone) alone.
     shellRoot.classList.toggle('ai-layout', ai);
-    shellRoot.dataset.layout = session.layout;
     try {
       // A reload comes back to the same layout of the same video.
       if (ai) sessionStorage.setItem(LAYOUT_KEY, engine.state.id);
@@ -2492,9 +2498,9 @@ export function mountEditorShell(
       safely(draw);
     });
   };
-  aiButton.onclick = () => session.setLayout('ai');
-  element<HTMLButtonElement>('#ask-director').onclick = () =>
-    session.setLayout('ai');
+  for (const button of layoutButtons)
+    button.onclick = () =>
+      session.setLayout(button.dataset.layoutChoice === 'ai' ? 'ai' : 'editor');
   session.onChange(syncLayout);
   // FINAL3 C3 (Blender's focus picker): with "Pick on canvas" on, the next
   // layer selected becomes the camera's Focus Object (depth of field on),
@@ -3197,13 +3203,18 @@ export function mountEditorShell(
     report: reportError,
     rerender: () => sidePanels.refresh(),
   });
+  // ROUND-C1 L2: Review & swap belongs to the AI category (AI > Video
+  // plans). Every caller opens that category and the left panel first, so
+  // Back returns to the AI list and another category closes the review.
   const openPlanReview = (title?: string) =>
     void planReviewModule()
-      .then(({ planReviewPanel }) =>
+      .then(({ planReviewPanel }) => {
+        if (activeCategory !== 'AI') openCategory('AI');
+        else workspace?.setOpen('left', true);
         sidePanels.show('plan-review', t('plan.reviewTitle'), () =>
           planReviewPanel(planReviewDeps(title)),
-        ),
-      )
+        );
+      })
       .catch(reportError);
   // FIX7: media added to the project later fill the plan slots that wait
   // for a file with that name (nothing else is ever filled on its own).
