@@ -51,7 +51,7 @@ Environment (all optional except the secrets):
 
 ## What is proven and what is not
 
-Proven in this sandbox, with tests named in docs/FEATURES.md (RDC2-001 to RDC2-050):
+Proven in this sandbox, with tests named in docs/FEATURES.md (RDC2-001 to RDC2-050 (RDC2-043: AI mode lists Claude's steps)):
 
 - The OAuth flow and its refusals, run against the real server with the MCP SDK client.
 - Every tool, run the same way.

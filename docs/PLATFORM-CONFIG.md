@@ -81,3 +81,10 @@ reads real config from day one.
 Platform name and logo, plan names/prices/credits, free-plan numbers, the
 Rulebook text, per-Studio models, the showcase list, and every Style's Brief
 form and interview.
+
+## Round C2 additions (schema version 1, additive; defaults parse)
+
+- `director.creatorPlaybook`: chapter id (`NN-name`) to text, at most 20,000 characters each; defaults are the TEXTS chapters 01 to 06 (`src/platform-config/texts/`).
+- `mcp`: `enabled` (true), `proofTools` (false), `tools[toolId] = {enabled, cost: 'free' or a cost id}`, `exportMaxSeconds` (120), `ratePerMinute` (60).
+- New defaults (a saved config keeps its own values): the T1 rulebook, the authoring guide, eight video-type playbooks (D-438, D-439).
+- The emergency switches may hold `mcpOff` (the connector's switch).
