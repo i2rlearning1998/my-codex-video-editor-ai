@@ -104,7 +104,16 @@ After this round the Director and the v4 builder reach every enabled provider by
 
 ## 4. Checks
 
-VERIFY_PLACEHOLDER
+One full `npm run verify` at the end, its stages run one after another in this sandbox (Node 20, Chromium 141 fallback, D-030; it cannot decode H.264 or AAC):
+
+| Layer | Result |
+| --- | --- |
+| Format check, typecheck | Passed |
+| Unit and jsdom (Vitest) | 1,646 passed, 4 failed, 3 skipped. Failed: `tests/blocks/worker.test.ts` (2 tests; they fail on the Round B base in this sandbox too, an environment problem, not a Round C1 change), LIB-007 gate (passed when run alone), RDC1-060 (timed out under the full parallel run; its timeout is now 6 minutes and it passes) |
+| Build | Passed; editor first load 5,990,367 bytes in 9 chunks |
+| E2E (Playwright, Chromium 141) | 803 passed, 2 failed. Re-run alone, both still fail: PB-010 (the known sandbox audio-sync flake, owner decision 2026-09-24) and DEV-012 "the Projects dialog matches its baseline" (BLOCKED: baselines are refreshed only in the UI phase, on the CI image) |
+| Hook assertion | Passed |
+| Ledger | 1,287 items: Verified 957, Claimed 11, Todo 275, Dropped 43, Bug 1. Its only errors are the two failed tests above (PB-010, DEV-012) |
 
 Bundle (measured by `scripts/assert-editor-bundle.mjs`): editor first load Round B 6,026,000 bytes in 8 chunks; Round C1 5,989,007 bytes in 9 chunks (plan build, Review & swap and the v4 builder became lazy); with lazy chunks 8,295,276 → 8,364,733 bytes. The check now fails above 6,026,000 bytes or if Round C1 code is in the first load.
 
