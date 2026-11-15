@@ -8938,9 +8938,26 @@ export function mountEditorShell(
     /** ROUND-C1: the Video's cover: its first scene at the first moment with content. */
     coverThumb: (width = 192) => {
       const first = engine.state.compositions[0];
-      return first
-        ? (scenePosterUrl(engine, session, first.id, frames, width) ?? '')
-        : '';
+      if (!first) return '';
+      // ROUND-C1 F1 (PB-009, PB-010): the cover is drawn on every autosave.
+      // Video frames come from the stage's own decoders (one element per
+      // layer), so asking them for another time re-seeks the playing or
+      // paused picture. The cover never asks for video: a scene showing
+      // video at its cover time falls back to the stage's own canvas.
+      let video = false;
+      const still: FrameProvider | undefined = frames
+        ? {
+            frame: (request, playing) => {
+              if (request.kind === 'video') {
+                video = true;
+                return null;
+              }
+              return frames.frame(request, playing);
+            },
+          }
+        : undefined;
+      const url = scenePosterUrl(engine, session, first.id, still, width) ?? '';
+      return video ? '' : url;
     },
     libraryIndex: () => ({
       media: (engine.state.assets as unknown as readonly Asset[])

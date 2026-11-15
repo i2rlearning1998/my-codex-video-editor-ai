@@ -83,6 +83,12 @@ test('[LAY-048] the Player bar is the top edge of the timeline and its resize gr
   await expect(page.locator('.editor-shell')).not.toHaveClass(
     /timeline-collapsed/,
   );
+  // ROUND-C1 F1: Expand animates the row for 300 ms; the bar is measured
+  // only once it has stopped moving (measured mid-animation, the press
+  // landed where the bar had been: the CI failure, reproduced here).
+  await expect(page.locator('.editor-shell')).not.toHaveClass(
+    /timeline-animating/,
+  );
   // At most 60% of the window, and the stage keeps 400 px (FX11-004).
   from = await emptySpot(page);
   await page.mouse.move(from.x, from.y);
