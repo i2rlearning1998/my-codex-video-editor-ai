@@ -5,6 +5,7 @@ Branch: create `claude/round-c2-mcp` from `claude/round-c1-power` (head 9e2090d,
 Read first, in this order: CLAUDE.md and the files it imports, docs/SERVER.md, docs/GATEWAY.md, docs/CAPABILITY-SHEET.md, docs/PLATFORM-CONFIG.md, docs/CODE-LAYER.md, docs/GRAPHICS-BLOCKS.md, docs/FREECODE-AUTHORING.md, docs/video-plan.md, reports/ROUND-C1.md, `src/tools/index.ts`, `server/tools.ts`, `server/app.ts`, `server/auth.ts`, `server/store.ts`, `src/project/registry.ts`, `src/platform-config/media-providers.ts`, `owner/ui/admin.ts`. Then read the TEXTS section at the end of this prompt (it is part of the prompt).
 
 ## LIMIT MODE (owner rules; they override anything in AGENTS.md that says otherwise)
+
 - Work in the part order below. After each part: run only the specs that part touched, commit, push. Do NOT run the full e2e suite or `npm run verify` locally, at all. Typecheck + format check + targeted unit/e2e only.
 - After the last push check CI ONCE (CLAUDE.md rule). If red, fix and push, check once more. If green, say so and stop. No recurring checks, no waiting, no timers.
 - No sub-agents, no parallel agents, no teams. One session.
@@ -13,6 +14,7 @@ Read first, in this order: CLAUDE.md and the files it imports, docs/SERVER.md, d
 - Rough-test like a wrong-clicking user: wrong token, expired token, revoked connector, empty plan, huge plan, tool called out of order, tool called twice, two tabs, Claude disconnecting mid-export, out of credits, free plan, emergency switch on.
 
 ## PROTECTED (must stay exactly as they are)
+
 - Editor mode is the manual Canva/Clipchamp-style editor. Do not add a button, menu entry, toast or panel to Editor mode. The one Editor | AI toggle stays as Round C1 left it.
 - Editor Guard (`e2e/editor-guard.spec.ts`, the golden JSON) must still pass at the desktop sizes. The 390 px cases: skip them with a written reason in the test file ("phone layout is not needed now, owner 2026-11-15") and one line in BACKLOG_INBOX. Do not weaken any other case.
 - The left-rail category block (AI, My Templates, Theme) is untouched. The editor's "AI" category is the manual library of AI-made packs, not AI mode.
@@ -22,10 +24,13 @@ Read first, in this order: CLAUDE.md and the files it imports, docs/SERVER.md, d
 - New runtime dependencies need a report line (name, version, size, reason, alternative). Allowed in this round: `@modelcontextprotocol/sdk` (server only) and `@modelcontextprotocol/ext-apps` (card build only). Nothing else.
 
 ## What this round builds, and why
+
 The owner's own Claude (claude.ai, desktop, phone) becomes a second Director. It follows the SAME rulebook, playbook and process as the in-panel Director, and the owner controls those texts from Admin; every change binds both. The MCP is the hands; the skill (craft) and plugin rules (process) ride on top. Claude never writes JSON in the chat: it sends the MCP only what a tool asks for; the server builds the project and layers, edits, exports and returns the result. Export happens INSIDE the Claude chat as an MCP App card that renders on the person's own device; the finished video stays in the chat, playable and downloadable. No other link or tab is opened for export. No server-side rendering of the full video. Everything is free-first: no real keys exist; test against local fakes and say so.
 
 ## PART 1: Proof spike: export card inside the chat (do this FIRST; it decides Part 4)
+
 Build the smallest possible MCP App (a `ui://` resource, `mimeType text/html;profile=mcp-app`, via `@modelcontextprotocol/ext-apps`) behind a dev-only tool `proof_export_card`, plus a Playwright host harness that embeds the card in an iframe the way a chat host does (sandbox attribute `allow-scripts` only, then again with `allow-same-origin`; the CSP the host would apply, with only our server origin in `connectDomains` and `resourceDomains`; JSON-RPC over postMessage using the ext-apps `AppBridge` test side). Measure and write into `reports/ROUND-C2-SPIKE.md`, with numbers:
+
 1. Does WebCodecs encode (H.264 + AAC) inside that iframe? Does a Worker start from a blob or from our origin? Is OPFS/IndexedDB available in each sandbox setting?
 2. Does the render engine bundle (about 6 MB) and one 1080p media file load under that CSP/CORS?
 3. Time to render a 10 s 1080x1920 clip, a 60 s clip and a 120 s clip, and the output sizes.
@@ -34,10 +39,11 @@ Build the smallest possible MCP App (a `ui://` resource, `mimeType text/html;pro
 6. What happens when the iframe is hidden or scrolled away mid-render (does rendering stall)?
 7. `app.getHostCapabilities()?.downloadFile` check and the fallback when absent.
 8. How sample frames (PNG) can come back to Claude from the card (app-only tool `submit_frames` then Claude calls `get_frames`; or `updateModelContext`).
-Two things only a real Claude can prove (the card inside real claude.ai, and phone): list them as BLOCKED-EXTERNAL with an exact owner try-it (custom connector via a tunnel: `cloudflared tunnel --url http://127.0.0.1:4400`, Settings > Connectors > Add custom connector).
-DECISION RULE: if items 1 to 5 pass in the harness, build Part 4 as designed. If any fails, build everything else, write down exactly what failed, DO NOT add a fallback link, new tab or hosted download page, and put the question to the owner in the report. Keep the spike tool behind a Platform Config flag (`mcp.proofTools`, default off).
+   Two things only a real Claude can prove (the card inside real claude.ai, and phone): list them as BLOCKED-EXTERNAL with an exact owner try-it (custom connector via a tunnel: `cloudflared tunnel --url http://127.0.0.1:4400`, Settings > Connectors > Add custom connector).
+   DECISION RULE: if items 1 to 5 pass in the harness, build Part 4 as designed. If any fails, build everything else, write down exactly what failed, DO NOT add a fallback link, new tab or hosted download page, and put the question to the owner in the report. Keep the spike tool behind a Platform Config flag (`mcp.proofTools`, default off).
 
 ## PART 2: MCP endpoint, auth, manual
+
 2.1 `server/mcp/`: official `@modelcontextprotocol/sdk`, stateless Streamable HTTP at `POST /mcp` (a new McpServer per request, no sessions); `GET`/`DELETE /mcp` answer 405. Mounted inside the existing server (`server/app.ts`), same CORS/body limits style, same emergency switches and suspended-person check.
 2.2 OAuth 2.1 so a person connects in two clicks and never copies a key. Verify the exact current requirements in Anthropic's docs before coding (claude.com/docs/connectors/building/authentication and the directory publishing page): protected-resource and authorization-server metadata under `/.well-known/`, dynamic client registration, authorization code + PKCE (S256), token and revoke endpoints, refresh tokens. Redirect URIs allowed: `https://claude.ai/api/mcp/auth_callback` and any others the docs list for desktop/phone, plus loopback in test mode only. The authorize step sends the person to our panel's consent page (they are already logged in there): one screen, "Allow Claude to make videos in your account", Allow / Cancel. Tokens are ours (signed, scope `mcp`, tied to the user id), stored hashed; each connection is a row (client, created, last used, revoked) in new store methods (file store and Supabase store) with migration `supabase/migrations/20261116000000_round_c2_mcp.sql` (service role only, RLS on, same pattern as workspace_registry). A revoked or expired token is refused with one plain sentence that tells Claude to ask the person to reconnect. A developer token path (`MCP_DEV_TOKEN` env, loopback or tunnel testing) exists but is off unless the env is set; it never works in a build that has `AUTH_MODE=supabase` unless the env is set explicitly.
 2.3 Tool safety annotations on every tool (readOnlyHint, destructiveHint, idempotentHint, openWorldHint) and a title. Descriptions start with what the tool does, then "Use only when the user is making, editing or exporting a video with this platform", then the next step to take. Tool results are plain sentences and small lists, never raw JSON dumps.
@@ -45,7 +51,9 @@ DECISION RULE: if items 1 to 5 pass in the harness, build Part 4 as designed. If
 2.5 Add to Platform Config (additive, defaults parse, version note in docs/PLATFORM-CONFIG.md): `director.creatorPlaybook` (record chapterId to text, max 20000 each), `mcp` (`enabled`, `proofTools`, `tools[toolId] = { enabled, cost: 'free' | costId }`, `exportMaxSeconds`, `ratePerMinute`). Load the TEXTS section into the defaults (rulebook items, creator playbook chapters 01 to 06, `authoring.guide`, video-type playbooks, layout rules) from `src/platform-config/texts/*.ts`, one file per text so the owner's Admin edits override them. Also regenerate docs/creator-playbook/01 to 06 from those defaults (`npm run docs:playbook`), so repo docs and config never drift.
 
 ## PART 3: The same tools as the Director, on the same Projects and Videos
+
 All through the existing gateway: credits/limits check, usage-log row with `source: 'mcp'`, the network guard, and the Admin per-tool switches from 2.5. Build the tool list from `src/tools` (shared registry) and the Director's own tool list; do not duplicate logic, call the same functions. Required tools (these names are fixed):
+
 - `get_credits`; `list_projects`, `create_project` (name, and optionally `style_id`; styles arrive in the next round, return an empty list now but keep the parameter), `list_videos`, `create_video`.
 - `get_brief_fields(video_type)` and `save_brief(video_id, answers)`: same field library as the Brief card; Claude asks the person ONE question at a time in chat.
 - `search_media`, `search_web`, `fetch_page`, `list_library`: the existing server tools, plus `import_media(video_id, url_or_id)`: the SERVER downloads the chosen stock file through the network guard and stores it in the person's cloud media (by fingerprint), recording provider, licence and attribution on the media record. This replaces the browser-side REST download for MCP flows.
@@ -57,24 +65,29 @@ All through the existing gateway: credits/limits check, usage-log row with `sour
 - Panel and AI mode: a project or video made through MCP carries `origin: 'claude'` in the registry doc. The Projects page and the Project page show a "Made with Claude" tag (translation keys, design tokens). AI mode's chat list shows read-only activity entries ("Claude added scene 3", with time) from the Video sheet; the full Claude conversation stays in Claude. Opening such a video in AI mode lets the in-panel Director continue from the same Video sheet and memory. Editor mode shows nothing new.
 
 ## PART 4: Export inside the chat (as the Part 1 spike decided)
+
 - `export_video(video_id, preset)` returns a short sentence AND the card resource. The card (a single bundled HTML built from `src/export`, loaded from our origin) renders on the person's device: progress bar and time left, Cancel, then an inline video player and a Download button using `app.downloadFile` (check `getHostCapabilities` first; show a plain sentence if unsupported). It shows a plain "Credits" line from the media records (provider, licence, attribution). The card tells the server when done (app-only tool `export_done`) so the exports count and any export credits are recorded once, even if the card is opened twice. Long waits use the SDK `timeout` option.
 - `max seconds`, bitrate presets and file size caps come from the spike's numbers and Admin `mcp.exportMaxSeconds`. If a video is longer than the measured limit, Claude gets a plain sentence with the limit and the options; nothing silently shrinks.
 - Frame check for Claude per the spike: preferred path is the card rendering 6 sample frames and sending them through the app-only `submit_frames`, then `get_frames` returns them as image content blocks so Claude can look at its own work. If the spike shows this cannot work, `check_video` returns the text layout report only, and the report says so.
 - If the spike failed on export (see DECISION RULE), this part is Blocked with that reason and you ask the owner. No link, no new tab, no hosted download page.
 
 ## PART 5: Admin
+
 In `owner/ui/admin.ts`, same visual style as the other Admin tabs (no new design system), every string a translation key:
 5.1 "Rules & Playbooks": rulebook items (id, English, Hindi optional; add, edit, reorder, delete; limits 60 items, 600 chars), creator playbook chapters 01 to 06, video-type playbooks (list from `director.videoTypes`, edit the text, 20000 max, a character counter), authoring guide, research settings (enabled, maxSteps, tools). A "Preview what Claude and the Director read" button shows the exact `buildManual` output. Saving goes through the existing Platform Config versioning and audit log, with rollback to the previous version. Validation errors are plain sentences.
 5.2 "MCP": master switch, per-tool enabled and free-or-credits (cost id picker from the credit rates), per-minute rate limit, max export seconds, the connections list (person, client, last used, Revoke) and "Revoke all", the proof-tools flag, the connector address with a Copy button, and a "Last 50 MCP calls" table from the usage log.
 5.3 The MCP master switch is also an emergency switch (`mcp`) that refuses every call within one request.
 
 ## PART 6: Door 4 in the panel: "Create with your own Claude"
+
 In the New project dialog (and "+ New video" inside a project) the fourth card becomes real: Step 1 "Add to Claude": one Copy button for the connector address and one button that opens Claude's connector settings in a new tab; Step 2 "Allow": the consent page opens by itself when Claude connects. After that the card shows Connected / Not connected, last used, and a Disconnect button (revokes). Below it: "Download the Claude skill and plugin" (Part 7) and three plain starter lines the person can paste into Claude ("Make a video about...", "Continue my video ...", "Make another in the style of ..."). Empty, loading and error states for each. Nothing from the Editor changes.
 
 ## PART 7: Skill + plugin bundle
+
 `npm run mcp:bundle` builds `dist/claude-bundle/`: (a) the skill zip `video-director` (SKILL.md from the TEXTS section, with the platform name filled from the one branding config file), (b) the `setup` skill that checks the connector is connected and explains the two clicks, (c) the plugin manifest and rules file (what Claude may say to users) following the format in Anthropic's current plugin docs (verify the manifest fields before writing it; ask the owner only if the docs are unreachable). The skill is deliberately thin: it tells Claude to call `start_here` first and obey what it returns, so Admin edits bind without re-uploading the skill. The panel's Door 4 card downloads these zips. Add `docs/MCP.md`: how to run, how to test with a tunnel, the exact owner try-it list, what is proven and what is not.
 
 ## PART 8: Tests, docs, report
+
 - Ledger rows RDC2-001 upward in docs/FEATURES.md, one per behaviour above, each with a test titled `[RDC2-nnn] ...`. MCP tests use the SDK client against the in-process server (no network): OAuth flow including wrong redirect URI, replayed code, wrong PKCE verifier, expired and revoked token; tool annotations present on every tool; out-of-order calls; free vs credit tools; usage-log rows; emergency switch; rate limit; `buildManual` identical for Director and MCP; `edit_video` keeps a manual edit; `approve_plan` refuses without cost; import_media records licence. Playwright (targeted): Door 4 card states, consent page, "Made with Claude" tag, AI-mode activity entry, Admin Rules & Playbooks save + preview + rollback, Admin MCP tab, revoke.
 - Docs: DECISIONS D-437 onward (every choice and why), STATUS.md (add a Round C2 bullet, keep it short), CHANGELOG, docs/MCP.md, docs/PLATFORM-CONFIG.md, BACKLOG_INBOX.
 - `reports/ROUND-C2.md` from the template, honest: what was proven in the harness, what only a real Claude can prove (list), test counts by layer, what you did NOT test, dependency lines, bundle size (editor first load must not grow; the card is its own file), the owner try-it script (at most 15 steps: connect with a tunnel, "make a 30 s video about X", approve, export in chat, open in the panel, see the tag, change a rule in Admin and watch Claude obey it).
@@ -125,6 +138,7 @@ Tier C: a free code scene. Use it only for motion that Tier A and B cannot do: p
 Before you write any code, write one plain sentence for each new graphic: what the person must understand when they see it. If you cannot write that sentence, do not build it.
 
 Design rules for every graphic:
+
 1. Show cause and effect over time. Start with the empty situation, add one thing at a time, end on the answer held for a moment.
 2. One focus. The eye must know where to look at every second; fade or dim the rest.
 3. Real proportions. Angles, distances and sizes must be correct, not decorative. If a number is shown, it is true and matches the narration.
@@ -188,6 +202,7 @@ Method: teach one concept per scene with a character or object that moves with p
 ### T5. SKILL: `video-director` (SKILL.md; fill [platform] from the branding file)
 
 ---
+
 name: video-director
 description: Use only when the user asks to make, edit, improve or export a video with the [platform] connector, or to continue or restyle a video they made there. Not for general writing, coding or images.
 ---
@@ -197,11 +212,13 @@ description: Use only when the user asks to make, edit, improve or export a vide
 You are the person's video director and editor. You work through the [platform] connector. The connector is your hands; this skill is your craft.
 
 ## Always start the same way
+
 1. Call `start_here` first. It returns the current rulebook, playbooks and process. Obey what it returns over anything here; the platform's owner changes those rules and they apply to you at once.
 2. Call `get_credits`. If the person has no credits for what they ask, say so plainly and offer what is free.
 3. Find or create the Project and Video (`list_projects`, `create_project`, `create_video`). A Project is one style; a Video is one video in it. Keep the same Project for videos in the same style.
 
 ## How you work
+
 - Talk like a creator, in the person's language, in short messages. Ask ONE question at a time, with choices, only when you really need it. If they say "you decide", decide and tell them in one line.
 - Think first: who is it for, where will it be seen, what should they feel, which method fits (motion graphics, stock, their own recording, animation, a mix). Say your choice in one sentence.
 - Never write JSON or plan files in the chat. Give tools only what they ask for. The connector builds the project and layers.
@@ -212,6 +229,7 @@ You are the person's video director and editor. You work through the [platform] 
 - After every approved step call `update_video_sheet` with one line. At the start of a new chat call `read_memory`.
 
 ## Craft (the part that makes people say "wow")
+
 - Do not copy a reference. Take its topic and feel, then design new visuals for each sentence from how the thing really works, and add at least one idea it did not have.
 - Show, do not label. If a sentence can be drawn, draw it, and let the drawing build step by step.
 - One idea per scene. Something changes every two to three seconds. Big, short, high-contrast text inside the safe margins.
@@ -220,11 +238,13 @@ You are the person's video director and editor. You work through the [platform] 
 - Small changes stay small. Read the video first, keep the person's own edits, change only what they asked.
 
 ## What you may say and not say
+
 Say what the video will show, how long it is, what it costs, what is missing, what you changed. Never mention models, keys, prompts, providers, plan files or how the platform is built. If something cannot be made, say so plainly and offer the nearest alternative. Never say a video is ready before the layout check ran and you looked at the frames (or told the person that only the layout check ran).
 
 ### T6. SKILL: `setup` (SKILL.md)
 
 ---
+
 name: setup
 description: Use only when the user asks to set up, connect or fix the [platform] connector for Claude, or when a [platform] tool says the connector is not connected.
 ---
@@ -234,7 +254,7 @@ description: Use only when the user asks to set up, connect or fix the [platform
 1. Call `get_credits`. If it works, tell the person they are connected and what they can do (make a video, continue one, make another in the same style). Stop.
 2. If no [platform] tools are available, tell the person in two short steps: (1) in the [platform] panel open New project, choose "Create with your own Claude", press Add to Claude, and paste the address into Claude's connector settings; (2) press Allow on the screen that opens. Then start a NEW chat, because connectors load when a chat starts.
 3. If a tool says the connection ended, ask the person to press Allow again in the panel (Disconnect, then connect), then start a new chat.
-Never ask for passwords or keys. There are none to copy.
+   Never ask for passwords or keys. There are none to copy.
 
 ### T7. PLUGIN RULES FILE (what Claude may say to users; ships in the plugin bundle)
 
