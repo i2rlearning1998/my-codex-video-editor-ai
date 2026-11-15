@@ -155,6 +155,8 @@ export class Director {
   #projectId = '';
   #queue: Send[] = [];
   #abort: AbortController | null = null;
+  /** ROUND-C1 F2: the plan being made (Stop aborts it). */
+  #planAbort: AbortController | null = null;
   #busy = false;
   /** The gateway server could not be reached at the last check. */
   #unreachable = false;
@@ -272,12 +274,37 @@ export class Director {
             ledger.refund(e.id, `${e.key}:reload`, 'interrupted');
       }
     }
+    // ROUND-C1 F2: planning cut off by a reload (during the model call or
+    // the frame check) made no plan: the Brief card is offered again and
+    // any open planning hold in this browser's ledger goes back in full.
+    const planCut = this.#flow.stage === 'plan' && !this.#flow.plan;
+    if (planCut) {
+      this.#flow.stage = 'brief';
+      if (!s.remote) {
+        const ledger = s.ledger(user.id);
+        const open = ledger.reservations();
+        for (const e of ledger.history())
+          if (
+            e.type === 'reserve' &&
+            e.key.startsWith(`plan-${this.#videoId}-`) &&
+            open.get(e.id)?.state === 'open'
+          )
+            ledger.refund(e.id, `${e.key}:reload`, 'interrupted');
+      }
+    }
     this.#open.clear();
     this.#chat = mem.currentChat(this.#videoId);
     if (!this.#chat.turns.length && this.#c.director.greeting)
       this.#director(this.#say(this.#c.director.greeting), {}, false);
     this.#renderThread();
     if (interrupted) this.#director(this.#line('build.interrupted'));
+    if (planCut) {
+      this.#saveFlow();
+      this.#director(this.#line('plan.interrupted'));
+      // The Brief card it came from is active again (Make the plan).
+      const b = this.#lastCard('brief');
+      if (b) this.#repaint(b.id);
+    }
     this.#reconcile(true);
     this.#saveFlow();
     // The panel's Home box hands over the first message.
@@ -967,12 +994,28 @@ export class Director {
     const { s, user, ctx } = this.#env;
     this.#refused = false;
     this.#ui.orb('thinking');
-    const wait = h('div', {
-      class: 'ai-msg',
-      'data-role': 'director',
-      id: 'ai-plan-working',
+    // ROUND-C1 F2: planning (with its frame and vision checks) can be
+    // stopped; a stop charges nothing and keeps the brief.
+    const stop = new AbortController();
+    this.#planAbort = stop;
+    const status = h('span', {
+      class: 'ai-plan-status',
       text: t('plan.working'),
     });
+    const stopButton = h('button', {
+      type: 'button',
+      class: 'ai-btn sm quiet ai-plan-stop',
+      id: 'ai-plan-stop',
+      text: t('plan.stop'),
+    });
+    stopButton.onclick = () => stop.abort();
+    const wait = h(
+      'div',
+      { class: 'ai-msg', 'data-role': 'director', id: 'ai-plan-working' },
+      status,
+      ' ',
+      stopButton,
+    );
     this.#ui.thread.append(wait);
     this.#scroll();
     try {
@@ -1008,10 +1051,51 @@ export class Director {
         videoType: this.#flow.typeId || undefined,
         kit: this.#host.graphicsKit(),
         research: (tool, input) => this.#research(tool, input),
+        // ROUND-C1 F2: sample frames of the new graphics, and the vision
+        // check's frames (both drawn off screen by the editor's renderer).
+        frames: async (p) => {
+          status.textContent = this.#line('plan.checkingFrames');
+          const { sampleGraphics } = await import('../ui/sample-frames');
+          return sampleGraphics(p, { signal: stop.signal });
+        },
+        visionFrames: async (p) => {
+          status.textContent = this.#line('plan.lookingFrames');
+          const { planFrames } = await import('../ui/sample-frames');
+          const { browserRenderFrames } = await import('../ui/render-frames');
+          // Through the shared tools (renderFrames), drawn by the browser.
+          return planFrames(p, {
+            signal: stop.signal,
+            tools: {
+              config: this.#c,
+              planId: s.planOf(user.id).id,
+              userId: user.id,
+              media: { builtin: {}, rest: async () => [] },
+              renderFrames: browserRenderFrames(stop.signal),
+              signal: stop.signal,
+            },
+          });
+        },
+        onStep: (step) => {
+          if (stop.signal.aborted)
+            throw new DOMException('The plan was stopped.', 'AbortError');
+          if (/^(research:|check-failed|frames-bad|vision-problems)/.test(step))
+            status.textContent = t('plan.working');
+        },
         ...(e2eScript() ? { script: e2eScript()! } : {}),
       });
+      if (stop.signal.aborted)
+        throw new DOMException('The plan was stopped.', 'AbortError');
       await s.sync(user.id).catch(() => undefined);
       this.#ui.credits();
+      if (result.ok && result.notes?.length) {
+        const problems = result.notes.filter((n) => n !== 'vision-skipped');
+        if (result.notes.includes('vision-skipped'))
+          this.#director(this.#line('plan.visionSkipped'));
+        if (problems.length)
+          this.#director(
+            this.#line('plan.visionProblems', { problems: problems.join(' ') }),
+          );
+      }
       if (!result.ok) {
         this.#director(result.message, { tone: 'error' });
         if (!rewrite) this.#setStage('brief');
@@ -1045,7 +1129,16 @@ export class Director {
       );
       if (old && old.id !== turn.id) this.#repaint(old.id);
       this.#ui.openDrawer('plan');
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') throw e;
+      await s.sync(user.id).catch(() => undefined);
+      this.#ui.credits();
+      this.#director(this.#line('plan.cancelled'));
+      if (!rewrite) this.#setStage('brief');
+      const b = this.#lastCard('brief');
+      if (b) this.#repaint(b.id);
     } finally {
+      if (this.#planAbort === stop) this.#planAbort = null;
       wait.remove();
     }
   }

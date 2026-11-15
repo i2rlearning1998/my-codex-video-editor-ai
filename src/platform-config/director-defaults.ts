@@ -477,6 +477,30 @@ export const DIRECTOR_LINES: Record<string, LT> = {
     'I cannot make that here. I can do one of these instead.',
     'यह मैं यहाँ नहीं बना सकता। इसकी जगह इनमें से कुछ कर सकता हूँ।',
   ),
+  'plan.checkingFrames': L(
+    'Drawing sample frames of the new graphics to check them…',
+    'नए ग्राफ़िक की जाँच के लिए नमूना फ़्रेम बना रहा हूँ…',
+  ),
+  'plan.lookingFrames': L(
+    'Looking at the frames of the built video…',
+    'बने हुए वीडियो के फ़्रेम देख रहा हूँ…',
+  ),
+  'plan.cancelled': L(
+    'I stopped making the plan. Nothing was charged; your brief is kept.',
+    'मैंने प्लान बनाना रोक दिया। कुछ नहीं कटा; आपका ब्रीफ़ रखा है।',
+  ),
+  'plan.interrupted': L(
+    'The page was reloaded while I was making the plan, so none was made and nothing was charged. Here is your brief again.',
+    'प्लान बनाते समय पेज दोबारा खुला, इसलिए कोई प्लान नहीं बना और कुछ नहीं कटा। यह रहा आपका ब्रीफ़ फिर से।',
+  ),
+  'plan.visionSkipped': L(
+    'I could not look at the frames myself: this model cannot see pictures. The layout checks still ran.',
+    'मैं फ़्रेम ख़ुद नहीं देख सका: यह मॉडल तस्वीरें नहीं देख सकता। लेआउट की जाँच फिर भी हुई।',
+  ),
+  'plan.visionProblems': L(
+    'Looking at the frames, I still see: {problems}',
+    'फ़्रेम देखकर मुझे अब भी यह दिखता है: {problems}',
+  ),
   'graphic.needsModel': L(
     'Writing or redrawing a graphic needs the real Director model, which is not connected here; I can still change its colours, speed and settings.',
     'ग्राफ़िक लिखने या दोबारा बनाने के लिए असली Director मॉडल चाहिए, जो यहाँ जुड़ा नहीं है; मैं फिर भी इसके रंग, गति और सेटिंग बदल सकता हूँ।',

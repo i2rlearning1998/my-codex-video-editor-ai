@@ -21,7 +21,18 @@ const spec = (
       max_completion_tokens: req.maxOutputTokens ?? 4096,
       messages: [
         ...(req.system ? [{ role: 'system', content: req.system }] : []),
-        ...req.messages.map((m) => ({ role: m.role, content: m.content })),
+        ...req.messages.map((m) => ({
+          role: m.role,
+          content: m.images?.length
+            ? [
+                ...m.images.map((i) => ({
+                  type: 'image_url',
+                  image_url: { url: `data:${i.mime};base64,${i.base64}` },
+                })),
+                { type: 'text', text: m.content },
+              ]
+            : m.content,
+        })),
       ],
       ...(req.json ? { response_format: { type: 'json_object' } } : {}),
     },

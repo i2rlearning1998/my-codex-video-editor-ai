@@ -107,6 +107,7 @@ const S = {
     'अभी कोई प्लान नहीं। Director को बताएँ कैसा वीडियो चाहिए।',
   ],
   'plan.working': ['Writing the plan…', 'प्लान लिख रहा हूँ…'],
+  'plan.stop': ['Stop', 'रोकें'],
   'assets.title': ['Files this plan needs', 'इस प्लान को चाहिए'],
   'assets.make': ['Make it here', 'यहीं बनाएँ'],
   'assets.upload': ['Upload', 'अपलोड'],

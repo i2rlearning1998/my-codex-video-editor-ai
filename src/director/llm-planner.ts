@@ -27,6 +27,7 @@ import {
   powerVars,
   type ResearchRunner,
   type SampleFrames,
+  type VisionCheck,
 } from './plan-loop';
 import { allowedMethods } from './methods';
 import {
@@ -286,6 +287,8 @@ export type LlmPlanResult =
       warnings: string[];
       repaired: boolean;
       credits: number;
+      /** ROUND-C1 F2: 'vision-skipped', or problems the vision check still saw. */
+      notes?: readonly string[];
     }
   | { ok: false; message: string; errors: string[]; credits: 0 };
 
@@ -298,6 +301,11 @@ export interface LlmPlanInput extends PlanContext {
   readonly research?: ResearchRunner | undefined;
   /** ROUND-C1: draws sample frames of the plan's new graphics (the editor). */
   readonly frames?: SampleFrames | undefined;
+  /**
+   * ROUND-C1 F2: frames of the whole plan built headless, for the vision
+   * check (run only when the planning model has vision).
+   */
+  readonly visionFrames?: VisionCheck['frames'] | undefined;
   /** Test only (DEV/e2e): the offline model's scripted answers, in order. */
   readonly script?: readonly string[] | undefined;
   readonly onStep?: ((step: string) => void) | undefined;
@@ -393,6 +401,9 @@ export async function llmPlan(x: LlmPlanInput): Promise<LlmPlanResult> {
         }),
       research: x.research,
       frames: x.frames,
+      vision: x.visionFrames
+        ? { capable: !!model?.capabilities.vision, frames: x.visionFrames }
+        : undefined,
       onStep: x.onStep,
     });
   if (scripted) {
@@ -408,6 +419,7 @@ export async function llmPlan(x: LlmPlanInput): Promise<LlmPlanResult> {
           ...(r.value as Extract<ModelPlanCheck, { ok: true }>),
           repaired: r.repaired,
           credits: 0,
+          notes: r.notes,
         }
       : {
           ok: false,
@@ -442,6 +454,7 @@ export async function llmPlan(x: LlmPlanInput): Promise<LlmPlanResult> {
       ...(r.value as Extract<ModelPlanCheck, { ok: true }>),
       repaired: r.repaired,
       credits,
+      notes: r.notes,
     };
   }
   await job.fail();

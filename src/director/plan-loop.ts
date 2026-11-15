@@ -31,11 +31,27 @@ export type ResearchRunner = (
   input: unknown,
 ) => Promise<{ ok: boolean; text: string }>;
 /** Draws sample frames of a plan (the editor builds it headless and renders). */
-export type SampleFrames = (
-  plan: VideoPlan,
-) => Promise<
-  readonly { graphic: string; time: number; blank: boolean; outside: boolean }[]
+export type SampleFrames = (plan: VideoPlan) => Promise<
+  readonly {
+    graphic: string;
+    time: number;
+    blank: boolean;
+    outside: boolean;
+    /** The graphic threw, or ran past its time budget (a loop). */
+    error?: string | undefined;
+  }[]
 >;
+/**
+ * ROUND-C1 F2: the vision check. `capable` is false when the planning model
+ * has no vision (the check is skipped with a plain note); `frames` draws one
+ * small PNG per scene of the plan built headless (base64, no data: prefix).
+ */
+export interface VisionCheck {
+  readonly capable: boolean;
+  readonly frames: (
+    plan: VideoPlan,
+  ) => Promise<readonly { readonly scene: string; readonly base64: string }[]>;
+}
 export interface LoopInput {
   readonly config: PlatformConfig;
   readonly plan: Plan;
@@ -48,6 +64,7 @@ export interface LoopInput {
   readonly repairText: (errors: string[]) => string;
   readonly research?: ResearchRunner | undefined;
   readonly frames?: SampleFrames | undefined;
+  readonly vision?: VisionCheck | undefined;
   /** Logged steps (tests and the build card read them). */
   readonly onStep?: ((step: string) => void) | undefined;
 }
@@ -57,6 +74,8 @@ export type LoopResult =
       readonly value: unknown;
       readonly repaired: boolean;
       readonly steps: readonly string[];
+      /** ROUND-C1 F2: 'vision-skipped' or the vision check's open problems. */
+      readonly notes: readonly string[];
     }
   | {
       readonly ok: false;
@@ -149,6 +168,8 @@ export async function planLoop(x: LoopInput): Promise<LoopResult> {
   }
   // (2) The plan, checked; one repair with the exact errors.
   let repaired = false;
+  let visionFixed = false;
+  const notes: string[] = [];
   for (let attempt = 0; attempt < 2; attempt++) {
     if (attempt > 0) {
       repaired = true;
@@ -179,7 +200,7 @@ export async function planLoop(x: LoopInput): Promise<LoopResult> {
     const plan = (checked.value as { plan: VideoPlan }).plan;
     if (x.frames && plan.defs?.blocks.length) {
       const frames = await x.frames(plan);
-      const bad = frames.filter((f) => f.blank || f.outside);
+      const bad = frames.filter((f) => f.error || f.blank || f.outside);
       if (bad.length) {
         step(`frames-bad:${bad.map((f) => f.graphic).join(',')}`);
         if (attempt > 0)
@@ -192,19 +213,84 @@ export async function planLoop(x: LoopInput): Promise<LoopResult> {
       }
       step('frames-ok');
     }
-    return { ok: true, value: checked.value, repaired, steps };
+    // (4) The vision check: one look at the built frames by a model with
+    // vision; problems get one fix call. Without vision: a plain note.
+    if (x.vision) {
+      if (!x.vision.capable) {
+        step('vision-skipped');
+        if (!notes.includes('vision-skipped')) notes.push('vision-skipped');
+      } else {
+        const shots = await x.vision.frames(plan);
+        const problems = shots.length ? await askVision(x, plan, shots) : [];
+        if (problems === null) step('vision-unreadable');
+        else if (problems.length) {
+          step(`vision-problems:${problems.length}`);
+          if (attempt === 0 && !visionFixed) {
+            visionFixed = true;
+            messages.push({
+              role: 'user',
+              content: x.repairText(
+                problems.map((p) => `Seen in the frames: ${p}`),
+              ),
+            });
+            continue;
+          }
+          notes.push(...problems);
+        } else step('vision-ok');
+      }
+    }
+    return { ok: true, value: checked.value, repaired, steps, notes };
   }
   return { ok: false, errors: ['The plan could not be checked.'], steps };
+}
+/** Asks the model with vision; the problems it lists, or null when unreadable. */
+async function askVision(
+  x: LoopInput,
+  plan: VideoPlan,
+  shots: readonly { scene: string; base64: string }[],
+): Promise<string[] | null> {
+  const list = plan.scenes
+    .map(
+      (s, i) => `${i + 1}. ${s.id}: ${clip(s.narration ?? s.title ?? '', 160)}`,
+    )
+    .join('\n');
+  const text = await x.ask({
+    ...x.base,
+    json: true,
+    messages: [
+      {
+        role: 'user',
+        content: `These are frames of the video built from your plan, one per scene in this order:\n${list}\nDoes this match the plan? What is wrong (text cut off or unreadable, empty frames, graphics outside the picture, wrong order)? Answer JSON only: {"matches": true or false, "problems": ["one short sentence each"]}.`,
+        images: shots.map((s) => ({ mime: 'image/png', base64: s.base64 })),
+      },
+    ],
+  });
+  try {
+    const raw = x.extract(text) as { matches?: unknown; problems?: unknown };
+    const problems = Array.isArray(raw?.problems)
+      ? raw.problems
+          .filter((p): p is string => typeof p === 'string' && !!p.trim())
+          .slice(0, 8)
+      : [];
+    return raw?.matches === true && !problems.length
+      ? []
+      : problems.map((p) => clip(p, 300));
+  } catch {
+    return null;
+  }
 }
 const frameError = (f: {
   graphic: string;
   time: number;
   blank: boolean;
   outside: boolean;
+  error?: string | undefined;
 }) =>
-  f.blank
-    ? `New graphic "${f.graphic}" draws nothing at ${f.time.toFixed(1)} s (a blank frame). Draw it inside the canvas from the start.`
-    : `New graphic "${f.graphic}" draws outside the canvas at ${f.time.toFixed(1)} s. Keep every shape inside size.width and size.height.`;
+  f.error
+    ? `New graphic "${f.graphic}" did not draw at ${f.time.toFixed(1)} s: ${clip(f.error, 200).replace(/\.$/, '')}. Make it run without errors and finish each frame quickly (no endless loops).`
+    : f.blank
+      ? `New graphic "${f.graphic}" draws nothing at ${f.time.toFixed(1)} s (a blank frame). Draw it inside the canvas from the start.`
+      : `New graphic "${f.graphic}" draws outside the canvas at ${f.time.toFixed(1)} s. Keep every shape inside size.width and size.height.`;
 
 /** The layout errors of a plan as plain sentences with their fix. */
 export function layoutErrors(c: PlatformConfig, plan: VideoPlan): string[] {

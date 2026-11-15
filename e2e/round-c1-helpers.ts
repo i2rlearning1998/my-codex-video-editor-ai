@@ -148,8 +148,18 @@ export function proofConfig(edit: (c: Record<string, any>) => void = () => {}) {
   return platformConfigSchema.parse(c);
 }
 /** Puts the config, the scripted answers and the fake files in place. */
-export async function stage(page: Page, plan: unknown, config = proofConfig()) {
-  const answer = JSON.stringify({ plan, upgrades: [] });
+export async function stage(
+  page: Page,
+  plan: unknown,
+  config = proofConfig(),
+  /** ROUND-C1 F2: the model's answers in order (default: the one plan). */
+  answers?: readonly unknown[],
+) {
+  const answer = JSON.stringify(
+    (answers ?? [{ plan, upgrades: [] }]).map((a) =>
+      typeof a === 'string' ? a : JSON.stringify(a),
+    ),
+  );
   await page.addInitScript(
     ([cfg, script, media]) => {
       localStorage.setItem(
@@ -171,7 +181,7 @@ export async function stage(page: Page, plan: unknown, config = proofConfig()) {
         __AIVE_E2E_MEDIA__?: unknown;
         __AIVE_E2E_FREECODE__?: string;
       };
-      w.__AIVE_E2E_PLAN_SCRIPT__ = [script];
+      w.__AIVE_E2E_PLAN_SCRIPT__ = JSON.parse(script) as string[];
       w.__AIVE_E2E_MEDIA__ = JSON.parse(media);
       w.__AIVE_E2E_FREECODE__ = 'fake';
     },
