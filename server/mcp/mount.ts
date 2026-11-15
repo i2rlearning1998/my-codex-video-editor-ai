@@ -254,6 +254,20 @@ export function createMcpMount(d: McpMountDeps) {
           revoked: await oauth.revokeConnection(id, person.userId),
         });
       }
+      // Part 3: a Claude video's media bytes for the panel (local mode).
+      const media = /^\/v1\/mcp\/media\/([0-9a-f]{32})$/.exec(p);
+      if (method === 'GET' && media) {
+        const rec = await d.store.mediaRecord(person.userId, media[1]!);
+        const bytes = rec
+          ? await d.store.mediaBytes(person.userId, media[1]!)
+          : null;
+        if (!rec || !bytes)
+          throw new McpHttpError(404, 'not-found', 'This file is missing.');
+        res.statusCode = 200;
+        res.setHeader('content-type', rec.mimeType);
+        res.setHeader('cache-control', 'no-store');
+        return void res.end(Buffer.from(bytes));
+      }
       // Part 3: the panel reads what Claude made (Projects, Videos, sheet).
       const panel = await tools.panelRoute(method, p, body, person.userId);
       if (panel !== undefined) return reply(res, 200, panel);

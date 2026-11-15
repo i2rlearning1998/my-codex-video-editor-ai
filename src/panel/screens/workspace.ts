@@ -30,6 +30,7 @@ import { empty, limitAlert, when } from './common';
 import { assetView } from './studio';
 import { memoryPanel } from './project-memory';
 import { posterArt } from '../art';
+import { madeWithClaude } from './claude';
 
 const enc = encodeURIComponent;
 const rules = (ctx: Ctx) =>
@@ -578,6 +579,8 @@ function projectCard(
       'div',
       { class: 'film-body' },
       nameEl,
+      // ROUND-C2: made through the Claude connector.
+      p.origin === 'claude' ? madeWithClaude() : null,
       h('p', {
         class: 'muted',
         'data-count': String(vids.length),
@@ -904,6 +907,7 @@ function videoCard(
       { class: 'film-body' },
       h('p', { class: 'eyebrow', text: t('rda.number', { n }) }),
       nameEl,
+      v.claude ? madeWithClaude() : null,
       h(
         'div',
         { class: 'actions' },
@@ -1330,6 +1334,8 @@ export const projectScreen: Screen = async (
     void projectScreen(ctx, [id, tab], out);
   };
   const title = h('h1', { id: 'project-title', text: p.name });
+  // ROUND-C2: the Project page shows the tag next to the name.
+  const claudeTag = p.origin === 'claude' ? madeWithClaude() : null;
   const notes = h('div', { class: 'ws-notices', id: 'video-notices' });
   const newVideo = async (how: 'style' | 'editor') => {
     const vid = await startVideo(ctx, p.id, how, notes);
@@ -1404,6 +1410,7 @@ export const projectScreen: Screen = async (
           { class: 'rda-title-row' },
           title,
           originTag(ctx, p),
+          claudeTag,
           h('button', {
             type: 'button',
             class: 'button sm ghost',
