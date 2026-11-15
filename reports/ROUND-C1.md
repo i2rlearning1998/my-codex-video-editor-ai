@@ -305,7 +305,7 @@ Specs run locally (the full suite was NOT run locally, by the brief):
 
 L4 measured in Node, not in the browser. The golden at 390 px skips the steps a phone cannot reach the same way (a rail category beyond the first five, collapsing panels, 2D Animation), and does so the same way on both trees.
 
-CI: CI_PLACEHOLDER
+CI: looked at once, right after the push of `fb0445f`. CI running: that commit's run had not been listed yet. The runs on the commit before it (`8d3499f`) had failed early, as expected: the guard spec was pushed before its golden file. Their result does not count for the final code.
 
 ## Owner tick-list (owner fills this in and sends it to Claude)
 
