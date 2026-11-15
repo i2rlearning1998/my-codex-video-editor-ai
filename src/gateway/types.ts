@@ -6,14 +6,6 @@ import type { Model, Provider } from '../platform-config';
 export interface ChatMessage {
   readonly role: 'user' | 'assistant';
   readonly content: string;
-  /**
-   * ROUND-C1 F2: pictures sent with a user message to a model that has
-   * vision (small PNG frames of a built video). Base64 without a data: prefix.
-   */
-  readonly images?: readonly {
-    readonly mime: string;
-    readonly base64: string;
-  }[];
 }
 /** What a caller asks the gateway for. */
 export interface GatewayRequest {

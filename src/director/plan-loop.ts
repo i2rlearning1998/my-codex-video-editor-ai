@@ -13,6 +13,7 @@ import type { PlatformConfig, Plan } from '../platform-config';
 import type { VideoPlan } from '../video-plan/schema';
 import type { GatewayRequest } from '../gateway/types';
 import { checkLayout } from '../video-plan/layout-check';
+import { visionRequest } from '../gateway/adapters/extras';
 
 export const RESEARCH_TOOLS = [
   'searchMedia',
@@ -254,17 +255,23 @@ async function askVision(
       (s, i) => `${i + 1}. ${s.id}: ${clip(s.narration ?? s.title ?? '', 160)}`,
     )
     .join('\n');
-  const text = await x.ask({
-    ...x.base,
-    json: true,
-    messages: [
+  // The pictures ride on the gateway's existing vision extra (P3-WIRING),
+  // which each real adapter puts in its provider's own shape.
+  const text = await x.ask(
+    visionRequest(
       {
-        role: 'user',
-        content: `These are frames of the video built from your plan, one per scene in this order:\n${list}\nDoes this match the plan? What is wrong (text cut off or unreadable, empty frames, graphics outside the picture, wrong order)? Answer JSON only: {"matches": true or false, "problems": ["one short sentence each"]}.`,
-        images: shots.map((s) => ({ mime: 'image/png', base64: s.base64 })),
+        ...x.base,
+        json: true,
+        messages: [
+          {
+            role: 'user',
+            content: `These are frames of the video built from your plan, one per scene in this order:\n${list}\nDoes this match the plan? What is wrong (text cut off or unreadable, empty frames, graphics outside the picture, wrong order)? Answer JSON only: {"matches": true or false, "problems": ["one short sentence each"]}.`,
+          },
+        ],
       },
-    ],
-  });
+      shots.map((s) => ({ mime: 'image/png', base64: s.base64 })),
+    ),
+  );
   try {
     const raw = x.extract(text) as { matches?: unknown; problems?: unknown };
     const problems = Array.isArray(raw?.problems)

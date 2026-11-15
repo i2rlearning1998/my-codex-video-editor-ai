@@ -20,12 +20,7 @@ export const googleAdapter = (transport?: Transport) =>
             : {}),
           contents: req.messages.map((m) => ({
             role: m.role === 'assistant' ? 'model' : 'user',
-            parts: [
-              ...(m.images ?? []).map((i) => ({
-                inlineData: { mimeType: i.mime, data: i.base64 },
-              })),
-              { text: m.content },
-            ],
+            parts: [{ text: m.content }],
           })),
           generationConfig: {
             maxOutputTokens: req.maxOutputTokens ?? 4096,

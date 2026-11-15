@@ -10,6 +10,7 @@ import {
   styleById,
 } from '../../src/platform-config';
 import { judgeGraphic, lookAt } from '../../src/ui/render-frames';
+import { imagesOf } from '../../src/gateway/adapters/extras';
 import type { VideoPlan } from '../../src/video-plan';
 import { BAR_RISE } from './v4-fixtures';
 
@@ -203,6 +204,45 @@ describe('[RDC1-062] the vision check looks at the built frames when the model c
     );
     expect((await odd.result).ok).toBe(true);
     expect(odd.steps).toEqual(['check-ok', 'vision-unreadable']);
+  });
+});
+
+describe('[RDC1-062] through the gateway', () => {
+  it('[RDC1-062] with a real vision model the frames travel as the gateway vision extra on one call', async () => {
+    const plan = await draft();
+    const model = base.models.find(
+      (m) =>
+        m.providerId !== 'mock' && m.kind === 'text' && m.capabilities.vision,
+    )!;
+    const answers = [
+      j({ plan, upgrades: [] }),
+      j({ matches: true, problems: [] }),
+    ];
+    const seen: number[] = [];
+    const job = {
+      call: vi.fn(async (_role: string, _model: string, req: never) => {
+        seen.push(imagesOf(req).length);
+        return { text: answers.shift() ?? '' };
+      }),
+      finish: vi.fn(async () => 3),
+      fail: vi.fn(async () => undefined),
+    };
+    const out = await llmPlan({
+      gateway: { startJob: () => job } as never,
+      config: base,
+      style,
+      answers: { idea: 'How rivers carve valleys.', captionLang: 'en' },
+      notes: [],
+      plan: pro,
+      locale: 'en',
+      userId: 'u',
+      modelId: model.id,
+      key: 'k',
+      visionFrames: shots,
+    });
+    expect(out.ok).toBe(true);
+    expect(seen).toEqual([0, 1]);
+    expect(job.finish).toHaveBeenCalledTimes(1);
   });
 });
 

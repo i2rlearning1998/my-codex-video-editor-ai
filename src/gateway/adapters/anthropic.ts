@@ -21,19 +21,7 @@ export const anthropicAdapter = (transport?: Transport) =>
           ...(req.system ? { system: req.system } : {}),
           messages: req.messages.map((m) => ({
             role: m.role,
-            content: m.images?.length
-              ? [
-                  ...m.images.map((i) => ({
-                    type: 'image',
-                    source: {
-                      type: 'base64',
-                      media_type: i.mime,
-                      data: i.base64,
-                    },
-                  })),
-                  { type: 'text', text: m.content },
-                ]
-              : m.content,
+            content: m.content,
           })),
         },
       }),
