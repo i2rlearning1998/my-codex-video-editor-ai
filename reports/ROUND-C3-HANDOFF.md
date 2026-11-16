@@ -11,7 +11,7 @@ Branch `claude/round-c3-parity`, draft PR #56 to `claude/round-c2-mcp`. LIMIT MO
 | 4 Editor's full power (code-graphic ops, capability matrix, guard, live data, check-and-fix) | Done | RDC3-040 to 043 |
 | 5 A Claude video is a tool video (AI library) | Done | RDC3-050 to 052 |
 | 6 Readymade Style structure and Door 2 | Done | RDC3-060 to 062 |
-| 7 Rulebook appliesTo (schema and manual done in Part 1), C3 TEXTS, skill | Partly: `appliesTo` and Claude's manual view exist; TEXTS not loaded | |
+| 7 Rulebook appliesTo, C3 TEXTS, skill | Done | RDC3-070, 071 |
 | 8 Docs, report | Not started | |
 
-Last commit: see `git log -1`. Next step: Part 7: load the C3 TEXTS (rulebook T1, skills T2 and T3) into src/platform-config/texts, the appliesTo selector in Admin Rules, rebuild the zips and docs/creator-playbook.
+Last commit: see `git log -1`. Next step: Part 8: DECISIONS D-449 on, STATUS, CHANGELOG, docs/MCP.md, docs/PLATFORM-CONFIG.md, reports/ROUND-C3.md, then push and check CI once.

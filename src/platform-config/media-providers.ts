@@ -6,6 +6,7 @@
 // entry (`keyRef`), the gateway reads the key on the server.
 import { z } from 'zod';
 import { RULEBOOK_C2 } from './texts/rulebook';
+import { RULEBOOK_C3 } from './texts/c3';
 import { AUTHORING_GUIDE } from './texts/authoring-guide';
 import { CHAPTER_01 } from './texts/creator-playbook-01-audience-and-goal';
 import { CHAPTER_02 } from './texts/creator-playbook-02-story-and-script';
@@ -337,10 +338,30 @@ const RULEBOOK: { id: string; en: string; hi: string }[] = [
  * rulebook keeps its place in T1's order with T1's text (its Hindi line is
  * dropped, as it no longer matches); the other Round C1 items follow.
  */
-export function defaultRulebook(): { id: string; en: string; hi?: string }[] {
-  const c2 = RULEBOOK_C2.map((r) => ({ id: r.id, en: r.en }));
-  const rest = RULEBOOK.filter((r) => !c2.some((n) => n.id === r.id));
-  return [...c2, ...rest.map((r) => ({ ...r }))];
+export function defaultRulebook(): {
+  id: string;
+  en: string;
+  hi?: string;
+  appliesTo?: 'both' | 'director' | 'claude';
+}[] {
+  // ROUND-C3 (T1): replaced texts keep their ids and places; new items
+  // follow the C2 list; every C3 item carries its appliesTo.
+  const c3 = new Map<string, (typeof RULEBOOK_C3)[number]>(
+    RULEBOOK_C3.map((r) => [r.id, r]),
+  );
+  const c2 = RULEBOOK_C2.map((r) => {
+    const n = c3.get(r.id);
+    return n
+      ? { id: r.id, en: n.en, appliesTo: n.appliesTo }
+      : { id: r.id, en: r.en };
+  });
+  const added = RULEBOOK_C3.filter((r) => !c2.some((x) => x.id === r.id)).map(
+    (r) => ({ id: r.id, en: r.en, appliesTo: r.appliesTo }),
+  );
+  const rest = RULEBOOK.filter(
+    (r) => ![...c2, ...added].some((n) => n.id === r.id),
+  );
+  return [...c2, ...added, ...rest.map((r) => ({ ...r }))];
 }
 export const rulebookSchema = z
   .array(

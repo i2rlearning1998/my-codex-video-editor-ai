@@ -2033,6 +2033,13 @@ const C2: Record<string, [string, string]> = {
   switchOff: ['The connector is off for everyone.', 'कनेक्टर सबके लिए बंद है।'],
   proof: ['Developer proof tools', 'डेवलपर प्रूफ़ टूल'],
   rate: ['Calls per person per minute', 'प्रति व्यक्ति प्रति मिनट कॉल'],
+  appliesTo: ['Applies to', 'किस पर लागू'],
+  appliesBoth: ['Both', 'दोनों'],
+  appliesDirector: ['The Director only (a rule)', 'सिर्फ़ डायरेक्टर (नियम)'],
+  appliesClaude: [
+    "The person's Claude only (guidance)",
+    'सिर्फ़ व्यक्ति का Claude (मार्गदर्शन)',
+  ],
   previewDirector: [
     "The Director's view (rules: items for both and for the Director):",
     'डायरेक्टर का रूप (नियम: दोनों और डायरेक्टर के लिए):',
@@ -2118,6 +2125,19 @@ async function rulesTab(ctx: AdminCtx) {
         const hi = ctx.el('textarea', { id: `rule-hi-${i}`, rows: '2' });
         hi.value = r.hi ?? '';
         hi.oninput = () => (r.hi = hi.value);
+        // ROUND-C3 (7.1): who the item is for.
+        const who = pick(
+          ctx,
+          [
+            ['both', tr('appliesBoth')],
+            ['director', tr('appliesDirector')],
+            ['claude', tr('appliesClaude')],
+          ],
+          r.appliesTo ?? 'both',
+          `rule-applies-${i}`,
+        ) as HTMLSelectElement;
+        who.onchange = () =>
+          (r.appliesTo = who.value as 'both' | 'director' | 'claude');
         const move = (by: number) => () => {
           const j = i + by;
           if (j < 0 || j >= rules.length) return;
@@ -2135,6 +2155,7 @@ async function rulesTab(ctx: AdminCtx) {
           field(ctx, tr('ruleId'), id),
           field(ctx, tr('english'), en),
           field(ctx, tr('hindi'), hi),
+          field(ctx, tr('appliesTo'), who),
           ctx.el(
             'div',
             { class: 'row' },
@@ -2212,6 +2233,9 @@ async function rulesTab(ctx: AdminCtx) {
       id: r.id,
       en: r.en.trim(),
       ...(r.hi && r.hi.trim() ? { hi: r.hi.trim() } : {}),
+      ...(r.appliesTo && r.appliesTo !== 'both'
+        ? { appliesTo: r.appliesTo }
+        : {}),
     }));
     for (const ch of chapters)
       next.director.creatorPlaybook[ch.id] = ch.area.value;

@@ -193,13 +193,20 @@ describe('[RDC2-012] free and credit tools, switches per tool, usage rows', () =
 describe('[RDC2-013] Projects and Videos', () => {
   it('[RDC2-013] create_project and create_video go through the plan limits and carry origin claude in the registry; list_projects and list_videos show them; style_id is kept as a parameter', async () => {
     const { client, token } = await person('p-ws');
+    // ROUND-C3 (6.2): Styles exist now; an unknown one is refused.
+    expect(
+      (
+        await s.call(client, 'create_project', {
+          name: 'History',
+          style_id: 'any-style',
+        })
+      ).text,
+    ).toBe('There is no Style "any-style" for this person. Call list_styles.');
     const p = await s.call(client, 'create_project', {
       name: 'History',
-      style_id: 'any-style',
+      style_id: 'story-explainer',
     });
-    expect(p.text).toMatch(
-      /Project "History" is made .* Styles are not available yet/,
-    );
+    expect(p.text).toMatch(/Project "History" is made .* It uses the Style /);
     const projectId = /project_id (proj-[0-9a-f-]+)/.exec(p.text)![1]!;
     const v = await s.call(client, 'create_video', {
       project_id: projectId,
