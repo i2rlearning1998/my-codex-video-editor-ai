@@ -58,6 +58,7 @@ import {
   type BriefValues,
 } from '../director/field-library';
 import { sortMessage, type Ask } from '../director/intents';
+import type { AssetChoice, RewriteKind } from '../director/parity-matrix';
 import type { Services, Asset } from '../panel/services';
 import type { CloudUser } from '../cloud/backend';
 import type { Ctx } from '../panel/app';
@@ -108,7 +109,8 @@ export interface Env {
 }
 type Stage = 'start' | 'brief' | 'plan' | 'assets' | 'building' | 'built';
 interface Slot extends AssetSlot {
-  choice: 'make' | 'upload' | 'prompt' | 'library' | 'later';
+  /** ROUND-C5 (4.2): the parity matrix's list (src/director/parity-matrix.ts). */
+  choice: AssetChoice;
   /** Asset Library rows made for this slot (the newest last; older ones kept). */
   made: string[];
   /** The Project Media asset that fills it now. */
@@ -1529,7 +1531,7 @@ export class Director {
     // An unknown balance (the server cannot be reached) is not a shortage.
     const short = !this.#unreachable && max > balance;
     const left = this.#rewritesLeft();
-    const swapAll = async (dir: 'cheaper' | 'richer') => {
+    const swapAll = async (dir: RewriteKind) => {
       if (this.#rewritesLeft() <= 0) return;
       let next = plan;
       let changed = false;

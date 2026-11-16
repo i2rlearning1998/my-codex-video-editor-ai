@@ -21,6 +21,14 @@ export interface StyleChange {
   before: string;
   after: string;
 }
+/** ROUND-C5 (4.2): what a Style chat message can lead to (parity matrix). */
+export const STYLE_CHAT_REPLIES = [
+  'refusal',
+  'question',
+  'same',
+  'only',
+  'proposal',
+] as const;
 export type StyleReply =
   | { kind: 'refusal'; text: string }
   | { kind: 'question' }

@@ -2,8 +2,15 @@
 // five kinds, and the person is shown what Director is about to do. Several
 // asks in one message become a list. Deterministic and pure (no model call
 // decides what a message costs).
-export type AskKind =
-  'question' | 'selection' | 'scene' | 'new-scene' | 'new-video';
+/** ROUND-C5 (4.2): the list the parity matrix must cover, kind by kind. */
+export const ASK_KINDS = [
+  'question',
+  'selection',
+  'scene',
+  'new-scene',
+  'new-video',
+] as const;
+export type AskKind = (typeof ASK_KINDS)[number];
 export interface Ask {
   readonly text: string;
   readonly kind: AskKind;

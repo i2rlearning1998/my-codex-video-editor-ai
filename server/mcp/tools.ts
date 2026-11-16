@@ -21,7 +21,8 @@ import {
   YOU_DECIDE,
   type StyleLike,
 } from '../../src/director/field-library';
-import { checkPlan, methodOf } from '../../src/director/planner';
+import { checkPlan, methodOf, withMethod } from '../../src/director/planner';
+import { allowedMethods, swapTarget } from '../../src/director/methods';
 import {
   enabledStyles,
   isOwnerEmail,
@@ -59,6 +60,7 @@ import { codeLayerCommands, codeRecord } from '../../src/code-layer/layer';
 import type { CodeLayer } from '../../src/core';
 import { setMixerVolume } from '../../src/audio/mixer';
 import { rememberStyle, styleOf, styleTools } from './style';
+import { styleFromPlan } from '../../src/project/style-from';
 import { fillTemplate } from '../../src/director/style-check';
 import type { CardHost } from './card';
 import type { FrameStore } from './frames';
@@ -2638,6 +2640,115 @@ export function createMcpTools(s: McpServices) {
     return out;
   }
 
+  // ROUND-C5 (4.3): the Director's plan-card actions Claude had no way to
+  // do: Cheaper / Richer (one rewrite each, the same swap rule), remove an
+  // extra idea, and "Update the Project style from this video".
+  const submitTool = tools.find((t) => t.name === 'submit_plan')!;
+  tools.push(
+    {
+      name: 'rewrite_plan',
+      title: 'Make the plan cheaper or richer',
+      description: desc(
+        "Swaps every scene's method one step cheaper or richer, the same rule as the Director's Cheaper and Richer buttons, and builds the plan again. Counts as one plan rewrite.",
+        'get_plan_cost, tell the person the new cost and wait for a clear yes.',
+      ),
+      input: { video_id: id, direction: z.enum(['cheaper', 'richer']) },
+      annotations: A.write,
+      async run(a, c) {
+        const d = await doc(c.userId);
+        const f = findVideo(d, a.video_id as string);
+        if (!f) return noVideo;
+        if (!f.v.plan)
+          return oops('There is no plan yet. Send one with submit_plan first.');
+        if (rewritesLeft(c.config, f.v.rewrites ?? 0) <= 0)
+          return oops(
+            `This video has used all ${c.config.director.rewritesPerVideo} plan rewrites. Change the video with edit_video instead.`,
+          );
+        const allowed = new Set(allowedMethods(c.config, c.plan));
+        let next = f.v.plan as never;
+        let changed = 0;
+        (f.v.plan as { scenes: { notes?: string }[] }).scenes.forEach(
+          (scene, i) => {
+            const to = swapTarget(
+              c.config,
+              methodOf(scene),
+              a.direction as 'cheaper' | 'richer',
+            );
+            if (to && allowed.has(to)) {
+              next = withMethod(next, i, to) as never;
+              changed++;
+            }
+          },
+        );
+        if (!changed)
+          return oops(
+            `No scene can be made ${a.direction as string} on this plan. Nothing was changed.`,
+          );
+        return submitTool.run(
+          { video_id: a.video_id, plan: next, extra_ideas: f.v.upgrades ?? [] },
+          c,
+        );
+      },
+    },
+    {
+      name: 'remove_extra_idea',
+      title: 'Remove one of the extra ideas',
+      description: desc(
+        "Removes one extra idea from the plan, as the person's Remove on the Director's plan card. It is noted in the Video sheet.",
+        'get_plan_cost again to show the new cost.',
+      ),
+      input: { video_id: id, idea: z.number().int().min(1).max(4) },
+      annotations: A.writeIdem,
+      async run(a, c) {
+        const d = await doc(c.userId);
+        const f = findVideo(d, a.video_id as string);
+        if (!f) return noVideo;
+        const ideas = (f.v.upgrades ?? []) as string[];
+        const i = (a.idea as number) - 1;
+        const idea = ideas[i];
+        if (!idea) return oops(`There is no extra idea ${i + 1}.`);
+        f.v.upgrades = ideas.filter((_, j) => j !== i);
+        addSheet(
+          c.config,
+          f.v,
+          note(c.config, `Extra idea removed: ${idea}`, 'claude', s.now()),
+        );
+        await save(c.userId, d);
+        return {
+          text: `Removed: ${idea}. Extra ideas left: ${f.v.upgrades.length}.`,
+        };
+      },
+    },
+    {
+      name: 'use_video_style',
+      title: "Make this video's look the Project style",
+      description: desc(
+        "Saves this video's look, fonts, captions, voice and music as its Project's style, as the panel's \"Update project style from this video\". Later videos in the Project start from it.",
+        'tell the person; apply_style_change only for videos made before.',
+      ),
+      input: { video_id: id },
+      annotations: A.write,
+      async run(a, c) {
+        const d = await doc(c.userId);
+        const f = findVideo(d, a.video_id as string);
+        if (!f) return noVideo;
+        if (!f.v.plan) return oops('This video has no plan yet.');
+        const before = styleOf(f.p);
+        f.p.style = {
+          ...before,
+          ...styleFromPlan(f.v.plan),
+          examples: [
+            ...new Set([...(before.examples ?? []), a.video_id as string]),
+          ].slice(-12),
+          source: 'video',
+        } as unknown as Record<string, unknown>;
+        await save(c.userId, d);
+        return {
+          text: "The Project's style now follows this video. Later videos in this Project start from it.",
+        };
+      },
+    },
+  );
   const byName = new Map(tools.map((t) => [t.name, t]));
   return {
     instructions:
