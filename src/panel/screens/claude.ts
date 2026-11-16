@@ -271,3 +271,22 @@ export function claudeDoor(ctx: Ctx, gatewayUrl: string): HTMLElement {
   void draw();
   return box;
 }
+
+/**
+ * ROUND-C3 (0.5): the panel's Connect Claude page (Home's button): what it
+ * does, then Door 4 (address with Copy, the two steps, the downloads, the
+ * connection state).
+ */
+export const claudePageScreen: Screen = async (ctx, _args, out) => {
+  const { gatewayBase } = await import('../../usage-report');
+  out.append(
+    h(
+      'section',
+      { class: 'card', id: 'panel-claude-page' },
+      h('h1', { text: t('site.claudeTitle') }),
+      h('p', { text: t('site.claudeWhat') }),
+      h('p', { class: 'muted', text: t('site.claudePlan') }),
+    ),
+    claudeDoor(ctx as Ctx, gatewayBase() ?? ''),
+  );
+};

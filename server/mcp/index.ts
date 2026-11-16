@@ -57,7 +57,13 @@ export function buildServer<Ctx>(o: {
   );
   const cardMeta = {
     ui: {
-      csp: { connectDomains: [o.origin], resourceDomains: [o.origin] },
+      // ROUND-C3 (0.2): frameDomains lets the card open the nested sandbox
+      // for code graphics (our sandbox page, connect-src 'none').
+      csp: {
+        connectDomains: [o.origin],
+        resourceDomains: [o.origin],
+        frameDomains: [o.origin],
+      },
       prefersBorder: true,
     },
   };

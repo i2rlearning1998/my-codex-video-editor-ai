@@ -16,9 +16,13 @@ export default defineConfig({
     emptyOutDir: true,
     target: 'es2022',
     lib: {
-      entry: 'src/mcp-card/card.ts',
+      // ROUND-C3 (0.2): the nested sandbox's frame script is a second entry.
+      entry: {
+        card: 'src/mcp-card/card.ts',
+        'sandbox-frame': 'src/mcp-card/sandbox-frame.ts',
+      },
       formats: ['es'],
-      fileName: () => 'card.js',
+      fileName: (_format, name) => `${name}.js`,
     },
     rollupOptions: { output: { chunkFileNames: 'chunks/[name]-[hash].js' } },
   },

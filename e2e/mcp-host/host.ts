@@ -15,6 +15,8 @@ declare global {
       downloads: { name: string; chars: number; at: number }[];
       context: unknown[];
       calls: string[];
+      /** ROUND-C3: every message the host window got that carries "leak". */
+      leaks: number;
     };
     startCard(o: {
       src: string;
@@ -25,7 +27,10 @@ declare global {
     }): Promise<void>;
   }
 }
-window.__host = { downloads: [], context: [], calls: [] };
+window.__host = { downloads: [], context: [], calls: [], leaks: 0 };
+window.addEventListener('message', (e) => {
+  if (JSON.stringify(e.data ?? '').includes('leak')) window.__host.leaks++;
+});
 window.startCard = async (o) => {
   const iframe = document.createElement('iframe');
   iframe.id = 'card';

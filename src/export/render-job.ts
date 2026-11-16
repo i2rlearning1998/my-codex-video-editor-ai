@@ -52,7 +52,7 @@ import { drawSceneTransition } from '../render/scene-transitions';
 import { measureWithContext } from '../render/text-style';
 import type { TextMeasurer } from '../render/text-layout';
 import { fitMatrix, frameTimes, type ExportSettings } from './settings';
-import { openMediaStore } from '../media/store';
+import { openMediaStore, type MediaStore } from '../media/store';
 import { gifFrameAt, type GifFrames } from '../media/gif';
 import { frameKey, pngCodec } from '../code-layer/cache';
 import { cacheKeyOf } from '../code-layer/meta';
@@ -116,6 +116,11 @@ export interface RenderIo {
   readonly fontBase?: string;
   /** False keeps the file in memory (no OPFS), e.g. in a sandboxed frame. */
   readonly opfs?: boolean;
+  /**
+   * ROUND-C3 (0.2): where baked code-animation frames are read (the export
+   * card keeps them in memory). Default: the media store, as before.
+   */
+  readonly codeStore?: MediaStore;
 }
 
 /** MP4 needs both H.264 and AAC encoders; otherwise WebM (VP9 + Opus) is used. */
@@ -220,7 +225,7 @@ export async function renderJob(job: ExportJob, io: RenderIo): Promise<void> {
   // X1: code animations read their baked Full-quality frames from the same
   // frame cache the preview draws (the main thread baked them first).
   const codeStore = flat.some((request) => request.kind === 'code')
-    ? await openMediaStore()
+    ? (io.codeStore ?? (await openMediaStore()))
     : null;
   const codeFrame = async (request: MediaFrameRequest) => {
     const code = request.code;

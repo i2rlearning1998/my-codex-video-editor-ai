@@ -189,6 +189,22 @@ button.primary{background:var(--accent-fill);border-color:var(--accent-fill);col
         }
         return true;
       }
+      // ROUND-C3 (0.2): the nested sandbox for code graphics. The card loads
+      // it in a child frame with sandbox="allow-scripts" (an opaque origin);
+      // this page's own CSP allows no network at all, so code inside can draw
+      // and answer by postMessage, nothing else.
+      if (rest === 'sandbox.html') {
+        res.setHeader('content-type', 'text/html; charset=utf-8');
+        res.setHeader('cache-control', 'no-store');
+        // This page is MEANT to be framed (by the card, whose origin is
+        // opaque): the server's default no-framing headers are lifted here
+        // only. It holds nothing and can reach nothing.
+        res.removeHeader('x-frame-options');
+        res.setHeader('content-security-policy', SANDBOX_CSP);
+        res.setHeader('x-content-type-options', 'nosniff');
+        res.end(SANDBOX_HTML);
+        return true;
+      }
       // The engine bundle, its chunks and fonts.
       const file = path.resolve(o.cardDir, rest.split('?')[0]!);
       if (
@@ -210,3 +226,22 @@ button.primary{background:var(--accent-fill);border-color:var(--accent-fill);col
   };
 }
 export type CardHost = ReturnType<typeof createCardHost>;
+
+/**
+ * ROUND-C3 (0.2): the nested sandbox's policy. 'self' is this page's URL
+ * origin (our server) even though the sandboxed document's origin is opaque.
+ * Inline and eval are for the code the runtimes compile; nothing can be
+ * fetched or sent (connect-src 'none'), and no form or base can be set.
+ */
+export const SANDBOX_CSP = [
+  "default-src 'none'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+  "style-src 'unsafe-inline'",
+  'img-src data: blob:',
+  'font-src data:',
+  "connect-src 'none'",
+  "form-action 'none'",
+  "base-uri 'none'",
+].join('; ');
+const SANDBOX_HTML =
+  '<!doctype html><html><head><meta charset="utf-8"></head><body><script type="module" src="sandbox-frame.js"></script></body></html>';

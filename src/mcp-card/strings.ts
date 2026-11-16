@@ -3,6 +3,7 @@
 const EN = {
   loading: 'Getting the video ready…',
   preparing: 'Preparing the media…',
+  code: 'Drawing the code graphics on this device: {pct}%',
   rendering: 'Rendering on this device: {pct}% · about {left} left',
   cancel: 'Cancel',
   cancelled: 'Export cancelled. Nothing was counted.',
@@ -24,6 +25,7 @@ type Key = keyof typeof EN;
 const HI: Partial<Record<Key, string>> = {
   loading: 'वीडियो तैयार हो रहा है…',
   preparing: 'मीडिया तैयार हो रहा है…',
+  code: 'कोड ग्राफ़िक्स इस डिवाइस पर बन रहे हैं: {pct}%',
   rendering: 'इस डिवाइस पर बन रहा है: {pct}% · लगभग {left} बाकी',
   cancel: 'रद्द करें',
   cancelled: 'एक्सपोर्ट रद्द हुआ। कुछ नहीं गिना गया।',

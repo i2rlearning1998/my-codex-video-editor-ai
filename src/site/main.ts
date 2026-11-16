@@ -27,6 +27,7 @@ import { reel, reveal, spotlight, tilt } from '../panel/motion';
 import { setLocale, t } from '../panel/strings';
 import { planLines } from '../panel/plan-lines';
 import { liveConfig } from '../panel/live-config';
+import { gatewayBase } from '../usage-report';
 
 const root = document.getElementById('site')!;
 // P2B-12: Supabase accounts when its public settings exist, else local.
@@ -45,6 +46,8 @@ const next = () => {
   // Only same-site paths.
   return n.startsWith('/') && !n.startsWith('//') ? n : '/panel/';
 };
+/** ROUND-C3: the person came here from Claude's Connect. */
+const forClaude = () => next().startsWith('/panel/#/connect-claude');
 const L = (x: Parameters<typeof say>[0]) =>
   say(x, document.documentElement.lang === 'hi' ? 'hi' : 'en');
 
@@ -66,6 +69,12 @@ function header() {
         },
       },
       document.documentElement.lang === 'hi' ? 'English' : 'हिंदी',
+    ),
+    // ROUND-C3 (0.5): the Connect Claude page, for everyone.
+    h(
+      'a',
+      { class: 'button ghost', href: '#/claude', id: 'site-claude' },
+      t('site.claudeNav'),
     ),
     signedIn
       ? h(
@@ -384,7 +393,7 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
     try {
       if (mode === 'login') await account.signIn(email.value, password.value);
       else if (mode === 'signup')
-        await account.signUp(email.value, password.value);
+        await account.signUp(email.value, password.value, { next: next() });
       else if (!codeSent) {
         await account.requestPasswordReset(email.value);
         codeSent = true;
@@ -404,6 +413,14 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
       location.href = next();
     } catch (err) {
       error.textContent = err instanceof Error ? err.message : String(err);
+      // ROUND-C3 (0.4): waiting for the confirmation email keeps the
+      // connection request; if this page is gone by then, Claude can ask again.
+      if (
+        mode === 'signup' &&
+        forClaude() &&
+        /Check your email/.test(error.textContent)
+      )
+        note.textContent = t('site.claudeConfirm');
     }
   };
   const form = h('form', {
@@ -423,6 +440,14 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
               ? t('site.signup')
               : t('site.reset'),
       }),
+      // ROUND-C3 (0.4): on the way to Claude's consent page.
+      forClaude() && mode !== 'reset'
+        ? h('p', {
+            class: 'muted',
+            id: 'auth-claude',
+            text: t('site.forClaude'),
+          })
+        : null,
       h('label', { for: 'auth-email', text: t('site.email') }),
       email,
       mode !== 'reset' || codeSent
@@ -455,12 +480,18 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
       mode === 'login'
         ? h(
             'a',
-            { href: `#/signup?next=${encodeURIComponent(next())}` },
+            {
+              href: `#/signup?next=${encodeURIComponent(next())}`,
+              id: 'auth-to-signup',
+            },
             t('site.noAccount'),
           )
         : h(
             'a',
-            { href: `#/login?next=${encodeURIComponent(next())}` },
+            {
+              href: `#/login?next=${encodeURIComponent(next())}`,
+              id: 'auth-to-login',
+            },
             t('site.haveAccount'),
           ),
       // Google sign-in only when its client id is set (and Supabase is used).
@@ -487,11 +518,125 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
   out.append(form);
 }
 
+/**
+ * ROUND-C3 (0.5): what connecting Claude does, the connector address with
+ * Copy, the two steps, the skill and plugin downloads, and that the person's
+ * own Claude plan is used. Logged-out people see it too (they sign up on the
+ * way, when Claude connects).
+ */
+function claudePage(out: HTMLElement) {
+  const box = h('section', {
+    class: 'card site-claude',
+    id: 'site-claude-page',
+  });
+  const state = h('div', { id: 'site-claude-state' });
+  out.append(box);
+  clear(
+    box,
+    h('h1', { text: t('site.claudeTitle') }),
+    h('p', { text: t('site.claudeWhat') }),
+    h('p', {
+      class: 'muted',
+      id: 'site-claude-plan',
+      text: t('site.claudePlan'),
+    }),
+    state,
+  );
+  const base = gatewayBase();
+  if (!base) {
+    clear(
+      state,
+      h('p', {
+        class: 'error-state',
+        role: 'alert',
+        text: t('site.claudeOff'),
+      }),
+    );
+    return;
+  }
+  clear(state, h('p', { class: 'loading', text: t('app.loading') }));
+  void (async () => {
+    let info: { address: string; bundles: string[] };
+    try {
+      const r = await fetch(`${base.replace(/\/$/, '')}/v1/mcp/public`);
+      if (!r.ok) throw new Error(String(r.status));
+      info = (await r.json()) as typeof info;
+    } catch {
+      clear(
+        state,
+        h('p', {
+          class: 'error-state',
+          role: 'alert',
+          text: t('site.claudeError'),
+        }),
+        h('button', {
+          type: 'button',
+          class: 'button sm ghost',
+          id: 'site-claude-retry',
+          text: t('claude.retry'),
+          onclick: () => {
+            clear(out);
+            claudePage(out);
+          },
+        }),
+      );
+      return;
+    }
+    const copy = h('button', {
+      type: 'button',
+      class: 'button primary',
+      id: 'site-claude-copy',
+      'data-address': info.address,
+      text: t('claude.copy'),
+      onclick: async () => {
+        await navigator.clipboard?.writeText(info.address).catch(() => {});
+        copy.textContent = t('claude.copied');
+      },
+    });
+    clear(
+      state,
+      h('code', {
+        class: 'site-claude-address',
+        id: 'site-claude-address',
+        text: info.address,
+      }),
+      h('div', { class: 'row' }, copy),
+      h('h2', { text: t('claude.step1') }),
+      h('p', { text: t('claude.step1Body') }),
+      h('h2', { text: t('claude.step2') }),
+      h('p', { text: t('site.claudeStep2') }),
+      h('h2', { text: t('claude.bundle') }),
+      h(
+        'div',
+        { class: 'row', id: 'site-claude-bundles' },
+        ...info.bundles.map((href, i) =>
+          h('a', {
+            class: 'button sm ghost',
+            href,
+            download: '',
+            'data-bundle': href.split('/').pop()!,
+            text: t(
+              (
+                [
+                  'claude.bundleSkill',
+                  'claude.bundleSetup',
+                  'claude.bundlePlugin',
+                ] as const
+              )[i] ?? 'claude.bundlePlugin',
+            ),
+          }),
+        ),
+      ),
+    );
+  })();
+}
+
 function route() {
   const [name = ''] = location.hash.replace(/^#\//, '').split(/[/?]/);
   const main = h('main', { class: 'site-main' });
   if (name === 'login' || name === 'signup' || name === 'reset')
     authForm(main, name);
+  else if (name === 'claude') claudePage(main);
   else landing(main);
   clear(root, header(), main);
   reveal(main);

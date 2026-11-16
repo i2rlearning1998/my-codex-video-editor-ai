@@ -223,6 +223,17 @@ export function createMcpMount(d: McpMountDeps) {
         });
       throw e;
     }
+    // ROUND-C3 (0.5): the website's Connect Claude page, for anyone (no
+    // sign-in): the connector address and the downloads. Nothing personal.
+    if (method === 'GET' && p === '/v1/mcp/public')
+      return reply(res, 200, {
+        address: `${o}/mcp`,
+        bundles: [
+          'video-director.zip',
+          'setup.zip',
+          'video-director-plugin.zip',
+        ].map((f) => `${o}/mcp/bundle/${f}`),
+      });
     // The panel's side: the consent page and Door 4 (the person's sign-in).
     if (p.startsWith('/v1/mcp/')) {
       const person = await d.authenticate(req.headers.authorization);
@@ -232,7 +243,7 @@ export function createMcpMount(d: McpMountDeps) {
         const id = new URL(req.url ?? '/', 'http://x').searchParams.get(
           'request',
         );
-        const info = id ? oauth.consentInfo(id) : null;
+        const info = id ? await oauth.consentInfo(id) : null;
         if (!info)
           throw new McpHttpError(
             404,
@@ -246,7 +257,11 @@ export function createMcpMount(d: McpMountDeps) {
           throw new McpHttpError(400, 'bad-request', 'The answer is missing.');
         try {
           return reply(res, 200, {
-            redirect: oauth.consent(body.request, person.userId, body.allow),
+            redirect: await oauth.consent(
+              body.request,
+              person.userId,
+              body.allow,
+            ),
           });
         } catch (e) {
           if (e instanceof OAuthError)

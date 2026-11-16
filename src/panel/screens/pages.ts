@@ -158,6 +158,27 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
   const below = h('div', { class: 'home-below' });
   put(
     below,
+    // ROUND-C3 (0.5): make videos with the person's own Claude.
+    h(
+      'section',
+      { class: 'band home-claude' },
+      h(
+        'div',
+        { class: 'section-head' },
+        h(
+          'div',
+          null,
+          h('h2', { text: t('site.claudeTitle') }),
+          h('p', { class: 'muted', text: t('site.claudePlan') }),
+        ),
+        h('a', {
+          class: 'button sm',
+          href: '#/claude',
+          id: 'home-claude',
+          text: t('site.claudeNav'),
+        }),
+      ),
+    ),
     h(
       'section',
       { class: 'band' },

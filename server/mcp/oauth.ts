@@ -26,7 +26,8 @@ export const CLAUDE_CALLBACK = 'https://claude.ai/api/mcp/auth_callback';
 export const SCOPE = 'mcp';
 const ACCESS_MS = 60 * 60_000;
 const CODE_MS = 5 * 60_000;
-const PENDING_MS = 15 * 60_000;
+/** ROUND-C3 (0.3): a consent waits 30 minutes (email confirmation included). */
+const PENDING_MS = 30 * 60_000;
 /** One plain sentence Claude can pass on (2.2). */
 export const RECONNECT =
   'The connection to the video platform has ended. Ask the person to connect it again: in the panel open New project, choose "Create with your own Claude" and press Allow.';
@@ -82,13 +83,17 @@ export interface OAuthDeps {
 }
 
 export function createOAuth(d: OAuthDeps) {
-  const pending = new Map<string, Pending>();
-  const codes = new Map<string, Code>();
-  const sweep = () => {
-    const t = d.now();
-    for (const [k, v] of pending) if (t - v.at > PENDING_MS) pending.delete(k);
-    for (const [k, v] of codes) if (t > v.exp + CODE_MS) codes.delete(k);
+  // ROUND-C3 (0.3): consents and codes live in the store (a restart ends
+  // neither); a code is kept by its sha256 only.
+  const iso = (ms: number) => new Date(ms).toISOString();
+  const codeKey = (code: string) =>
+    `code-${createHash('sha256').update(code).digest('hex')}`;
+  const pendingOf = async (id: string): Promise<Pending | null> => {
+    const g = await d.store.mcpGrant(`consent-${id}`);
+    if (!g || g.kind !== 'consent' || g.expiresAt < iso(d.now())) return null;
+    return g.data as unknown as Pending;
   };
+  const sweep = () => void d.store.sweepMcpGrants(iso(d.now())).catch(() => {});
   const sign = (body: string) =>
     createHmac('sha256', d.secret()).update(body).digest('base64url');
   const issue = (c: { userId: string; id: string }) => {
@@ -217,35 +222,42 @@ export function createOAuth(d: OAuthDeps) {
           'PKCE with S256 is required.',
         );
       const id = randomUUID();
-      pending.set(id, {
-        clientId: client.id,
-        clientName: client.name,
-        redirectUri: redirect,
-        challenge,
-        state: q.get('state'),
-        at: d.now(),
+      const at = d.now();
+      await d.store.saveMcpGrant({
+        key: `consent-${id}`,
+        kind: 'consent',
+        data: {
+          clientId: client.id,
+          clientName: client.name,
+          redirectUri: redirect,
+          challenge,
+          state: q.get('state'),
+          at,
+        },
+        expiresAt: iso(at + PENDING_MS),
       });
       return id;
     },
     /** What the consent page shows (the redirect's host, as the spec asks). */
-    consentInfo(id: string) {
-      const p = pending.get(id);
-      if (!p || d.now() - p.at > PENDING_MS) return null;
+    async consentInfo(id: string) {
+      const p = await pendingOf(id);
+      if (!p) return null;
       return {
         client: p.clientName,
         redirectHost: new URL(p.redirectUri).host,
       };
     },
     /** Allow or Cancel on the consent page; returns where to send the person. */
-    consent(id: string, userId: string, allow: boolean): string {
-      const p = pending.get(id);
-      if (!p || d.now() - p.at > PENDING_MS)
+    async consent(id: string, userId: string, allow: boolean): Promise<string> {
+      const p = await pendingOf(id);
+      if (!p)
         throw new OAuthError(
           400,
           'expired',
           'This request has expired. Go back to Claude and connect again.',
         );
-      pending.delete(id);
+      // Single use: the consent is gone once answered.
+      await d.store.deleteMcpGrant(`consent-${id}`);
       const back = new URL(p.redirectUri);
       if (p.state !== null) back.searchParams.set('state', p.state);
       if (!allow) {
@@ -253,14 +265,21 @@ export function createOAuth(d: OAuthDeps) {
         return back.toString();
       }
       const code = b64u(randomBytes(32));
-      codes.set(code, {
-        clientId: p.clientId,
-        redirectUri: p.redirectUri,
-        challenge: p.challenge,
-        userId,
-        exp: d.now() + CODE_MS,
-        used: false,
-        connectionId: null,
+      const exp = d.now() + CODE_MS;
+      await d.store.saveMcpGrant({
+        key: codeKey(code),
+        kind: 'code',
+        data: {
+          clientId: p.clientId,
+          redirectUri: p.redirectUri,
+          challenge: p.challenge,
+          userId,
+          exp,
+          used: false,
+          connectionId: null,
+        },
+        // Kept a little past its life, so a replay is still recognised.
+        expiresAt: iso(exp + CODE_MS),
       });
       back.searchParams.set('code', code);
       return back.toString();
@@ -270,7 +289,15 @@ export function createOAuth(d: OAuthDeps) {
     async token(f: URLSearchParams) {
       const grant = f.get('grant_type');
       if (grant === 'authorization_code') {
-        const code = codes.get(f.get('code') ?? '');
+        const key = codeKey(f.get('code') ?? '');
+        const held = await d.store.mcpGrant(key);
+        const code =
+          held?.kind === 'code' ? (held.data as unknown as Code) : null;
+        const keep = () =>
+          d.store.saveMcpGrant({
+            ...held!,
+            data: { ...code! } as unknown as Record<string, unknown>,
+          });
         if (!code || d.now() > code.exp)
           throw new OAuthError(400, 'invalid_grant', 'The code is not valid.');
         if (code.used) {
@@ -300,6 +327,7 @@ export function createOAuth(d: OAuthDeps) {
           createHash('sha256').update(verifier).digest('base64url'),
         );
         code.used = true;
+        await keep();
         if (
           verifier.length < 43 ||
           want.length !== got.length ||
@@ -327,6 +355,7 @@ export function createOAuth(d: OAuthDeps) {
           refreshHash: sha(t.refresh),
         });
         code.connectionId = id;
+        await keep();
         return tokenReply(t);
       }
       if (grant === 'refresh_token') {

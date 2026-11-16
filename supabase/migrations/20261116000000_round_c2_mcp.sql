@@ -14,6 +14,21 @@ alter table public.mcp_clients enable row level security;
 revoke all on public.mcp_clients from public, anon, authenticated;
 grant all on public.mcp_clients to service_role;
 
+-- ROUND-C3 (0.3): OAuth consents waiting for Allow (30 minutes) and
+-- authorization codes (5 minutes, single use, kept by their sha256), so a
+-- server restart ends neither. This migration has not been applied anywhere
+-- yet, so the table is added here. Server only.
+create table public.mcp_grants (
+  key text primary key check (char_length(key) between 8 and 128),
+  kind text not null check (kind in ('consent', 'code')),
+  data jsonb not null,
+  expires_at timestamptz not null
+);
+create index mcp_grants_expiry on public.mcp_grants (expires_at);
+alter table public.mcp_grants enable row level security;
+revoke all on public.mcp_grants from public, anon, authenticated;
+grant all on public.mcp_grants to service_role;
+
 -- One row per person and Claude connection.
 create table public.mcp_connections (
   id text primary key check (char_length(id) between 8 and 80),

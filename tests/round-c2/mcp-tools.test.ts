@@ -577,7 +577,7 @@ describe('[RDC2-020] out of order and twice', () => {
 });
 
 describe('[RDC2-023] export refusals before the card', () => {
-  it('[RDC2-023] a video with a code graphic, or one whose file would pass 100 MB, is refused with a plain sentence and the options; nothing is counted', async () => {
+  it('[RDC2-023] [RDC3-002] a video whose file would pass 100 MB is refused with a plain sentence and the options; a video with a code graphic is no longer refused (it is drawn in the card, D-447 superseded); nothing is counted', async () => {
     const { client, token } = await person('p-export');
     const { videoId } = await newVideo(client);
     await s.call(client, 'submit_plan', { video_id: videoId, plan: plan() });
@@ -596,9 +596,8 @@ describe('[RDC2-023] export refusals before the card', () => {
       },
     });
     const code = await s.call(client, 'export_video', { video_id: videoId });
-    expect(code.text).toMatch(
-      /^This video has new code graphics, and the chat export cannot draw those yet\./,
-    );
+    expect(code.text).not.toMatch(/code graphics/);
+    expect(code.isError).toBeFalsy();
     // A long video at 600 s: past the 100 MB cap at the standard preset.
     await s.publish((c) => {
       c.mcp.exportMaxSeconds = 600;

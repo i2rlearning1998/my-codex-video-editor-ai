@@ -1332,16 +1332,9 @@ export function createMcpTools(s: McpServices) {
           return oops(
             `At this quality the file would be about ${Math.round(estimate / 1e6)} MB; the chat can take up to ${MAX_EXPORT_BYTES / 1024 / 1024} MB. Try preset "small", or shorten the video.`,
           );
-        // Code graphics are baked in a worker, which a chat card cannot
-        // start (ROUND-C2-SPIKE.md, item 1); D-447: the owner decides.
-        if (
-          scenes.some((sc) =>
-            allLayers(sc.layers).some((l) => (l as { code?: unknown }).code),
-          )
-        )
-          return oops(
-            'This video has new code graphics, and the chat export cannot draw those yet. The person can open the video in the panel and export it from the editor; or replace those graphics with shapes and text (Tier A) using edit_video.',
-          );
+        // ROUND-C3 (0.2, supersedes D-447): code graphics are baked on the
+        // device in the card's nested sandbox; a host that refuses the
+        // nested frame gets one plain sentence from the card instead.
         let composition: unknown;
         try {
           composition = joinScenes(scenes as never);

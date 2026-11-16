@@ -20,7 +20,10 @@ export const DEV_TOKEN = 'e2e-mcp-dev-token-0123456789';
 
 /** Builds the card engine once when it is missing (npm run build does it in CI). */
 export function ensureCardBuild() {
-  if (!existsSync('dist/mcp-card/card.js'))
+  if (
+    !existsSync('dist/mcp-card/card.js') ||
+    !existsSync('dist/mcp-card/sandbox-frame.js')
+  )
     execFileSync('npx', ['vite', 'build', '--config', 'vite.card.ts'], {
       stdio: 'ignore',
     });
@@ -30,6 +33,7 @@ export function ensureCardBuild() {
 export function hostCsp(csp: {
   connectDomains?: string[];
   resourceDomains?: string[];
+  frameDomains?: string[];
 }) {
   const res = (csp.resourceDomains ?? []).join(' ');
   const con = (csp.connectDomains ?? []).join(' ');
@@ -41,7 +45,9 @@ export function hostCsp(csp: {
     `font-src 'self' ${res}`,
     `media-src 'self' data: ${res}`,
     `connect-src 'self' ${con}`,
-    "frame-src 'none'",
+    csp.frameDomains?.length
+      ? `frame-src ${csp.frameDomains.join(' ')}`
+      : "frame-src 'none'",
     "object-src 'none'",
     "base-uri 'self'",
   ].join('; ');

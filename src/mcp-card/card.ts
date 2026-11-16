@@ -11,6 +11,8 @@ import { remainingSeconds } from '../export/settings';
 import { AudioDecoder } from '../media/audio';
 import type { PreviewAsset } from '../media';
 import { remoteMediaStore } from './remote-store';
+import { MemoryMediaStore } from '../media/store';
+import { nestedSandboxOpener } from './nested-sandbox';
 import { cardText, type CardKey } from './strings';
 
 interface ExportMeta {
@@ -260,6 +262,7 @@ async function run(meta: ExportMeta) {
   card.append(bar, row);
   const begun = performance.now();
   measure.heapBefore = heap();
+  const codeStore = new MemoryMediaStore();
   const exportRun = startExport(
     {
       composition: job.project.composition as never,
@@ -273,11 +276,35 @@ async function run(meta: ExportMeta) {
     {
       store,
       decoder: new AudioDecoder(store, () => assets),
-      inPage: { fontBase: `${meta.origin}/mcp/card/` },
+      inPage: { fontBase: `${meta.origin}/mcp/card/`, codeStore },
+      // ROUND-C3 (0.2): code graphics are baked first, frame by frame, in
+      // the nested sandbox (no network, no access to this card's bridge).
+      prepareCode: async (composition, progress, cancelled) => {
+        const [{ FrameCache }, { CodeBaker }, { bakeForExport, codeLayersOf }] =
+          await Promise.all([
+            import('../code-layer/cache'),
+            import('../code-layer/baker'),
+            import('../code-layer/export-bake'),
+          ]);
+        if (!codeLayersOf(composition).length) return;
+        const baker = new CodeBaker(
+          new FrameCache(Promise.resolve(codeStore)),
+          nestedSandboxOpener(meta.origin),
+        );
+        const began = performance.now();
+        try {
+          await bakeForExport(baker, composition, progress, cancelled);
+        } finally {
+          baker.dispose();
+          measure.codeBakeMs = Math.round(performance.now() - began);
+        }
+      },
       onPhase: (phase) => {
         if (phase === 'preparing') status(t('preparing'));
         measure[`phase:${phase}`] = Math.round(performance.now() - begun);
       },
+      onCodeProgress: ({ done, total }) =>
+        status(t('code', { pct: Math.floor((100 * done) / total) })),
       onProgress: ({ done, total }) => {
         measure.progress.push({ at: performance.now(), done, total });
         (bar.firstElementChild as HTMLElement).style.width =

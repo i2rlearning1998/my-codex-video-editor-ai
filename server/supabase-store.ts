@@ -314,6 +314,43 @@ export function supabaseStore(
     },
     // ROUND-A: one row per person (supabase/migrations/20261112000000_round_a_workspace.sql).
     // ROUND-C2: the Claude connector (migration 20261116000000_round_c2_mcp).
+    // ROUND-C3 (0.3): OAuth consents and codes (table mcp_grants).
+    async mcpGrant(key) {
+      const { data, error } = await db
+        .from('mcp_grants')
+        .select('*')
+        .eq('key', key)
+        .maybeSingle();
+      fail('read a connector grant', error);
+      return data
+        ? {
+            key: data.key as string,
+            kind: data.kind as 'consent' | 'code',
+            data: data.data as Record<string, unknown>,
+            expiresAt: new Date(data.expires_at as string).toISOString(),
+          }
+        : null;
+    },
+    async saveMcpGrant(g) {
+      const { error } = await db.from('mcp_grants').upsert({
+        key: g.key,
+        kind: g.kind,
+        data: g.data,
+        expires_at: g.expiresAt,
+      });
+      fail('save a connector grant', error);
+    },
+    async deleteMcpGrant(key) {
+      const { error } = await db.from('mcp_grants').delete().eq('key', key);
+      fail('remove a connector grant', error);
+    },
+    async sweepMcpGrants(now) {
+      const { error } = await db
+        .from('mcp_grants')
+        .delete()
+        .lt('expires_at', now);
+      fail('sweep connector grants', error);
+    },
     async mcpClient(id) {
       const { data, error } = await db
         .from('mcp_clients')

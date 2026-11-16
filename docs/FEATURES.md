@@ -1671,3 +1671,17 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC2-042 | P0 | W10 | Verified | A Project and Video Claude makes appear in the panel with "Made with Claude" on the Projects page, the Project page and the video card; "+ New video" offers Door 4 too |
 | RDC2-043 | P0 | W10 | Verified | The panel pulls what Claude made (Projects, Videos, a built Video's file and media) and keeps Claude's steps per Video; AI mode's chat list shows them read-only, newest first; Editor mode shows nothing new |
 | RDC2-050 | P0 | W10 | Verified | npm run mcp:bundle writes the video-director skill and the setup skill (TEXTS, platform name filled), and a plugin (manifest, skills, the rules, the connector address); the server serves them for Door 4 |
+
+## RDC3: Round C3 (Claude as a full Director, the Readymade Style structure; briefs/ROUND-C3.md)
+
+| ID | Priority | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| RDC3-001 | P0 | W10 | Verified | A video with a Tier B block and a Tier C free-code scene exports inside the chat card: the code is drawn in a nested frame (sandbox allow-scripts only, our sandbox page, connect-src 'none'), the file plays and downloads (D-447 superseded) |
+| RDC3-002 | P0 | W10 | Verified | The nested sandbox stops fetch, XMLHttpRequest, WebSocket, eval of a network string, localStorage and reading the card; a postMessage to the top window runs no tool; the plan checks refuse such code before it is sent; export_video no longer refuses code graphics |
+| RDC3-003 | P0 | W10 | Verified | A code graphic that never returns is stopped by the time limit and the card says so in one plain sentence; nothing is counted; a host that refuses the nested frame gets the fallback sentence |
+| RDC3-004 | P0 | W10 | Verified | Measured: a 60 s 9:16 video with six code graphics renders in the card (time in reports/round-c3/code-export-timing.json) |
+| RDC3-005 | P0 | W10 | Verified | OAuth consents (30 minutes) and codes (5 minutes, single use, kept as a hash) live in the store; a server restart ends neither; expired ones are swept |
+| RDC3-006 | P0 | W10 | Verified | A person with no account: Claude's Connect opens Sign up with the consent page as next; after sign-up the consent page, Allow, and Claude gets a token |
+| RDC3-007 | P0 | W10 | Verified | A person with an account and a cleared browser: Sign up page, Log in keeps next, Allow; the Claude connection and what Claude made survive and come back after logging in |
+| RDC3-008 | P0 | W10 | Verified | Sign-up with email confirmation: the page says to confirm then log in and press Allow, or go back to Claude and press Connect again; the confirmation email returns to Log in with next kept |
+| RDC3-009 | P0 | W10 | Verified | The Connect Claude page on the website (header button, logged-out visitors) and in the panel (Home button): what it does, the address with Copy, the two steps, the downloads, the own-Claude-plan line, loading and error states |

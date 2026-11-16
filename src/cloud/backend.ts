@@ -52,7 +52,15 @@ export interface CloudBackend {
   accessToken(): Promise<string | null>;
   /** Called with the person after every sign in, sign out or refresh. */
   onUserChange(listener: (user: CloudUser | null) => void): () => void;
-  signUp(email: string, password: string): Promise<CloudUser>;
+  /**
+   * ROUND-C3 (0.4): `next` is where the confirmation email returns the
+   * person after logging in (a same-site path), e.g. Claude's consent page.
+   */
+  signUp(
+    email: string,
+    password: string,
+    opts?: { next?: string },
+  ): Promise<CloudUser>;
   signIn(email: string, password: string): Promise<CloudUser>;
   /**
    * OAuth sign in (Google now, the Claude connector of Phase 2 later): the

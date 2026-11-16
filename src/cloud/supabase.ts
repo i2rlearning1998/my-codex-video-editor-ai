@@ -121,7 +121,7 @@ export function createSupabaseBackend(
         stop?.();
       };
     },
-    async signUp(email, password) {
+    async signUp(email, password, opts) {
       const weak = passwordProblem(
         password,
         auth.minPassword?.() ?? MIN_PASSWORD,
@@ -134,8 +134,15 @@ export function createSupabaseBackend(
         ).auth.signUp({
           email,
           password,
-          // The confirmation email brings the person back to the log-in page.
-          options: { emailRedirectTo: `${location.origin}/site/#/login` },
+          // The confirmation email brings the person back to the log-in page
+          // (ROUND-C3: with `next`, e.g. Claude's consent page, kept).
+          options: {
+            emailRedirectTo: `${location.origin}/site/#/login${
+              opts?.next?.startsWith('/') && !opts.next.startsWith('//')
+                ? `?next=${encodeURIComponent(opts.next)}`
+                : ''
+            }`,
+          },
         }),
       );
       const user = userOf(data.user);

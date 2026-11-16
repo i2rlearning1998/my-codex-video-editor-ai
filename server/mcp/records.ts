@@ -98,7 +98,24 @@ export class RevisionConflict extends Error {
   }
 }
 
+/**
+ * ROUND-C3 (0.3): an OAuth consent waiting for Allow, or an authorization
+ * code. Kept in the store so a server restart ends neither; codes are kept
+ * by their sha256 only. Expired rows are swept.
+ */
+export interface McpGrant {
+  readonly key: string;
+  readonly kind: 'consent' | 'code';
+  readonly data: Record<string, unknown>;
+  readonly expiresAt: string;
+}
+
 export interface McpStore {
+  mcpGrant(key: string): Promise<McpGrant | null>;
+  saveMcpGrant(g: McpGrant): Promise<void>;
+  deleteMcpGrant(key: string): Promise<void>;
+  /** Removes every grant that expired before `now` (ISO time). */
+  sweepMcpGrants(now: string): Promise<void>;
   mcpClient(id: string): Promise<McpClient | null>;
   saveMcpClient(c: McpClient): Promise<void>;
   /** A person's connections, or everyone's (Admin) when no id is given. */

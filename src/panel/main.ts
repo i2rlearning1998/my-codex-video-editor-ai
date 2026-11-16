@@ -26,7 +26,7 @@ import {
 import { studioScreen } from './screens/studio';
 import { assetsScreen } from './screens/library';
 import { projectScreen, projectsScreen } from './screens/workspace';
-import { connectClaudeScreen } from './screens/claude';
+import { claudePageScreen, connectClaudeScreen } from './screens/claude';
 import { migrateP3Memory } from './p3-services';
 
 const root = document.getElementById('panel')!;
@@ -43,6 +43,8 @@ const screens: Record<string, Screen> = {
   settings: settingsScreen,
   // ROUND-C2: the consent page the Claude connector's sign-in opens.
   'connect-claude': connectClaudeScreen,
+  // ROUND-C3 (0.5): Home's Connect Claude.
+  claude: claudePageScreen,
 };
 
 // Dev and e2e only: make the offline mock model fail on its Nth call, to
@@ -70,8 +72,13 @@ async function start() {
     const user = await services.account.user();
     if (!user) {
       // Owner rule 5: no guest mode. Logged-out people see the website.
+      // ROUND-C3 (0.4): Claude's consent page sends a new person to Sign up
+      // (it links to Log in for those who have an account); `next` is kept.
+      const page = location.hash.startsWith('#/connect-claude')
+        ? 'signup'
+        : 'login';
       location.replace(
-        `/site/#/login?next=${encodeURIComponent('/panel/' + location.hash)}`,
+        `/site/#/${page}?next=${encodeURIComponent('/panel/' + location.hash)}`,
       );
       return;
     }

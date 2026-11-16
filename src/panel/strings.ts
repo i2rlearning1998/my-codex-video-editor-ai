@@ -423,6 +423,39 @@ const S = {
   'gw.refused': ['This could not run: {message}', 'यह नहीं चल सका: {message}'],
   'site.login': ['Log in', 'लॉग इन'],
   'site.signup': ['Sign up', 'साइन अप'],
+  'site.claudeNav': ['Connect Claude', 'Claude जोड़ें'],
+  'site.claudeTitle': [
+    'Make videos with your own Claude',
+    'अपने Claude से वीडियो बनाएँ',
+  ],
+  'site.claudeWhat': [
+    'Connect your Claude and ask it for a video in your own chat. It plans, builds and exports the video here, in your account, and you can open it in the editor any time.',
+    'अपना Claude जोड़ें और अपनी चैट में उससे वीडियो माँगें। वह यहीं आपके खाते में वीडियो की योजना बनाता है, बनाता है और एक्सपोर्ट करता है, और आप उसे कभी भी एडिटर में खोल सकते हैं।',
+  ],
+  'site.claudePlan': [
+    'Your own Claude plan is used for the chat; the video work uses your credits here.',
+    'चैट के लिए आपका अपना Claude प्लान इस्तेमाल होता है; वीडियो का काम यहाँ आपके क्रेडिट से होता है।',
+  ],
+  'site.claudeStep2': [
+    'When Claude connects, a page opens here. Sign up or log in if asked, then press Allow.',
+    'जब Claude जुड़ेगा, यहाँ एक पेज खुलेगा। पूछा जाए तो साइन अप या लॉग इन करें, फिर Allow दबाएँ।',
+  ],
+  'site.claudeOff': [
+    'Connecting Claude is not set up on this site yet.',
+    'इस साइट पर अभी Claude जोड़ने की सुविधा तैयार नहीं है।',
+  ],
+  'site.claudeError': [
+    'The connector address could not be loaded. Try again.',
+    'कनेक्टर का पता लोड नहीं हो सका। फिर कोशिश करें।',
+  ],
+  'site.forClaude': [
+    'Sign up or log in to let your Claude make videos in your account. You will press Allow next.',
+    'अपने Claude को अपने खाते में वीडियो बनाने देने के लिए साइन अप या लॉग इन करें। उसके बाद आप Allow दबाएँगे।',
+  ],
+  'site.claudeConfirm': [
+    'Confirm your email, then log in here and press Allow. If this page is closed by then, go back to Claude and press Connect again.',
+    'अपना ईमेल कन्फ़र्म करें, फिर यहाँ लॉग इन करके Allow दबाएँ। अगर तब तक यह पेज बंद हो जाए, तो Claude में वापस जाकर फिर से Connect दबाएँ।',
+  ],
   'site.ctaTitle': [
     'Your next video starts with one line.',
     'आपका अगला वीडियो एक लाइन से शुरू होता है।',
