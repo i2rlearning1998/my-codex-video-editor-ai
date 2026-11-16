@@ -9,9 +9,9 @@ Branch `claude/round-c3-parity`, draft PR #56 to `claude/round-c2-mcp`. LIMIT MO
 | 2 Assets step for Claude | Done | RDC3-020 to 024 |
 | 3 Project style, Style chat, upgrade step | Done | RDC3-030 to 034 |
 | 4 Editor's full power (code-graphic ops, capability matrix, guard, live data, check-and-fix) | Done | RDC3-040 to 043 |
-| 5 A Claude video is a tool video (AI library) | Not started | |
+| 5 A Claude video is a tool video (AI library) | Done | RDC3-050 to 052 |
 | 6 Readymade Style structure and Door 2 | Not started | |
 | 7 Rulebook appliesTo (schema and manual done in Part 1), C3 TEXTS, skill | Partly: `appliesTo` and Claude's manual view exist; TEXTS not loaded | |
 | 8 Docs, report | Not started | |
 
-Last commit: see `git log -1`. Next step: Part 5, claude-sync brings the Project's AI library (ClaudeProject.library, server side) into the browser's My library as pack plan-graphics, so it shows in the panel's Asset Library and the editor's import dialog.
+Last commit: see `git log -1`. Next step: Part 6, the Readymade Style fields on styleSchema (status exists already, optional), validateStyle, the panel's published-only lists, list_styles/get_style(style_id)/create_project(style_id)/start_video_from_style.

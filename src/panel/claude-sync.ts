@@ -8,7 +8,7 @@
 // Nothing here runs without a server, and Editor mode shows nothing new.
 import type { RemoteGateway } from './remote';
 import type { Workspace } from '../project/workspace';
-import type { ClaudeWorkspace } from './screens/claude';
+import type { ClaudeGraphic, ClaudeWorkspace } from './screens/claude';
 
 export const ACTIVITY_KEY = (videoId: string) =>
   `aive.claude.activity.${videoId}`;
@@ -43,6 +43,41 @@ export interface SyncDeps {
   } | null;
   readonly kv: Pick<Storage, 'getItem' | 'setItem'>;
   readonly fetchMedia: (fingerprint: string) => Promise<Blob | null>;
+  /**
+   * ROUND-C3 (5.1, 5.2): a Video's AI library. `graphics` saves Claude's
+   * graphics into the editor's My library for that Video (the store the
+   * editor's AI category and its import dialog read); `asset` lists each in
+   * the panel's Asset Library (Project, Video, AI library).
+   */
+  graphics?(videoId: string, items: readonly ClaudeGraphic[]): Promise<void>;
+  /**
+   * ROUND-C3 (5.2): the Video sheet's lines and file notes into this
+   * browser's Video memory (AI mode and the Director continue from them).
+   */
+  memory?(
+    videoId: string,
+    sheet: readonly string[],
+    notes: readonly {
+      name: string;
+      kind: string;
+      bytes: number;
+      note: string;
+    }[],
+  ): void;
+  asset?: {
+    has(id: string): boolean;
+    save(row: {
+      id: string;
+      projectId: string;
+      kind: 'pack';
+      name: string;
+      studioId: string;
+      bytes: number;
+      createdAt: string;
+      library: 'ai';
+      text: string;
+    }): void;
+  };
 }
 
 export async function syncClaude(d: SyncDeps): Promise<ClaudeWorkspace> {
@@ -88,6 +123,30 @@ export async function syncClaude(d: SyncDeps): Promise<ClaudeWorkspace> {
         });
     }
   }
+  // ROUND-C3 (5.1): Claude's graphics join the Video's AI library.
+  for (const p of remote.projects)
+    for (const v of p.videos) {
+      if (d.memory && (v.sheet?.length || v.fileNotes?.length))
+        d.memory(v.id, v.sheet ?? [], v.fileNotes ?? []);
+      const mine = (p.library ?? []).filter((g) => g.videoId === v.id);
+      if (!mine.length) continue;
+      await d.graphics?.(v.id, mine).catch(() => undefined);
+      for (const g of mine) {
+        const id = `claude-gfx-${v.id}-${g.id}`;
+        if (!d.asset || d.asset.has(id)) continue;
+        d.asset.save({
+          id,
+          projectId: v.id,
+          kind: 'pack',
+          name: g.name,
+          studioId: 'director',
+          bytes: g.source.length,
+          createdAt: new Date().toISOString(),
+          library: 'ai',
+          text: g.summary,
+        });
+      }
+    }
   // The panel's own names, so Claude can list and continue them.
   const doc = d.ws.doc();
   await d.remote.api('/mcp/workspace', {

@@ -1233,6 +1233,9 @@ export function createMcpTools(s: McpServices) {
           );
         const project = {
           ...built.project,
+          // ROUND-C3 (5.2): the editor file's id is the Video's id (Round A),
+          // so the panel and the editor open it as this Video.
+          id: a.video_id as string,
           metadata: { ...built.project.metadata, name: f.v.name },
         };
         let saved: CloudProjectRow;
@@ -2572,6 +2575,26 @@ export function createMcpTools(s: McpServices) {
               origin: v.origin,
               built: v.seenRevision !== null,
               activity: v.sheet.filter((e) => e.by === 'claude').slice(-20),
+              // ROUND-C3 (5.2): the Video sheet and file notes, so AI mode
+              // and the in-panel Director continue from them.
+              sheet: v.sheet.map((e) => e.text),
+              fileNotes: (v.fileNotes ?? []).map((n) => ({
+                name: n.name,
+                kind: n.kind,
+                bytes: n.bytes,
+                note: n.note,
+              })),
+            })),
+            // ROUND-C3 (5.1): the Project's AI library (Claude's graphics),
+            // so the panel and the editor list it like the Director's.
+            library: (pr.library ?? []).map((g) => ({
+              id: g.id,
+              name: g.name,
+              summary: g.summary,
+              tier: g.tier,
+              source: g.source,
+              meta: g.meta,
+              videoId: g.videoId,
             })),
           })),
         };

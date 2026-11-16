@@ -1707,4 +1707,7 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC3-041 | P0 | W10 | Verified | The capability matrix (src/director/capability-matrix.ts, docs/CAPABILITY-MATRIX.md) names every editor command and plan v4 field with Claude's way; a unit test fails on drift; AGENTS.md section 3 holds the owner's rule |
 | RDC3-042 | P0 | W10 | Verified | start_here gives a version, what Claude can reach, the modes, Studios and Styles, and what changed since the version this person saw, with the owner's mcp.whatsNew (Admin); list_modes; create_video takes a mode |
 | RDC3-043 | P0 | W10 | Verified | Check and fix: a deliberately bad graphic gets its checks back before any cost; the rewrite is accepted and checked again |
+| RDC3-050 | P0 | W10 | Verified | A video Claude builds is a tool video: its editor file has the Video's id; the panel shows its Project and Video, the Asset Library lists its graphic under the Video's AI library, the editor opens the same layers and its AI category lists the graphic |
+| RDC3-051 | P0 | W10 | Verified | The panel's sync saves a Claude Video's graphics to its My library and one Asset Library row each (once), and writes its Video sheet and file notes to the browser's Video memory (AI mode and the Director continue from them) |
+| RDC3-052 | P0 | W10 | Verified | A person who cleared the browser and logs in again gets Claude's Projects, Videos and their libraries back (the server keeps them) |
 

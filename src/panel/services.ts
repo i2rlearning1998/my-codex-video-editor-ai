@@ -633,6 +633,62 @@ export async function createServices(
           (await projects.list()).some((p) => p.id === id),
         media,
         kv: localStorage,
+        // ROUND-C3 (5.1): Claude's graphics in the Video's AI library: the
+        // editor's My library for that Video (as the Director's plan
+        // graphics, pack plan-graphics) and a row in the Asset Library.
+        graphics: async (videoId, items) => {
+          const { CreatorLibrary } = await import('../ui/creator-library');
+          const lib = new CreatorLibrary(Promise.resolve(media), () => videoId);
+          await lib.ready;
+          const have = new Set(lib.list().map((e) => e.key));
+          const entries = items
+            .filter((g) => !have.has(`plan-graphics/${g.id}`))
+            .map((g) => ({
+              key: `plan-graphics/${g.id}`,
+              packId: 'plan-graphics',
+              packName: { en: 'New graphics', hi: 'नए ग्राफ़िक' },
+              packVersion: 1,
+              item: {
+                id: g.id,
+                type: 'motion',
+                name: { en: g.name.slice(0, 80) },
+                tags: ['ai-graphic'],
+                data: { tier: g.tier, source: g.source, meta: g.meta },
+              },
+              name: g.name,
+              addedAt: new Date().toISOString(),
+              motionMeta: {
+                ...g.meta,
+                name: g.name,
+                category: (g.meta.category as string | undefined) ?? 'AI',
+                params: (g.meta.params as unknown[] | undefined) ?? [],
+                ...(g.summary ? { summary: g.summary } : {}),
+              },
+            }));
+          if (entries.length) await lib.add(entries as never);
+        },
+        memory: (videoId, sheet, notes) => {
+          // The same store AI mode reads (aive.vmem.<user>); a line or a
+          // note already there is kept once.
+          void import('../project/video-memory').then(({ MemoryStore }) => {
+            const mem = new MemoryStore(
+              localStorage,
+              u,
+              () => services.config.director.context,
+            );
+            for (const line of sheet) mem.note(videoId, 'decisions', line);
+            for (const n of notes)
+              mem.fileNote(
+                videoId,
+                { name: n.name, kind: n.kind, bytes: n.bytes },
+                n.note,
+              );
+          });
+        },
+        asset: {
+          has: (id) => services.assets(u).some((a) => a.id === id),
+          save: (row) => services.saveAsset({ ...row, userId: u }),
+        },
         fetchMedia: async (fp) => {
           const res = await fetch(
             `${gatewayUrl.replace(/\/$/, '')}/v1/mcp/media/${fp}`,

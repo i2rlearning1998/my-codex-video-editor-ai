@@ -104,7 +104,7 @@ test("[RDC3-006] a person with no account: Claude's Connect opens Sign up with t
   expect((await c.token(code)).access_token).toMatch(/^mcpa\./);
 });
 
-test('[RDC3-007] a person with an account who cleared the browser: Connect opens Sign up, Log in keeps next, Allow works; the Claude connection and what Claude made survive the cleared browser and come back after logging in', async ({
+test('[RDC3-007] [RDC3-052] a person with an account who cleared the browser: Connect opens Sign up, Log in keeps next, Allow works; the Claude connection and what Claude made survive the cleared browser and come back after logging in', async ({
   page,
 }) => {
   test.setTimeout(240_000);
