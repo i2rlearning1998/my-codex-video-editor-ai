@@ -1571,6 +1571,574 @@ export async function appearanceScreen(ctx: Ctx): Promise<HTMLElement> {
   return root;
 }
 
+// ---------------------------------------------------- Features & access
+
+const F = {
+  title: ['Features & access', 'फ़ीचर और एक्सेस'],
+  intro: [
+    'Switch a feature on or off for everyone, try it with a share of people first, give it to plans, or give one person or a group a feature or a limit for a while.',
+    'किसी फ़ीचर को सबके लिए चालू या बंद करें, पहले कुछ लोगों पर आज़माएँ, प्लान में दें, या किसी व्यक्ति या समूह को कुछ समय के लिए फ़ीचर या सीमा दें।',
+  ],
+  features: ['Features', 'फ़ीचर'],
+  key: ['Key', 'कुंजी'],
+  on: ['On for everyone', 'सबके लिए चालू'],
+  beta: ['Beta (only the group below)', 'बीटा (सिर्फ़ नीचे वाला समूह)'],
+  rollout: ['Share of people (%)', 'लोगों का हिस्सा (%)'],
+  gates: ['What it gates', 'यह किसे रोकता है'],
+  saveFeatures: ['Save features', 'फ़ीचर सहेजें'],
+  plans: ['Plans', 'प्लान'],
+  archived: ['Archived', 'संग्रहित'],
+  copyPlan: ['Copy a plan', 'प्लान कॉपी करें'],
+  savePlans: ['Save plans', 'प्लान सहेजें'],
+  remove: ['Remove', 'हटाएँ'],
+  overrides: ['Personal and group overrides', 'व्यक्तिगत और समूह ओवरराइड'],
+  who: [
+    'Person (email) or group (cohort:id)',
+    'व्यक्ति (ईमेल) या समूह (cohort:id)',
+  ],
+  what: ['Feature or limit', 'फ़ीचर या सीमा'],
+  value: [
+    'On / Off, or the limit (empty: no limit)',
+    'चालू / बंद, या सीमा (खाली: कोई सीमा नहीं)',
+  ],
+  until: ['Until (empty: no end)', 'कब तक (खाली: कोई अंत नहीं)'],
+  note: ['Note (why)', 'नोट (क्यों)'],
+  add: ['Add the override', 'ओवरराइड जोड़ें'],
+  cohorts: ['Groups (cohorts)', 'समूह'],
+  cohortId: ['Group id', 'समूह id'],
+  cohortName: ['Name', 'नाम'],
+  emails: [
+    'Emails (up to 500; paste or import a file)',
+    'ईमेल (500 तक; चिपकाएँ या फ़ाइल लाएँ)',
+  ],
+  importFile: ['Import a list', 'सूची लाएँ'],
+  saveCohort: ['Save the group', 'समूह सहेजें'],
+  whoHas: ['Who has this?', 'यह किसके पास है?'],
+  show: ['Show', 'दिखाएँ'],
+  count: ['{n} people have it.', '{n} लोगों के पास है।'],
+  saved: [
+    'Saved as config version {v}.',
+    'कॉन्फ़िग वर्ज़न {v} के रूप में सहेजा।',
+  ],
+  done: ['Done.', 'हो गया।'],
+} as const;
+const tf = (k: keyof typeof F, vars: Record<string, string | number> = {}) =>
+  F[k][lang() === 'hi' ? 1 : 0].replace(/\{(\w+)\}/g, (w, n: string) =>
+    n in vars ? String(vars[n]) : w,
+  );
+type Plan = PlatformConfig['plans'][number];
+type Feature = NonNullable<PlatformConfig['features']>[number];
+interface AccessData {
+  version: number;
+  plans: Plan[];
+  features: Feature[];
+  limits: string[];
+  cohorts: { id: string; name: string; emails: string[] }[];
+  overrides: {
+    id: string;
+    who: string;
+    feature?: string;
+    on?: boolean;
+    limit?: string;
+    value?: number | null;
+    expiresAt?: string;
+    note: string;
+    expired: boolean;
+  }[];
+  expiredText: string;
+}
+let accessDraft: { base: number; plans: Plan[]; features: Feature[] } | null =
+  null;
+let accessRenders = 0;
+const overrideDraft = { who: '', what: '', value: '', until: '', note: '' };
+const cohortDraft = { id: '', name: '', emails: '' };
+
 export async function accessScreen(ctx: Ctx): Promise<HTMLElement> {
-  return ctx.el('div', { id: 'access-screen' });
+  const data = await ctx.api<AccessData>('GET', q('/api/access'));
+  if (!accessDraft || accessDraft.base !== data.version)
+    accessDraft = {
+      base: data.version,
+      plans: clone(data.plans),
+      features: clone(data.features),
+    };
+  const d = accessDraft;
+  const root = ctx.el('div', {
+    class: 'stack',
+    id: 'access-screen',
+    // Counts redraws (tests wait for the one after a save).
+    'data-render': String(++accessRenders),
+  });
+  // Features (3.1).
+  const featRows = d.features.map((f) =>
+    ctx.el(
+      'tr',
+      { 'data-feature': f.key },
+      ctx.el('td', {}, ctx.el('code', {}, f.key)),
+      ctx.el(
+        'td',
+        {},
+        input(ctx, f.label.en, (v) => (f.label = { ...f.label, en: v })),
+      ),
+      ctx.el(
+        'td',
+        {},
+        input(
+          ctx,
+          f.label.hi ?? '',
+          (v) => (f.label = v ? { ...f.label, hi: v } : { en: f.label.en }),
+          { lang: 'hi' },
+        ),
+      ),
+      ctx.el(
+        'td',
+        {},
+        check(ctx, f.on, (v) => (f.on = v), { 'data-feature-on': f.key }),
+      ),
+      ctx.el(
+        'td',
+        {},
+        check(ctx, f.beta, (v) => (f.beta = v), { 'data-feature-beta': f.key }),
+      ),
+      ctx.el(
+        'td',
+        {},
+        input(
+          ctx,
+          String(f.rollout),
+          (v) => {
+            const n = Math.round(Number(v));
+            if (Number.isFinite(n)) f.rollout = Math.max(0, Math.min(100, n));
+          },
+          { 'data-feature-rollout': f.key, size: '4' },
+        ),
+      ),
+      ctx.el(
+        'td',
+        {},
+        input(
+          ctx,
+          f.gates.join(', '),
+          (v) =>
+            (f.gates = v
+              .split(',')
+              .map((x) => x.trim())
+              .filter(Boolean)),
+        ),
+      ),
+    ),
+  );
+  const table = (head: string[], rows: HTMLElement[], id: string) =>
+    ctx.el(
+      'table',
+      { id },
+      ctx.el(
+        'thead',
+        {},
+        ctx.el('tr', {}, ...head.map((h) => ctx.el('th', {}, h))),
+      ),
+      ctx.el('tbody', {}, ...rows),
+    );
+  root.append(
+    ctx.el('h1', {}, tf('title')),
+    ctx.el('p', { class: 'muted' }, tf('intro')),
+    card(
+      ctx,
+      tf('features'),
+      'access-features',
+      table(
+        [
+          tf('key'),
+          'English',
+          'हिंदी',
+          tf('on'),
+          tf('beta'),
+          tf('rollout'),
+          tf('gates'),
+        ],
+        featRows,
+        'feature-table',
+      ),
+      button(
+        ctx,
+        tf('saveFeatures'),
+        async () => {
+          const out = await ctx.api<{ version: number }>(
+            'POST',
+            q('/api/access/features'),
+            {
+              features: d.features,
+              baseVersion: d.base,
+            },
+          );
+          accessDraft = null;
+          ctx.refresh();
+          return tf('saved', { v: out.version });
+        },
+        { id: 'access-save-features', class: 'primary' },
+      ),
+    ),
+  );
+  // Plans: features by plan and labelled limits (3.2).
+  const planHead = ['', ...d.plans.map((p) => p.id)];
+  const grid = d.features.map((f) =>
+    ctx.el(
+      'tr',
+      {},
+      ctx.el('td', {}, f.label[lang()] ?? f.label.en),
+      ...d.plans.map((p) =>
+        ctx.el(
+          'td',
+          {},
+          check(
+            ctx,
+            p.features.includes(f.key),
+            (v) => {
+              p.features = v
+                ? [...new Set([...p.features, f.key])]
+                : p.features.filter((x) => x !== f.key);
+            },
+            { 'data-plan-feature': `${p.id}:${f.key}` },
+          ),
+        ),
+      ),
+    ),
+  );
+  const limits = data.limits.map((k) =>
+    ctx.el(
+      'tr',
+      {},
+      ctx.el('td', {}, k),
+      ...d.plans.map((p) => {
+        const cur = (p.limits as Record<string, number | null>)[k];
+        return ctx.el(
+          'td',
+          {},
+          input(
+            ctx,
+            cur === null || cur === undefined ? '' : String(cur),
+            (v) => {
+              const n = Number(v);
+              (p.limits as Record<string, number | null>)[k] =
+                v.trim() === ''
+                  ? null
+                  : Number.isFinite(n)
+                    ? Math.round(n)
+                    : (cur ?? null);
+            },
+            { 'data-plan-limit': `${p.id}:${k}`, size: '7' },
+          ),
+        );
+      }),
+    ),
+  );
+  const archive = ctx.el(
+    'tr',
+    {},
+    ctx.el('td', {}, tf('archived')),
+    ...d.plans.map((p) =>
+      ctx.el(
+        'td',
+        {},
+        check(
+          ctx,
+          !!p.archived,
+          (v) => (v ? (p.archived = true) : delete p.archived),
+          { 'data-plan-archived': p.id },
+        ),
+      ),
+    ),
+  );
+  const removers = ctx.el(
+    'tr',
+    {},
+    ctx.el('td', {}, ''),
+    ...d.plans.map((p, i) =>
+      ctx.el(
+        'td',
+        {},
+        button(
+          ctx,
+          tf('remove'),
+          () => (d.plans.splice(i, 1), ctx.refresh(), null),
+          { 'data-plan-remove': p.id },
+        ),
+      ),
+    ),
+  );
+  root.append(
+    card(
+      ctx,
+      tf('plans'),
+      'access-plans',
+      table(planHead, [...grid, ...limits, archive, removers], 'plan-grid'),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        button(
+          ctx,
+          tf('copyPlan'),
+          () => {
+            const from = d.plans[0]!;
+            let n = 2;
+            while (d.plans.some((p) => p.id === `${from.id}-${n}`)) n++;
+            d.plans.push({
+              ...clone(from),
+              id: `${from.id}-${n}`,
+              name: { en: `${from.name.en} ${n}` },
+            });
+            ctx.refresh();
+            return null;
+          },
+          { id: 'access-copy-plan' },
+        ),
+        button(
+          ctx,
+          tf('savePlans'),
+          async () => {
+            const out = await ctx.api<{ version: number }>(
+              'POST',
+              q('/api/access/plans'),
+              {
+                plans: d.plans,
+                baseVersion: d.base,
+              },
+            );
+            accessDraft = null;
+            ctx.refresh();
+            return tf('saved', { v: out.version });
+          },
+          { id: 'access-save-plans', class: 'primary' },
+        ),
+      ),
+    ),
+  );
+  // Overrides (3.3).
+  // Typed values survive a redraw of this screen (a save elsewhere on it).
+  const form = overrideDraft;
+  const whats = [
+    ...d.features.map((f) => [`feature:${f.key}`, f.key] as const),
+    ...data.limits.map((l) => [`limit:${l}`, `${l} (limit)`] as const),
+  ];
+  if (!whats.some((w) => w[0] === form.what)) form.what = whats[0]?.[0] ?? '';
+  root.append(
+    card(
+      ctx,
+      tf('overrides'),
+      'access-overrides',
+      ...data.overrides.map((o) =>
+        ctx.el(
+          'div',
+          { class: `row${o.expired ? ' muted' : ''}`, 'data-override': o.id },
+          `${o.who} · ${o.feature ? `${o.feature} ${o.on ? 'on' : 'off'}` : `${o.limit} = ${o.value ?? '∞'}`} · ${o.expiresAt ? new Date(o.expiresAt).toLocaleString() : '∞'} · ${o.note}`,
+          o.expired
+            ? ctx.el(
+                'span',
+                { class: 'chip', 'data-override-expired': o.id },
+                data.expiredText,
+              )
+            : '',
+          button(
+            ctx,
+            tf('remove'),
+            async () => {
+              const out = await ctx.guarded(() =>
+                ctx.api('POST', q('/api/access/override'), { remove: o.id }),
+              );
+              if (!out) return null;
+              ctx.refresh();
+              return tf('done');
+            },
+            { 'data-override-remove': o.id },
+          ),
+        ),
+      ),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(
+          ctx,
+          tf('who'),
+          input(ctx, form.who, (v) => (form.who = v), { id: 'override-who' }),
+        ),
+        field(
+          ctx,
+          tf('what'),
+          select(ctx, whats, form.what, (v) => (form.what = v), {
+            id: 'override-what',
+          }),
+        ),
+        field(
+          ctx,
+          tf('value'),
+          input(ctx, form.value, (v) => (form.value = v), {
+            id: 'override-value',
+          }),
+        ),
+        field(
+          ctx,
+          tf('until'),
+          (() => {
+            const i = ctx.el('input', {
+              type: 'datetime-local',
+              id: 'override-until',
+            });
+            i.onchange = () =>
+              (form.until = i.value
+                ? new Date(`${i.value}Z`).toISOString()
+                : '');
+            return i;
+          })(),
+        ),
+        field(
+          ctx,
+          tf('note'),
+          input(ctx, form.note, (v) => (form.note = v), {
+            id: 'override-note',
+          }),
+        ),
+        button(
+          ctx,
+          tf('add'),
+          async () => {
+            const [kind, key] = form.what.split(':') as [string, string];
+            const v = form.value.trim().toLowerCase();
+            const override = {
+              who: form.who.trim(),
+              note: form.note,
+              ...(form.until ? { expiresAt: form.until } : {}),
+              ...(kind === 'feature'
+                ? {
+                    feature: key,
+                    on: v === 'on' || v === 'चालू' || v === 'true',
+                  }
+                : { limit: key, value: v === '' ? null : Number(v) }),
+            };
+            const out = await ctx.guarded(() =>
+              ctx.api('POST', q('/api/access/override'), { override }),
+            );
+            if (!out) return null;
+            Object.assign(form, { who: '', value: '', until: '', note: '' });
+            ctx.refresh();
+            return tf('done');
+          },
+          { id: 'override-add', class: 'primary' },
+        ),
+      ),
+    ),
+  );
+  // Cohorts (3.4).
+  const co = cohortDraft;
+  const emailsBox = area(ctx, co.emails, (v) => (co.emails = v), {
+    id: 'cohort-emails',
+    rows: '4',
+  });
+  root.append(
+    card(
+      ctx,
+      tf('cohorts'),
+      'access-cohorts',
+      ...data.cohorts.map((c) =>
+        ctx.el(
+          'div',
+          { class: 'row', 'data-cohort': c.id },
+          `${c.id} · ${c.name} · ${c.emails.length}`,
+          button(ctx, tf('remove'), async () => {
+            await ctx.api('POST', q('/api/access/cohort'), { remove: c.id });
+            ctx.refresh();
+            return tf('done');
+          }),
+        ),
+      ),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(
+          ctx,
+          tf('cohortId'),
+          input(ctx, co.id, (v) => (co.id = v), { id: 'cohort-id' }),
+        ),
+        field(
+          ctx,
+          tf('cohortName'),
+          input(ctx, co.name, (v) => (co.name = v), { id: 'cohort-name' }),
+        ),
+      ),
+      field(ctx, tf('emails'), emailsBox),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        button(
+          ctx,
+          tf('importFile'),
+          async () => {
+            const f = await pickFile('.txt,.csv,text/plain,text/csv');
+            if (!f) return null;
+            co.emails = await f.text();
+            emailsBox.value = co.emails;
+            return null;
+          },
+          { id: 'cohort-import' },
+        ),
+        button(
+          ctx,
+          tf('saveCohort'),
+          async () => {
+            await ctx.api('POST', q('/api/access/cohort'), co);
+            Object.assign(co, { id: '', name: '', emails: '' });
+            ctx.refresh();
+            return tf('done');
+          },
+          { id: 'cohort-save', class: 'primary' },
+        ),
+      ),
+    ),
+  );
+  // Who has this? (3.5)
+  const whoOut = ctx.el('div', { class: 'stack', id: 'who-result' });
+  let whoKey = d.features[0]?.key ?? '';
+  root.append(
+    card(
+      ctx,
+      tf('whoHas'),
+      'access-who',
+      ctx.el(
+        'div',
+        { class: 'row' },
+        select(
+          ctx,
+          d.features.map((f) => [f.key, f.key] as const),
+          whoKey,
+          (v) => (whoKey = v),
+          { id: 'who-feature' },
+        ),
+        button(
+          ctx,
+          tf('show'),
+          async () => {
+            const r = await ctx.api<{
+              people: { email: string; on: boolean; why: string }[];
+              count: number;
+            }>(
+              'GET',
+              q(`/api/access/who?feature=${encodeURIComponent(whoKey)}`),
+            );
+            whoOut.replaceChildren(
+              ctx.el('p', { id: 'who-count' }, tf('count', { n: r.count })),
+              ...r.people.map((p) =>
+                ctx.el(
+                  'div',
+                  { class: 'row', 'data-who': p.email },
+                  `${p.email || '—'} · ${p.on ? '✓' : '✗'} · ${p.why}`,
+                ),
+              ),
+            );
+            return null;
+          },
+          { id: 'who-show' },
+        ),
+      ),
+      whoOut,
+    ),
+  );
+  return root;
 }

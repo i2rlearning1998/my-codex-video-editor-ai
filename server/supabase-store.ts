@@ -1,3 +1,4 @@
+import { emptyAccess, type AccessRules } from '../src/platform-config/access';
 import type {
   PaymentRecord,
   SecretRecord,
@@ -314,6 +315,22 @@ export function supabaseStore(
     },
     // ROUND-A: one row per person (supabase/migrations/20261112000000_round_a_workspace.sql).
     // ROUND-C2: the Claude connector (migration 20261116000000_round_c2_mcp).
+    // ROUND-C5 (3.3): overrides and cohorts, one row (migration 20261116100000_round_c5_access).
+    async accessRules() {
+      const { data, error } = await db
+        .from('access_rules')
+        .select('data')
+        .eq('id', 'main')
+        .maybeSingle();
+      fail('read the access rules', error);
+      return (data?.data as AccessRules | undefined) ?? emptyAccess();
+    },
+    async saveAccessRules(r) {
+      const { error } = await db
+        .from('access_rules')
+        .upsert({ id: 'main', data: r, updated_at: new Date().toISOString() });
+      fail('save the access rules', error);
+    },
     // ROUND-C3 (0.3): OAuth consents and codes (table mcp_grants).
     async mcpGrant(key) {
       const { data, error } = await db

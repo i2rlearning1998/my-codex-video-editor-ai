@@ -8,3 +8,4 @@ export * from './remote-source';
 export * from './media-providers';
 export * from './site-content';
 export { C5_TEXTS, c5, type C5TextId } from './texts/c5';
+export * from './access';

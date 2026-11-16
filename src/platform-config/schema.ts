@@ -67,6 +67,8 @@ export const planSchema = z.object({
   features: z.array(id).default([]),
   sortOrder: z.number().default(0),
   public: z.boolean().default(true),
+  /** ROUND-C5 (3.2): an archived plan takes no new people; its people keep it. */
+  archived: z.boolean().optional(),
 });
 export type Plan = z.infer<typeof planSchema>;
 
@@ -968,6 +970,23 @@ export const comboSchema = z.object({
 });
 export type Combo = z.infer<typeof comboSchema>;
 
+/** ROUND-C5 (3.1): one feature the owner switches, rolls out or gives to plans. */
+export const featureSchema = z.object({
+  /** A plan feature id (plans[].features lists the plans that include it). */
+  key: id,
+  label: textSchema,
+  description: textSchema.optional(),
+  /** What it gates, for the owner (studio, style, a panel screen, a tool...). */
+  gates: z.array(z.string().max(80)).max(20).default([]),
+  /** False: off for everyone right now. */
+  on: z.boolean().default(true),
+  /** True: only the rollout group has it (plan or not), for early testing. */
+  beta: z.boolean().default(false),
+  /** Percent of people (by a stable hash) who get it; 100 = everyone. */
+  rollout: z.number().int().min(0).max(100).default(100),
+});
+export type Feature = z.infer<typeof featureSchema>;
+
 /** ROUND-C5 (2.2): one picture or video slot of the panel or website. */
 export const appearanceSlotSchema = z.object({
   image: z.string().max(2000).optional(),
@@ -1060,6 +1079,8 @@ export const platformConfigSchema = z
     mcp: mcpSchema,
     /** ROUND-C5 (Part 2): pictures and videos of the panel's cards and heroes. */
     appearance: appearanceSchema.optional(),
+    /** ROUND-C5 (Part 3): the feature registry (absent: plans decide alone, as today). */
+    features: z.array(featureSchema).max(200).optional(),
   })
   .superRefine((c, ctx) => {
     const dup = (label: string, ids: string[]) => {

@@ -77,7 +77,12 @@ export function remoteGateway(base: string, token: () => Promise<string>) {
   const root = base.replace(/\/$/, '');
   let rows: LedgerEntry[] = [];
   let usage: (LimitUsage & { limits?: unknown }) | null = null;
-  let me: { plan: string; balance: number } | null = null;
+  let me: {
+    plan: string;
+    balance: number;
+    features?: string[];
+    limits?: Record<string, number | null>;
+  } | null = null;
   let models: ModelInfo[] = [];
   const api = async <T>(path: string, body?: unknown): Promise<T> => {
     let res: Response;
@@ -161,7 +166,7 @@ export function remoteGateway(base: string, token: () => Promise<string>) {
     /** Reads the person's plan, credits, usage and models again. */
     async sync() {
       const [m, l, u, md] = await Promise.all([
-        api<{ plan: string; balance: number }>('/me'),
+        api<NonNullable<typeof me>>('/me'),
         api<{ rows: LedgerEntry[] }>('/ledger'),
         api<LimitUsage>('/usage'),
         api<{ models: ModelInfo[] }>('/models'),
@@ -178,6 +183,9 @@ export function remoteGateway(base: string, token: () => Promise<string>) {
       return new CreditLedger(store);
     },
     plan: () => me?.plan,
+    /** ROUND-C5 (3.6): the person's features and limits after overrides. */
+    access: () =>
+      me?.features ? { features: me.features, limits: me.limits ?? {} } : null,
     models: () => models,
   };
 }

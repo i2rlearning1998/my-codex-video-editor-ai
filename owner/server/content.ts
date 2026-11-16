@@ -18,6 +18,10 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import {
+  LIMIT_KEYS,
+  checkOverride,
+  type AccessOverride,
+  type AccessRules,
   c5,
   checkSiteContent,
   hindiMissing,
@@ -467,12 +471,253 @@ export function createContentRoutes(d: ContentDeps) {
     d.book.write(b);
   }
 
+  // ---------------------------------------------------- Features & access
+  async function bridge<T>(
+    method: string,
+    p: string,
+    body: unknown,
+    who: string,
+  ) {
+    const r = await d.admin.call(
+      method,
+      p,
+      body === undefined ? undefined : JSON.stringify(body),
+      who,
+    );
+    const parsed = JSON.parse(r.body || '{}') as T & {
+      error?: { message?: string };
+    };
+    if (r.status !== 200)
+      throw new HttpFail(
+        r.status === 403 ? 403 : 502,
+        parsed.error?.message ?? 'The admin service refused.',
+      );
+    return parsed;
+  }
+  const rulesOf = async (who: string) =>
+    (
+      await bridge<{ rules: AccessRules }>(
+        'GET',
+        '/v1/admin/access',
+        undefined,
+        who,
+      )
+    ).rules;
+  const saveRules = (
+    rules: AccessRules,
+    who: string,
+    what: string,
+    note: string,
+  ) => bridge('POST', '/v1/admin/access', { rules, what, note }, who);
+  const peopleOf = async (who: string, feature = '-') =>
+    bridge<{
+      people: {
+        userId: string;
+        email: string;
+        plan: string;
+        on: boolean;
+        why: string;
+      }[];
+      count: number;
+    }>('POST', '/v1/admin/access/who', { feature, lang: 'en' }, who);
+  /** The feature list: the owner's registry, plus every plan feature he has not described. */
+  const featuresOf = (c: PlatformConfig) => {
+    const known = new Map((c.features ?? []).map((f) => [f.key, f]));
+    for (const p of c.plans)
+      for (const k of p.features)
+        if (!known.has(k))
+          known.set(k, {
+            key: k,
+            label: { en: k },
+            gates: [],
+            on: true,
+            beta: false,
+            rollout: 100,
+          });
+    return [...known.values()];
+  };
+
+  async function accessRoute(req: StyleRequest): Promise<StyleReply | null> {
+    const r = `${req.method} ${req.path}`;
+    if (r === 'GET /api/access') {
+      const { version, config } = await live();
+      const rules = await rulesOf(req.who);
+      const now = d.now();
+      return json({
+        version,
+        plans: config.plans,
+        features: featuresOf(config),
+        limits: LIMIT_KEYS,
+        cohorts: rules.cohorts,
+        overrides: rules.overrides.map((o) => ({
+          ...o,
+          expired: !!o.expiresAt && Date.parse(o.expiresAt) <= now,
+        })),
+        expiredText: c5('override-expired', req.lang),
+      });
+    }
+    if (r === 'POST /api/access/plans') {
+      const b = await req.body();
+      const { config: c } = await live();
+      const plans = b.plans as PlatformConfig['plans'];
+      if (!Array.isArray(plans) || !plans.length)
+        throw new HttpFail(400, 'Keep at least one plan.');
+      const gone = c.plans.filter((p) => !plans.some((x) => x.id === p.id));
+      if (gone.length) {
+        const people = (await peopleOf(req.who)).people;
+        for (const p of gone) {
+          const n = people.filter((x) => x.plan === p.id).length;
+          if (n)
+            throw new HttpFail(
+              400,
+              `The plan ${p.id} has ${n} people, so it cannot be deleted. Archive it instead: it takes no new people and its people keep it.`,
+            );
+        }
+      }
+      const next = { ...clone(c), plans };
+      const version = await publish(
+        req,
+        baseOf(b),
+        next,
+        `Plans: ${noteOf(b) || 'save'}`,
+      );
+      req.log(
+        'access plans',
+        plans.map((p) => p.id).join(','),
+        `config ${version}`,
+      );
+      return json({ version });
+    }
+    if (r === 'POST /api/access/features') {
+      const b = await req.body();
+      const { config: c } = await live();
+      const next = {
+        ...clone(c),
+        features: b.features as PlatformConfig['features'],
+      };
+      const version = await publish(
+        req,
+        baseOf(b),
+        next,
+        `Features: ${noteOf(b) || 'save'}`,
+      );
+      req.log('access features', '', `config ${version}`);
+      return json({ version });
+    }
+    if (r === 'POST /api/access/override') {
+      const b = await req.body();
+      const rules = await rulesOf(req.who);
+      if (typeof b.remove === 'string') {
+        req.fresh('access override remove', b.remove);
+        rules.overrides = rules.overrides.filter((o) => o.id !== b.remove);
+        await saveRules(rules, req.who, `remove ${b.remove}`, '');
+        req.log('access override remove', b.remove);
+        return json({ ok: true });
+      }
+      const o = { ...((b.override ?? {}) as Partial<AccessOverride>) };
+      // A person is named by email in the Admin; the rule keeps their id.
+      if (o.who?.includes('@')) {
+        const email = o.who.trim().toLowerCase();
+        const found = (await peopleOf(req.who)).people.find(
+          (x) => x.email.toLowerCase() === email,
+        );
+        if (!found)
+          throw new HttpFail(404, 'No account with that email was found.');
+        (o as { who: string }).who = found.userId;
+      }
+      const errors = checkOverride(o, req.lang);
+      if (errors.length) throw new HttpFail(400, errors.join(' '));
+      if (o.feature) {
+        const { config: c } = await live();
+        if (!featuresOf(c).some((f) => f.key === o.feature))
+          throw new HttpFail(400, 'There is no feature with that key.');
+      }
+      req.fresh('access override', `${o.who} ${o.feature ?? o.limit}`);
+      const full: AccessOverride = {
+        id: `ov-${createHash('sha256')
+          .update(`${d.now()}${JSON.stringify(o)}`)
+          .digest('hex')
+          .slice(0, 12)}`,
+        who: String(o.who),
+        ...(o.feature ? { feature: o.feature, on: !!o.on } : {}),
+        ...(o.limit ? { limit: o.limit, value: o.value ?? null } : {}),
+        ...(o.expiresAt
+          ? { expiresAt: new Date(o.expiresAt).toISOString() }
+          : {}),
+        note: String(o.note).slice(0, 300),
+        by: req.who,
+        at: new Date(d.now()).toISOString(),
+      };
+      rules.overrides.push(full);
+      await saveRules(rules, req.who, `override ${full.who}`, full.note);
+      req.log(
+        'access override',
+        full.who,
+        `${full.feature ?? full.limit} ${full.note}`,
+      );
+      return json({ override: full });
+    }
+    if (r === 'POST /api/access/cohort') {
+      const b = await req.body();
+      const rules = await rulesOf(req.who);
+      if (typeof b.remove === 'string') {
+        rules.cohorts = rules.cohorts.filter((x) => x.id !== b.remove);
+        rules.overrides = rules.overrides.filter(
+          (o) => o.who !== `cohort:${b.remove}`,
+        );
+        await saveRules(rules, req.who, `cohort remove ${b.remove}`, '');
+        req.log('access cohort remove', b.remove);
+        return json({ ok: true });
+      }
+      const id = String(b.id ?? '').trim();
+      if (!/^[a-z][a-z0-9-]{0,40}$/.test(id))
+        throw new HttpFail(
+          400,
+          'A group id is small letters, digits and dashes.',
+        );
+      const emails = [
+        ...new Set(
+          String(b.emails ?? '')
+            .split(/[\s,;]+/)
+            .map((x) => x.trim().toLowerCase())
+            .filter(Boolean),
+        ),
+      ];
+      const bad = emails.filter((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+      if (bad.length)
+        throw new HttpFail(
+          400,
+          `These are not emails: ${bad.slice(0, 5).join(', ')}.`,
+        );
+      if (emails.length > 500)
+        throw new HttpFail(400, 'A group holds up to 500 emails.');
+      const cohort = { id, name: String(b.name ?? id).slice(0, 80), emails };
+      rules.cohorts = [...rules.cohorts.filter((x) => x.id !== id), cohort];
+      await saveRules(rules, req.who, `cohort ${id}`, '');
+      req.log('access cohort', id, `${emails.length} emails`);
+      return json({ cohort });
+    }
+    if (r === 'GET /api/access/who') {
+      const feature = req.query.get('feature') ?? '';
+      const r2 = await bridge<{ people: unknown[]; count: number }>(
+        'POST',
+        '/v1/admin/access/who',
+        { feature, lang: req.lang },
+        req.who,
+      );
+      return json(r2);
+    }
+    return null;
+  }
+
   return async function route(req: StyleRequest): Promise<StyleReply | null> {
     const out = req.path.startsWith('/api/site')
       ? await siteRoute(req)
       : req.path.startsWith('/api/appearance')
         ? await appearanceRoute(req)
-        : null;
+        : req.path.startsWith('/api/access')
+          ? await accessRoute(req)
+          : null;
     // Every upload is remembered, so its file can be cleaned up when unused.
     if (
       out?.kind === 'json' &&

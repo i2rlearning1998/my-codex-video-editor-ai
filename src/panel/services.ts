@@ -750,8 +750,18 @@ export async function createServices(
       return ask('/workspace/claim', x);
     };
     w.changeWs = async (_u: string, x: unknown) => ask('/workspace/change', x);
-    w.planOf = (u: string) =>
-      planFor(config, remote.plan() ?? services.prefs(u).plan);
+    w.planOf = (u: string) => {
+      const plan = planFor(config, remote.plan() ?? services.prefs(u).plan);
+      // ROUND-C5 (3.6): the server's answer after the owner's overrides.
+      const a = remote.access();
+      return a
+        ? {
+            ...plan,
+            features: a.features,
+            limits: { ...plan.limits, ...a.limits } as typeof plan.limits,
+          }
+        : plan;
+    };
     w.monthlyGrant = () => {};
     w.switchPlan = async (u: string, planId: string) => {
       await remote.api('/plan', {

@@ -2,6 +2,7 @@
 // implementations: MemoryStore (tests), FileStore (offline, one JSON file)
 // and SupabaseStore (server/supabase-store.ts, service-role key from env).
 // The same contract tests run on all of them (tests/server/store.test.ts).
+import { emptyAccess, type AccessRules } from '../src/platform-config/access';
 import {
   mkdirSync,
   readFileSync,
@@ -79,6 +80,9 @@ export interface Store extends P3Store, McpStore {
   /** ROUND-A: the person's Projects and Videos (ids and Trash only), for the plan's limits. */
   workspaceRegistry(userId: string): Promise<Registry>;
   saveWorkspaceRegistry(userId: string, r: Registry): Promise<void>;
+  /** ROUND-C5 (3.3, 3.4): personal and cohort overrides and the cohorts. */
+  accessRules(): Promise<AccessRules>;
+  saveAccessRules(r: AccessRules): Promise<void>;
   /** P4 security: what a person really stores, counted by the database (not the browser). */
   measureUsage?(
     userId: string,
@@ -108,6 +112,8 @@ interface Data {
   claude?: Record<string, ClaudeDoc>;
   cloudProjects?: Record<string, Record<string, CloudProjectRow>>;
   media?: Record<string, Record<string, MediaRecord>>;
+  /** ROUND-C5: overrides and cohorts. */
+  access?: AccessRules;
 }
 /** Media bytes of the memory and file stores (kept outside the JSON). */
 export interface BlobBox {
@@ -364,6 +370,14 @@ class JsonStore implements Store {
   }
   async saveWorkspaceRegistry(u: string, r: Registry) {
     (this.data.workspaces ??= {})[u] = structuredClone(r);
+    this.save();
+  }
+  // ROUND-C5 (3.3): overrides and cohorts.
+  async accessRules() {
+    return structuredClone(this.data.access ?? emptyAccess());
+  }
+  async saveAccessRules(r: AccessRules) {
+    this.data.access = structuredClone(r);
     this.save();
   }
   // ROUND-C3 (0.3): OAuth consents and codes.

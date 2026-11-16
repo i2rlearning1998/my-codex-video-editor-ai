@@ -95,10 +95,12 @@ export const ADMIN_COVERAGE: Readonly<
     period: C(RAW),
     monthlyCredits: S('Plans & Credits'),
     watermark: S('Plans & Credits'),
-    limits: S('Plans & Credits'),
-    features: S('Plans & Credits'),
+    limits: S('Plans & Credits; Features & access › Plans (labelled limits)'),
+    features: S('Plans & Credits; Features & access › Plans (feature grid)'),
     sortOrder: C(RAW),
     public: S('Plans & Credits'),
+    // ROUND-C5 (3.2).
+    archived: S('Features & access › Plans (Archived)'),
   },
   site: {
     // ROUND-C5 (2.6): the site rows moved from config-only to their screen.
