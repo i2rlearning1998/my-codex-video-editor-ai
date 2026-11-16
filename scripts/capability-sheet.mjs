@@ -36,6 +36,14 @@ try {
         `| ${r.family} | ${cell(r.commands)} | ${cell(r.plan)} | ${r.internal ? `Editor only: ${r.internal}` : cell(r.mcp)} |`,
     ).join('\n')}\n`,
   );
+  // ROUND-C4 (4.1): the Admin coverage list.
+  const cov = await server.ssrLoadModule(
+    '/src/platform-config/admin-coverage.ts',
+  );
+  await writeFile(
+    new URL('../docs/ADMIN-COVERAGE.md', import.meta.url),
+    cov.coverageMarkdown(),
+  );
   console.log(`docs/CAPABILITY-SHEET.md written (version ${version}).`);
 } finally {
   await server.close();

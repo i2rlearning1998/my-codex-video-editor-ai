@@ -18,6 +18,7 @@ import { AuditLog } from './audit';
 import { Accounts, Sessions, csrfOk, reauthFresh, type Session } from './auth';
 import { OwnerLibrary, type LibraryConfig } from './library';
 import type { AdminBridge } from './admin-bridge';
+import { StyleBook, createStyleRoutes, HttpFail } from './styles';
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -138,6 +139,17 @@ export function createOwnerApp(config: OwnerAppConfig): {
   const headers = securityHeaders(config.catalogUrl);
   const script = uiScript();
   const adminScript = uiScript('admin.ts');
+  // ROUND-C4: the Styles builder, Brief fields and Director limits screens.
+  const builderScript = uiScript('builder.ts');
+  const styleRoutes = config.admin
+    ? createStyleRoutes({
+        admin: config.admin,
+        book: new StyleBook(config.dataDir),
+        now,
+        outDir: config.outDir,
+        catalogUrl: config.catalogUrl,
+      })
+    : null;
   const css = readFileSync(path.join(root, 'owner/ui/app.css'), 'utf8');
   const tokens = readFileSync(path.join(root, 'src/ui/tokens.css'), 'utf8');
   const page = readFileSync(
@@ -201,6 +213,13 @@ export function createOwnerApp(config: OwnerAppConfig): {
       return send(response, 200, script, 'text/javascript; charset=utf-8');
     if (method === 'GET' && url.pathname === '/admin.js')
       return send(response, 200, adminScript, 'text/javascript; charset=utf-8');
+    if (method === 'GET' && url.pathname === '/builder.js')
+      return send(
+        response,
+        200,
+        builderScript,
+        'text/javascript; charset=utf-8',
+      );
     if (method === 'GET' && url.pathname === '/app.css')
       return send(response, 200, css, 'text/css; charset=utf-8');
     if (method === 'GET' && url.pathname === '/tokens.css')
@@ -468,6 +487,42 @@ export function createOwnerApp(config: OwnerAppConfig): {
         publicKey: rotated.publicKey,
         catalogVersion: rotated.build.catalogVersion,
       });
+    }
+    // ---- ROUND-C4: Styles builder and Brief fields --------------------
+    if (
+      url.pathname.startsWith('/api/styles') ||
+      url.pathname.startsWith('/api/fields')
+    ) {
+      if (!styleRoutes)
+        throw new HttpError(503, 'The admin service is not running.');
+      try {
+        const reply = await styleRoutes({
+          method,
+          path: url.pathname,
+          query: url.searchParams,
+          body,
+          raw: () => readBody(request, UPLOAD_LIMIT),
+          who: session.email,
+          lang:
+            request.headers['x-owner-lang'] === 'hi' ||
+            url.searchParams.get('lang') === 'hi'
+              ? 'hi'
+              : 'en',
+          fresh,
+          log: (action, target, detail, ok = true) =>
+            log(session, action, target, detail, ok),
+        });
+        if (!reply) throw new HttpError(404, 'Not found.');
+        if (reply.kind === 'file')
+          return send(response, 200, reply.bytes, reply.type, {
+            'content-disposition': `attachment; filename="${reply.name}"`,
+          });
+        return json(response, reply.status, reply.body);
+      } catch (error) {
+        if (error instanceof HttpFail)
+          throw new HttpError(error.status, error.message, error.extra);
+        throw error;
+      }
     }
     // ---- Admin API ---------------------------------------------------
     if (url.pathname.startsWith('/api/admin/')) {

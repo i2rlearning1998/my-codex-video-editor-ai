@@ -464,6 +464,24 @@ export const styleSchema = z.object({
     .object({
       notes: z.string().max(4000).default(''),
       blocks: z.array(id).max(40).default([]),
+      /**
+       * ROUND-C4 (2.2): the Style's own code graphics (from the Video it was
+       * made from), kept as the Project's AI library keeps them; a Project
+       * started from the Style gets them in its library.
+       */
+      items: z
+        .array(
+          z.object({
+            id,
+            tier: z.enum(['B', 'C']),
+            source: z.string().max(200_000),
+            meta: z.record(z.unknown()).default({}),
+            name: z.string().max(120).default(''),
+            summary: z.string().max(600).default(''),
+          }),
+        )
+        .max(40)
+        .optional(),
     })
     .optional(),
   tests: z
@@ -472,12 +490,20 @@ export const styleSchema = z.object({
         topic: z.string().min(1).max(200),
         date: z.string().max(40),
         passed: z.boolean(),
+        /** ROUND-C4 (1.5): the owner's note and the Video it was made in. */
+        note: z.string().max(600).optional(),
+        videoId: z.string().max(80).optional(),
       }),
     )
     .max(50)
     .optional(),
   /** The owner's written reason to publish without three passed tests. */
   publishOverride: z.string().max(600).optional(),
+  /**
+   * ROUND-C4 (1.7): the plans that include this Style (missing or empty:
+   * every plan). `requires` stays the feature gate it always was.
+   */
+  plans: z.array(id).max(40).optional(),
 });
 export type Style = z.infer<typeof styleSchema>;
 
@@ -498,6 +524,9 @@ export const fieldBlockSchema = z.object({
     .optional(),
   /** Whether the card offers "You decide" for it. */
   youDecide: z.boolean().default(true),
+  /** ROUND-C4 (3.1): an example answer the card shows, and a default value. */
+  example: textSchema.optional(),
+  default: z.string().max(400).optional(),
 });
 export type FieldBlock = z.infer<typeof fieldBlockSchema>;
 export const videoTypeSchema = z.object({
@@ -506,8 +535,17 @@ export const videoTypeSchema = z.object({
   /** Words that mark a first message as this type (lower case). */
   keywords: z.array(z.string().min(2)).default([]),
   blocks: z
-    .array(z.object({ id, required: z.boolean().default(false) }))
+    .array(
+      z.object({
+        id,
+        required: z.boolean().default(false),
+        /** ROUND-C4 (3.2): the Brief card's group this block shows in. */
+        group: id.optional(),
+      }),
+    )
     .min(1),
+  /** ROUND-C4 (3.2): the playbook this type maps to (director.playbooks). */
+  playbook: id.optional(),
 });
 export type VideoType = z.infer<typeof videoTypeSchema>;
 

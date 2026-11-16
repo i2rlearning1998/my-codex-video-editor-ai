@@ -10,6 +10,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { PlatformConfig, Plan } from '../../src/platform-config';
+import { mcpPrice } from '../../src/platform-config';
 import { costById } from '../../src/platform-config/resolve';
 import { buildManual, withPlatform } from '../../src/director-rules/manual';
 import {
@@ -21,10 +22,19 @@ import {
   type StyleLike,
 } from '../../src/director/field-library';
 import { checkPlan, methodOf } from '../../src/director/planner';
-import { enabledStyles, isOwnerEmail } from '../../src/platform-config/resolve';
+import {
+  enabledStyles,
+  isOwnerEmail,
+  styleOpen,
+} from '../../src/platform-config/resolve';
 import { styleFromTemplate } from '../../src/project/style-from';
 import { mediaCredits } from '../../src/director/build';
-import { graphicsCredits, rewritesLeft } from '../../src/director/plan-costs';
+import {
+  fileMatches,
+  graphicsCredits,
+  rewritesLeft,
+  sceneMethodCredits,
+} from '../../src/director/plan-costs';
 import { REFERENCES } from '../../src/director-rules/references.gen';
 import type { UsageLog } from '../../src/gateway/usage';
 import type { ToolOutcome } from '../../src/tools';
@@ -408,21 +418,30 @@ export function createMcpTools(s: McpServices) {
     v.sheet = v.sheet.slice(-caps(c).maxSheetEntries);
   };
 
-  /** Plan cost: work credits per scene method plus each new graphic. */
+  /**
+   * Plan cost: work credits per scene method plus each new graphic. ROUND-C4
+   * (0.5): a scene whose media the person already has costs only what is new.
+   */
   const planCost = (
     c: PlatformConfig,
     plan: { scenes: { notes?: string }[]; defs?: { blocks?: unknown[] } },
+    owns?: (query: string) => boolean,
   ) => {
     let total = 0;
-    for (const sc of plan.scenes) {
-      const method = /method:([a-z0-9-]+)/.exec(sc.notes ?? '')?.[1];
-      const tool = c.director.tools.find((t) => t.id === method);
-      const cost = tool?.costId ? costById(c, tool.costId) : undefined;
-      total += cost?.max ?? 0;
-    }
+    for (const sc of plan.scenes)
+      total += sceneMethodCredits(c, sc as never, owns);
     const g = costById(c, c.director.authoring.newGraphicCostId);
     total += (plan.defs?.blocks?.length ?? 0) * (g?.max ?? 0);
     return total;
+  };
+  /** The person's files of this Video, as a query test (the slot rule). */
+  const ownsOf = async (u: string, v: ClaudeVideo) => {
+    const names: string[] = [];
+    for (const fp of v.media) {
+      const r = await s.store.mediaRecord(u, fp);
+      if (r) names.push(r.name);
+    }
+    return (q: string) => names.some((n) => fileMatches(q, n));
   };
 
   const mediaCandidates = async (
@@ -743,6 +762,11 @@ export function createMcpTools(s: McpServices) {
           return oops(
             `There is no Style "${a.style_id as string}" for this person. Call list_styles.`,
           );
+        // ROUND-C4 (1.7): a Style the person's plan does not include.
+        if (style && !styleOpen(c.plan, style))
+          return oops(
+            `${planLocked(c, style)} The person's plan does not include it, so no Project was made. They can upgrade in the panel (Credits & Plan).`,
+          );
         const pid = `proj-${randomUUID()}`;
         await s.claim(c.userId, 'project', pid);
         const d = await doc(c.userId);
@@ -762,6 +786,21 @@ export function createMcpTools(s: McpServices) {
           videos: {},
           createdAt: new Date(s.now()).toISOString(),
           origin: 'claude',
+          // ROUND-C4 (2.2): the Style's own code graphics join its library.
+          ...(style?.kit?.items?.length
+            ? {
+                library: style.kit.items.map((g) => ({
+                  id: g.id,
+                  tier: g.tier,
+                  source: g.source,
+                  meta: g.meta,
+                  name: g.name || g.id,
+                  summary: g.summary,
+                  savedAt: new Date(s.now()).toISOString(),
+                  videoId: '',
+                })),
+              }
+            : {}),
         };
         await save(c.userId, d);
         return {
@@ -1306,7 +1345,16 @@ export function createMcpTools(s: McpServices) {
               s.now(),
             ),
           );
-        f.v.cost = planCost(c.config, checked.plan as never);
+        // ROUND-C4 (5.2): the owner's rule for building after approval.
+        f.v.cost = mcpPrice(
+          c.config.mcp,
+          'build',
+          planCost(
+            c.config,
+            checked.plan as never,
+            await ownsOf(c.userId, f.v),
+          ),
+        );
         f.v.approved = false;
         f.v.costShownFor = null;
         f.v.seenRevision = saved.revision;
@@ -1381,12 +1429,9 @@ export function createMcpTools(s: McpServices) {
           }[];
           defs?: { blocks?: { id: string; summary?: string }[] };
         };
-        const sceneCost = (sc: { notes?: string }) => {
-          const tool = c.config.director.tools.find(
-            (t) => t.id === methodOf(sc),
-          );
-          return tool?.costId ? (costById(c.config, tool.costId)?.max ?? 0) : 0;
-        };
+        const owns = await ownsOf(c.userId, f.v);
+        const sceneCost = (sc: { notes?: string }) =>
+          sceneMethodCredits(c.config, sc as never, owns);
         const graphics = graphicsCredits(c.config, plan as never);
         const media = mediaCredits(
           c.config,
@@ -1395,7 +1440,11 @@ export function createMcpTools(s: McpServices) {
           false,
           () => false,
         );
-        const cost = planCost(c.config, plan as never) + media;
+        const cost = mcpPrice(
+          c.config.mcp,
+          'build',
+          planCost(c.config, plan as never, owns) + media,
+        );
         f.v.cost = cost;
         f.v.costShownFor = hash(f.v.plan);
         await save(c.userId, d);
@@ -1556,13 +1605,32 @@ export function createMcpTools(s: McpServices) {
           }
         let sceneCharge = 0;
         if ((adding.length || newGraphics) && !a.dry_run) {
+          // ROUND-C4 (5.2): the owner's rules for a new scene and a new graphic.
           const extra =
-            planCost(c.config, {
-              scenes: adding.map((o) => o.scene) as { notes?: string }[],
-            } as never) +
-            graphicsCredits(c.config, {
-              defs: { blocks: new Array(newGraphics).fill({}) },
-            } as never);
+            (adding.length
+              ? mcpPrice(
+                  c.config.mcp,
+                  'new-scene',
+                  planCost(
+                    c.config,
+                    {
+                      scenes: adding.map((o) => o.scene) as {
+                        notes?: string;
+                      }[],
+                    } as never,
+                    await ownsOf(c.userId, f.v),
+                  ),
+                )
+              : 0) +
+            (newGraphics
+              ? mcpPrice(
+                  c.config.mcp,
+                  'new-graphic',
+                  graphicsCredits(c.config, {
+                    defs: { blocks: new Array(newGraphics).fill({}) },
+                  } as never),
+                )
+              : 0);
           const key = hash(
             (a.ops as EditOp[]).filter(
               (o) => o.op === 'add_scene' || o.op === 'add_graphic',
@@ -1971,8 +2039,14 @@ export function createMcpTools(s: McpServices) {
           return { text: 'This export was already counted.' };
         await s.countExport(c.userId);
         const rule = c.config.mcp.tools.export_video;
-        if (rule && rule.cost !== 'free') {
-          const credits = costById(c.config, rule.cost)?.max ?? 0;
+        if ((rule && rule.cost !== 'free') || c.config.mcp.pricing.export) {
+          const credits = mcpPrice(
+            c.config.mcp,
+            'export',
+            rule && rule.cost !== 'free'
+              ? (costById(c.config, rule.cost)?.max ?? 0)
+              : 0,
+          );
           if (credits > 0)
             s.charge(
               c.userId,
@@ -2013,7 +2087,7 @@ export function createMcpTools(s: McpServices) {
           text: list
             .map(
               (st) =>
-                `- ${st.id}: ${st.name.en}${(st.status ?? 'published') !== 'published' ? ` (${st.status}, only the owner sees it)` : ''}. ${st.blurb.en}${st.looks?.length ? ` Looks: ${st.looks.map((l) => l.name.en).join(', ')}.` : ''}${st.priceHint ? ` About ${st.priceHint.min} to ${st.priceHint.max} credits a ${st.priceHint.per}.` : ''}`,
+                `- ${st.id}: ${st.name.en}${(st.status ?? 'published') !== 'published' ? ` (${st.status}, only the owner sees it)` : ''}${styleOpen(c.plan, st) ? '' : ` (locked: ${planLocked(c, st)} The person would need to upgrade.)`}. ${st.blurb.en}${st.looks?.length ? ` Looks: ${st.looks.map((l) => l.name.en).join(', ')}.` : ''}${st.priceHint ? ` About ${st.priceHint.min} to ${st.priceHint.max} credits a ${st.priceHint.per}.` : ''}`,
             )
             .join('\n'),
         };
@@ -2116,6 +2190,13 @@ export function createMcpTools(s: McpServices) {
   ];
 
   /** ROUND-C3 (6.2): the Styles this person may see (owner: all). */
+  /** T1 plan-locked: "This Style is part of the {plan} plan." */
+  function planLocked(c: McpCtx, st: PlatformConfig['styles'][number]) {
+    const p = c.config.plans.find((x) => st.plans?.includes(x.id));
+    return p
+      ? `This Style is part of the ${p.name.en} plan.`
+      : "This Style needs a feature the person's plan does not have.";
+  }
   function visibleStyles(c: McpCtx) {
     return enabledStyles(c.config, { owner: !!c.owner });
   }
@@ -2642,10 +2723,18 @@ export function createMcpTools(s: McpServices) {
       hits.push(t);
       rate.set(c.userId, hits);
       // Export is charged when it is done (export_done), not when the card opens.
-      const credits =
+      const base =
         rule && rule.cost !== 'free' && tool.name !== 'export_video'
           ? (costById(c.config, rule.cost)?.max ?? 0)
           : 0;
+      // ROUND-C4 (5.2): web search and page fetching follow the owner's rule.
+      const action =
+        tool.name === 'search_web'
+          ? 'web-search'
+          : tool.name === 'fetch_page'
+            ? 'page-fetch'
+            : null;
+      const credits = action ? mcpPrice(c.config.mcp, action, base) : base;
       if (credits > s.balance(c.userId))
         return done(
           oops(

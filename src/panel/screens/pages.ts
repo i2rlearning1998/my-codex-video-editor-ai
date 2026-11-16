@@ -2,7 +2,7 @@
 // Brand Kit, Settings and Learn. Content from the config; data through the
 // services (ledger, account, project library).
 import {
-  canUse,
+  styleOpen,
   enabledStyles,
   isOwnerEmail,
   enabledStudios,
@@ -34,7 +34,7 @@ import { directorStart } from './director-start';
  */
 const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
   const plan = ctx.s.planOf(ctx.user.id);
-  const ok = canUse(plan, s.requires);
+  const ok = styleOpen(plan, s);
   const notes = h('div', { class: 'ws-notices' });
   const hint = s.priceHint;
   return h(
@@ -101,6 +101,19 @@ const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
               icon('lock', 14),
               ` ${t('common.upgrade')}`,
             ),
+        // ROUND-C4 (1.7): which plan includes it, when the owner chose plans.
+        !ok && s.plans?.length
+          ? h('p', {
+              class: 'muted',
+              'data-plan-locked': s.id,
+              text: t('styles.planLocked', {
+                plan: ctx.say(
+                  ctx.s.config.plans.find((p) => s.plans!.includes(p.id))
+                    ?.name ?? { en: s.plans[0]! },
+                ),
+              }),
+            })
+          : null,
         notes,
       ),
     ),
@@ -445,7 +458,7 @@ export const stylesScreen: Screen = async (ctx, _a, out) => {
             .toLowerCase()
             .includes(q)) &&
         (!format || (s.formats as string[]).includes(format)) &&
-        (!mine || canUse(plan, s.requires)),
+        (!mine || styleOpen(plan, s)),
     );
     clear(
       grid,

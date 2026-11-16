@@ -85,6 +85,16 @@ export function validateStyle(style: Style): StyleCheck {
       );
   } else if (slots.length)
     errors.push(`${at}: it has slots but no plan template.`);
+  else if (
+    // ROUND-C4 (0.1): a legacy Style (no status: published before Readymade
+    // Styles existed) may keep the Director's form only. A Style that says it
+    // is Tested or Published needs a template, or the owner's written reason.
+    (style.status === 'tested' || style.status === 'published') &&
+    !(style.publishOverride ?? '').trim()
+  )
+    errors.push(
+      `${at}: a Tested or Published Style needs a plan template, or the owner's written reason.`,
+    );
   const looks = style.looks ?? [];
   const lookIds = looks.map((l) => l.id);
   if (lookIds.some((id, i) => lookIds.indexOf(id) !== i))
@@ -102,7 +112,7 @@ export function validateStyle(style: Style): StyleCheck {
         .filter((t) => t.passed)
         .map((t) => t.topic.trim().toLowerCase()),
     );
-    if (passed.size < 3 && (style.publishOverride ?? '').trim().length < 10)
+    if (passed.size < 3 && !(style.publishOverride ?? '').trim())
       errors.push(
         `${at}: a published Style needs at least 3 passed tests on 3 different topics (it has ${passed.size}), or the owner's written reason to publish anyway.`,
       );

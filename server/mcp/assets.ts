@@ -152,7 +152,11 @@ function studiosFor(
       const m =
         mediaModel(c, plan, st.role as never, reach) ??
         (test
-          ? modelsForRole(c, st.role).find((x) => x.providerId === 'mock')
+          ? // ROUND-C4 (5.4): any provider of the offline kind, by kind.
+            modelsForRole(c, st.role).find(
+              (x) =>
+                c.providers.find((p) => p.id === x.providerId)?.kind === 'mock',
+            )
           : undefined);
       if (m) out.push({ studio: st, modelId: m.id });
     }

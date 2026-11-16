@@ -427,6 +427,91 @@ export function createMcpMount(d: McpMountDeps) {
         claude: buildManual(parsed.data, { videoType, for: 'claude' }),
       });
     }
+    // ROUND-C4 (2.1): "Make a Style from a Project". The only place the
+    // owner reads user data: one account (the owner's own, named by email),
+    // read-only, one audit row per read, off while the emergency switch is.
+    if (
+      method === 'GET' &&
+      (p === '/v1/admin/mcp/owner-projects' ||
+        p === '/v1/admin/mcp/owner-video')
+    ) {
+      const q = new URL(req.url ?? '/', 'http://x').searchParams;
+      const em = await d.store.emergency();
+      if (em.aiOff || em.mcpOff)
+        throw new McpHttpError(
+          423,
+          'emergency',
+          'The emergency switch is on, so user data is not read.',
+        );
+      const wanted = (q.get('email') ?? '').trim().toLowerCase();
+      const person = wanted
+        ? (await d.store.profiles()).find(
+            (x) => (x.email ?? '').toLowerCase() === wanted,
+          )
+        : undefined;
+      if (!person)
+        throw new McpHttpError(
+          404,
+          'not-found',
+          'No account with that email was found.',
+        );
+      const doc = await d.store.claudeDoc(person.id);
+      const audit = (target: string) =>
+        d.store.appendAudit({
+          at: new Date(d.now()).toISOString(),
+          actor: caller.userId,
+          action: 'style.read-project',
+          target,
+          detail: { account: wanted },
+        });
+      if (p === '/v1/admin/mcp/owner-projects') {
+        await audit('projects');
+        return reply(res, 200, {
+          projects: Object.entries(doc.projects).map(([id, pr]) => ({
+            id,
+            name: pr.name,
+            videos: Object.entries(pr.videos).map(([vid, v]) => ({
+              id: vid,
+              name: v.name,
+              hasPlan: !!v.plan,
+            })),
+          })),
+        });
+      }
+      const pid = q.get('project') ?? '';
+      const vid = q.get('video') ?? '';
+      const pr = doc.projects[pid];
+      const v = pr?.videos[vid];
+      if (!pr || !v)
+        throw new McpHttpError(
+          404,
+          'not-found',
+          'That Project or Video is not in this account.',
+        );
+      await audit(`${pid}/${vid}`);
+      return reply(res, 200, {
+        project: { id: pid, name: pr.name, style: pr.style ?? null },
+        video: {
+          id: vid,
+          name: v.name,
+          videoType: v.videoType,
+          plan: v.plan ?? null,
+          cost: v.cost,
+          approved: v.approved,
+          exports: v.exports,
+        },
+        graphics: (pr.library ?? [])
+          .filter((g) => g.videoId === vid)
+          .map((g) => ({
+            id: g.id,
+            tier: g.tier,
+            name: g.name,
+            summary: g.summary,
+            source: g.source,
+            meta: g.meta,
+          })),
+      });
+    }
     throw new McpHttpError(404, 'not-found', 'Not found.');
   }
 

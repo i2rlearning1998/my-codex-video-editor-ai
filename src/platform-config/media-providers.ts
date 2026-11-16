@@ -509,6 +509,31 @@ export const mcpToolRuleSchema = z.object({
   enabled: z.boolean().default(true),
   cost: z.string().min(1).max(48).default('free'),
 });
+/** ROUND-C4 (5.2): every action that can cost credits through the connector. */
+export const MCP_PRICED_ACTIONS = [
+  'build',
+  'new-graphic',
+  'new-scene',
+  'export',
+  'web-search',
+  'page-fetch',
+] as const;
+export type McpPricedAction = (typeof MCP_PRICED_ACTIONS)[number];
+/** The credits an action costs after the owner's rule (today's when unset). */
+export function mcpPrice(
+  rules: {
+    pricing?: Partial<
+      Record<McpPricedAction, { multiplier: number; fixed: number | null }>
+    >;
+  },
+  action: McpPricedAction,
+  credits: number,
+): number {
+  const r = rules.pricing?.[action];
+  if (!r) return credits;
+  if (r.fixed !== null) return r.fixed;
+  return Math.ceil(credits * r.multiplier);
+}
 export const mcpSchema = z
   .object({
     enabled: z.boolean().default(true),
@@ -525,6 +550,19 @@ export const mcpSchema = z
     importMaxMb: z.number().min(1).max(2000).default(200),
     /** ROUND-C3 (4.4): the owner's note on what changed (start_here). */
     whatsNew: z.string().max(4000).default(''),
+    /**
+     * ROUND-C4 (5.2): the credit rule of each action that can cost through
+     * the connector. Missing: today's rule (multiplier 1, no fixed price).
+     */
+    pricing: z
+      .record(
+        z.enum(MCP_PRICED_ACTIONS),
+        z.object({
+          multiplier: z.number().min(0).max(100).default(1),
+          fixed: z.number().min(0).max(100000).nullable().default(null),
+        }),
+      )
+      .default({}),
   })
   .default({});
 export type McpRules = z.infer<typeof mcpSchema>;

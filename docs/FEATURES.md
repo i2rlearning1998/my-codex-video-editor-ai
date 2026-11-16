@@ -1716,3 +1716,50 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC3-070 | P0 | W10 | Verified | The C3 TEXTS word for word: T1 (two replaced rules keep their ids, six new rules, each with appliesTo) in the default rulebook; the Director's manual reads both + director items as its Rulebook, Claude's both + claude items as Guidance; the skills carry T2 and T3 and the zips match |
 | RDC3-071 | P0 | W10 | Verified | Admin › Rules & Playbooks: each rule has an Applies to choice; the preview shows the Director's view and Claude's view |
 
+
+## RDC4: Round C4 (the Admin Styles Builder, the field library editor and the Admin gaps; briefs/ROUND-C4.md)
+
+| ID | Priority | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| RDC4-001 | P0 | W10 | Verified | The three sample Styles stay legacy (no status, no template) and pass validateStyle; a NEW Style marked Tested or Published without a template is refused unless the owner wrote a reason |
+| RDC4-002 | P0 | W10 | Verified | A look with no Hindi name (or a copy of the English one) gets a small warning, never an error; the builder has both name fields |
+| RDC4-003 | P0 | W10 | Verified | The New project dialog lists Published Styles only; a Draft is shown to the owner's own account |
+| RDC4-004 | P1 | W10 | Bug | Card export and editor export of the same Claude video (Tier B block and Tier C scene), 5 decoded frames compared: frames near motion and the cut differ beyond the rule (measured numbers in reports/ROUND-C4.md); test.fail reproduction |
+| RDC4-005 | P0 | W10 | Verified | A scene that reuses media the person already has is charged only for what is new, by one rule shared by the Director's Plan card and the connector's plan and scene costs |
+| RDC4-010 | P0 | W10 | Verified | Status moves: Draft, Tested, Published, never skipping without a reason; Tested needs a passed test; Published needs 3 passed tests on 3 topics or a 1 to 600 character reason; an invalid Style never moves up |
+| RDC4-011 | P0 | W10 | Verified | A save raises the version; a Published Style whose template or slots change goes back to Tested with its tests kept; text, looks, art or order never change the status |
+| RDC4-012 | P0 | W10 | Verified | The slot report names the place of a missing slot and lists unused ones |
+| RDC4-013 | P0 | W10 | Verified | The Style file: format and version; a newer version, a script or link in a text and a broken Style are refused with nothing changed |
+| RDC4-014 | P0 | W10 | Verified | Builder routes are owner only: no session, a stale CSRF token (audited) and a normal user token are refused; the user server has none of them |
+| RDC4-015 | P0 | W10 | Verified | The list shows every Style with status, version, passed tests, order, on/off, plans and its checks; the samples read as "Director's form only" |
+| RDC4-016 | P0 | W10 | Verified | New, duplicate id refused, unknown kit block refused, status moves ask for the code, the publish rules on the server, the template edit demotes, audit rows |
+| RDC4-017 | P0 | W10 | Verified | A publish override needs a written reason; it is stored, listed and audited |
+| RDC4-018 | P0 | W10 | Verified | Versions with who, note and changed fields; Preview; Roll back makes a new version; a snapshot that no longer parses is refused |
+| RDC4-019 | P0 | W10 | Verified | Copy (a Draft, new id, no tests), Move up and down (gallery order), Enable and disable |
+| RDC4-020 | P0 | W10 | Verified | Delete asks for the code, hides the Style, keeps a snapshot in the Deleted list, restores as a Draft; Projects made from it keep working |
+| RDC4-021 | P0 | W10 | Verified | Export a .aive-style.zip; Import refuses a newer format, asks on an id clash, imports as a copy or a new version (Draft, tests kept only when chosen) |
+| RDC4-022 | P0 | W10 | Verified | Check the Style: not a plan, an older plan and a missing slot each get a plain message; a good Style builds a first draft offline with the layout check and a frame sketch |
+| RDC4-023 | P0 | W10 | Verified | Sample upload: MP4/WebM video or PNG/JPEG/WebP poster only, type checked from the bytes, the size limit in a plain sentence |
+| RDC4-024 | P0 | W10 | Verified | A Style limited to a paid plan: list_styles marks it locked for the free person and create_project refuses it in one sentence; the paid person gets it |
+| RDC4-025 | P0 | W10 | Verified | Draft, Published, back to Tested: the public config read and list_styles follow at once |
+| RDC4-026 | P0 | W10 | Verified | The panel shows a plan-limited Style locked with its Upgrade and the plan sentence on the free plan, open on Pro |
+| RDC4-027 | P0 | W10 | Verified | The panel's Styles page and Home and the website's Styles follow Draft, Published and Tested with no restart |
+| RDC4-030 | P0 | W10 | Verified | The owner's user account is set once with the password and code, audited, and added to the owner emails |
+| RDC4-031 | P0 | W10 | Verified | Only that account's Projects are read (read-only), one audit row per read in both logs; another account's Video is refused; the emergency switch stops it |
+| RDC4-032 | P0 | W10 | Verified | A Video made by hand gives the plain sentence and stops |
+| RDC4-033 | P0 | W10 | Verified | A Video with a plan gives a Draft Style that passes validateStyle: slots for topic, language, length, narration and media; the code graphic reaches the kit; cost range from the approved cost; a first draft builds offline |
+| RDC4-034 | P0 | W10 | Verified | Once Published, a person starts from it through Claude: list_styles, get_style, create_project(style_id) with its graphics, start_video_from_style fills the template |
+| RDC4-035 | P0 | W10 | Verified | A Style made from a Video, once Published: panel gallery, choose it, a short Brief, AI mode; the first plan is the template with the person's topic filled in |
+| RDC4-040 | P0 | W10 | Verified | Admin › Readymade Styles in the browser: list, Add a template for a legacy Style, a new Style with its slot report, Check the Style, Save, status moves with the code, history and rollback, filter |
+| RDC4-041 | P0 | W10 | Verified | Admin › Make a Style from a Project without an account says to set it first; the account setting asks for the code |
+| RDC4-050 | P0 | W10 | Verified | Admin › Brief fields in the browser: blocks and types, users of a block, the live Brief card preview, save with a history row |
+| RDC4-051 | P0 | W10 | Verified | A new Brief field reaches Claude's get_brief_fields and the Director's Brief card at once; deleting a used block, an unknown block, a missing fallback type and no types are refused |
+| RDC4-052 | P0 | W10 | Verified | The field library's history, preview by the panel's own functions, rollback with the code and refusal of an unreadable version |
+| RDC4-060 | P0 | W10 | Verified | Admin › Director limits: each limit with its range, out-of-range refused in a sentence, save; the Library manager one click away and back |
+| RDC4-061 | P0 | W10 | Verified | Admin coverage: every field of director, styles[], mcp, plans, site and studios has a screen or a config-only reason (docs/ADMIN-COVERAGE.md) |
+| RDC4-062 | P0 | W10 | Verified | Rewrites, the attachment limit, a refusal sentence (Director and start_here), an interview question and a Style chat mood follow an Admin save |
+| RDC4-063 | P0 | W10 | Verified | MCP: a tool switched off is refused through the SDK client; a build multiplier doubles get_plan_cost; a fixed export price is used |
+| RDC4-064 | P0 | W10 | Verified | A Studio field added in the config reaches the panel's form config and Claude's get_asset_needs at once |
+| RDC4-065 | P0 | W10 | Verified | A provider, a model and an assignment added in the config make the matching Studio appear in get_asset_needs with no code change |
+| RDC4-066 | P0 | W10 | Verified | The AI-mode attachment control refuses a larger file with the owner's new limit in its sentence |
+| RDC4-070 | P0 | W10 | Verified | Verify-only: the existing Admin tabs open with their content; the MCP tab lists every priced action with its rule and the file limits |

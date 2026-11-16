@@ -1,0 +1,38 @@
+{
+  "measuredAt": "2026-11-16T09:10:27.779Z",
+  "browser": "Playwright Chromium (Linux sandbox)",
+  "size": "180 x 320 (both files scaled to it before comparing)",
+  "rule": "pass: mean < 1.5 of 255 per channel and no frame with more than 0.5% of pixels differing by more than 8",
+  "frames": [
+    {
+      "t": 0.5,
+      "mean": 0.06072916666666667,
+      "largest": 44,
+      "overShare": 0.004288194444444444
+    },
+    {
+      "t": 1.2,
+      "mean": 0.23859953703703704,
+      "largest": 36,
+      "overShare": 0.01545138888888889
+    },
+    {
+      "t": 1.9,
+      "mean": 4.606325231481481,
+      "largest": 64,
+      "overShare": 0.1905902777777778
+    },
+    {
+      "t": 2.6,
+      "mean": 0.08460648148148148,
+      "largest": 16,
+      "overShare": 0.0042361111111111115
+    },
+    {
+      "t": 3.4,
+      "mean": 0.08747106481481481,
+      "largest": 18,
+      "overShare": 0.0038194444444444443
+    }
+  ]
+}

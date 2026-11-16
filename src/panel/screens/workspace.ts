@@ -8,6 +8,7 @@ import { ASPECT_SIZES } from '../../auth-gate';
 import {
   enabledStyles,
   isOwnerEmail,
+  styleOpen,
   workspaceRules,
   type NewProjectOption,
   type Style,
@@ -445,7 +446,7 @@ export function newProjectDialog(ctx: Ctx, onClose: () => void): HTMLElement {
         ...enabledStyles(ctx.s.config, {
           owner: isOwnerEmail(ctx.s.config, ctx.user.email),
         }).map((s) => {
-          const ok = s.requires.every((f) => plan.features.includes(f));
+          const ok = styleOpen(plan, s);
           return h(
             'button',
             {
