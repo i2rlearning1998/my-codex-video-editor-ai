@@ -27,6 +27,10 @@ export type AdminTab =
   | 'emergency'
   | 'rules'
   | 'mcp'
+  // ROUND-C4: the Styles builder, the field library and Director limits.
+  | 'styles'
+  | 'fields'
+  | 'limits'
   | 'config';
 
 export const ADMIN_TABS: readonly AdminTab[] = [
@@ -43,6 +47,9 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   'emergency',
   'rules',
   'mcp',
+  'styles',
+  'fields',
+  'limits',
   'config',
 ];
 export const ADMIN_LABELS: Record<AdminTab, { en: string; hi: string }> = {
@@ -59,6 +66,9 @@ export const ADMIN_LABELS: Record<AdminTab, { en: string; hi: string }> = {
   emergency: { en: 'Emergency switch', hi: 'इमरजेंसी स्विच' },
   rules: { en: 'Rules & Playbooks', hi: 'नियम और प्लेबुक' },
   mcp: { en: 'MCP', hi: 'MCP' },
+  styles: { en: 'Readymade Styles', hi: 'रेडीमेड स्टाइल' },
+  fields: { en: 'Brief fields', hi: 'ब्रीफ़ फ़ील्ड' },
+  limits: { en: 'Director limits', hi: 'डायरेक्टर सीमाएँ' },
   config: { en: 'Platform Config', hi: 'प्लेटफॉर्म कॉन्फ़िग' },
 };
 
@@ -144,12 +154,24 @@ export async function adminScreen(
       return rulesTab(ctx);
     case 'mcp':
       return mcpTab(ctx);
+    // ROUND-C4: a third module, loaded when the owner opens one of these.
+    case 'styles':
+      return (await builder()).stylesScreen(ctx);
+    case 'fields':
+      return (await builder()).fieldsScreen(ctx);
+    case 'limits':
+      return (await builder()).limitsScreen(ctx, (c, note) =>
+        saveConfig(ctx, c, note),
+      );
     case 'config':
       return rawConfig(ctx);
   }
 }
 
 // ---------------------------------------------------------------- helpers
+
+let builderModule: typeof import('./builder.js') | null = null;
+const builder = async () => (builderModule ??= await import('./builder.js'));
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);
@@ -2062,6 +2084,31 @@ const C2: Record<string, [string, string]> = {
   price: ['Price', 'कीमत'],
   free: ['Free', 'मुफ़्त'],
   saveMcp: ['Save the connector settings', 'कनेक्टर सेटिंग सेव करें'],
+  // ROUND-C4 (5.2)
+  pricing: [
+    'What costs credits through Claude',
+    'Claude से किसमें क्रेडिट लगते हैं',
+  ],
+  pricingIntro: [
+    'Each action that can cost credits, the rule it uses today, and your change: a multiplier, or a fixed price (empty keeps the multiplier).',
+    'हर काम जिसमें क्रेडिट लग सकते हैं, आज का नियम, और आपका बदलाव: गुणक, या तय कीमत (खाली छोड़ने पर गुणक लागू)।',
+  ],
+  action: ['Action', 'काम'],
+  todayRule: ['Rule', 'नियम'],
+  multiplier: ['Multiplier', 'गुणक'],
+  fixed: ['Fixed price (credits)', 'तय कीमत (क्रेडिट)'],
+  addMediaMax: [
+    'Largest file sent in the chat (MB)',
+    'चैट में भेजी सबसे बड़ी फ़ाइल (MB)',
+  ],
+  importMax: [
+    'Largest file fetched from a link (MB)',
+    'लिंक से लाई सबसे बड़ी फ़ाइल (MB)',
+  ],
+  studioRule: [
+    "The Studio's own price (Studio tools & forms, and AI Providers & Models)",
+    'स्टूडियो की अपनी कीमत (स्टूडियो टूल और फ़ॉर्म, और AI प्रोवाइडर और मॉडल)',
+  ],
   address: ['Connector address', 'कनेक्टर का पता'],
   copy: ['Copy', 'कॉपी'],
   copied: ['Copied.', 'कॉपी हो गया।'],
@@ -2425,6 +2472,38 @@ async function mcpTab(ctx: AdminCtx) {
     ['free', tr('free')],
     ...c.costs.map((x) => [x.id, `${x.label.en} (${x.min}–${x.max})`] as const),
   ];
+  // ROUND-C4 (5.2): every action that can cost through the connector.
+  const addMax = num(ctx, m.addMediaMaxMb, 'mcp-add-media-max');
+  const importMax = num(ctx, m.importMaxMb, 'mcp-import-max');
+  const costName = (id: string | undefined) =>
+    !id || id === 'free'
+      ? tr('free')
+      : (c.costs.find((x) => x.id === id)?.label.en ?? id);
+  const PRICED: [string, string][] = [
+    [
+      'build',
+      `approve_plan: the plan's scene methods (${c.director.methodOrder.join(', ')})`,
+    ],
+    [
+      'new-graphic',
+      `edit_video add_graphic: ${costName(c.director.authoring.newGraphicCostId)}`,
+    ],
+    ['new-scene', 'edit_video add_scene: its scene method'],
+    ['export', `export_video: ${costName(m.tools.export_video?.cost)}`],
+    ['web-search', `search_web: ${costName(m.tools.search_web?.cost)}`],
+    ['page-fetch', `fetch_page: ${costName(m.tools.fetch_page?.cost)}`],
+  ];
+  const priceRows = PRICED.map(([a, rule]) => {
+    const r = (
+      m.pricing as Record<string, { multiplier: number; fixed: number | null }>
+    )[a];
+    return {
+      a,
+      rule,
+      mult: num(ctx, r?.multiplier ?? 1, `mcp-mult-${a}`),
+      fixed: num(ctx, r?.fixed ?? null, `mcp-fixed-${a}`),
+    };
+  });
   const rows = MCP_TOOL_IDS.map((t) => ({
     t,
     on: tick(ctx, m.tools[t]?.enabled ?? true, `mcp-tool-${t}`),
@@ -2571,6 +2650,23 @@ async function mcpTab(ctx: AdminCtx) {
         field(ctx, tr('maxExport'), maxExport),
         field(ctx, tr('whatsNew'), whatsNew),
       ),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(ctx, tr('addMediaMax'), addMax),
+        field(ctx, tr('importMax'), importMax),
+      ),
+      ctx.el('h3', {}, tr('pricing')),
+      note(ctx, tr('pricingIntro')),
+      table(
+        ctx,
+        [tr('action'), tr('todayRule'), tr('multiplier'), tr('fixed')],
+        [
+          ...priceRows.map((r) => [r.a, r.rule, r.mult, r.fixed]),
+          ['make-asset', tr('studioRule'), '—', '—'],
+        ],
+        'mcp-pricing',
+      ),
       ctx.el('h3', {}, tr('tools')),
       table(
         ctx,
@@ -2593,6 +2689,29 @@ async function mcpTab(ctx: AdminCtx) {
             Math.min(600, Math.round(Number(maxExport.value) || 120)),
           );
           next.mcp.whatsNew = whatsNew.value.trim().slice(0, 4000);
+          const mb = (v: string, lo: number, hi: number, d: number) => {
+            const n = Number(v);
+            if (!Number.isFinite(n) || n < lo || n > hi)
+              throw new Error(`Write a number from ${lo} to ${hi}.`);
+            return v.trim() === '' ? d : n;
+          };
+          next.mcp.addMediaMaxMb = mb(addMax.value, 0.1, 64, 8);
+          next.mcp.importMaxMb = mb(importMax.value, 1, 2000, 200);
+          const pricing: Record<
+            string,
+            { multiplier: number; fixed: number | null }
+          > = {};
+          for (const r of priceRows) {
+            const mult = mb(r.mult.value || '1', 0, 100, 1);
+            const fixed =
+              r.fixed.value.trim() === ''
+                ? null
+                : mb(r.fixed.value, 0, 100000, 0);
+            // Today's rule (×1, no fixed price) is stored as nothing.
+            if (mult !== 1 || fixed !== null)
+              pricing[r.a] = { multiplier: mult, fixed };
+          }
+          next.mcp.pricing = pricing as typeof next.mcp.pricing;
           next.mcp.tools = Object.fromEntries(
             rows.map((r) => [
               r.t,

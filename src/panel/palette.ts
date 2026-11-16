@@ -1,7 +1,7 @@
 // P2-R3: "Search everything" (Ctrl K): pages, Styles and Studio tools from the
 // config, one box, arrow keys and Enter. Nothing is invented: every row is a
 // real route.
-import { canUse, enabledStyles, enabledStudios } from '../platform-config';
+import { enabledStyles, enabledStudios, styleOpen } from '../platform-config';
 import { h, clear } from './dom';
 import { icon, studioIcon, type IconName } from './icons';
 import type { Ctx } from './app';
@@ -38,7 +38,7 @@ function rows(ctx: Ctx): Row[] {
       ico: p.ico,
     })),
     ...enabledStyles(c)
-      .filter((s) => canUse(plan, s.requires))
+      .filter((s) => styleOpen(plan, s))
       .map((s) => ({
         label: ctx.say(s.name),
         hint: t('nav.styles'),

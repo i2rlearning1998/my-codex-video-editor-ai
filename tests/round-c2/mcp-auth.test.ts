@@ -522,6 +522,8 @@ describe('[RDC2-009] Platform Config: mcp, creator playbook and the TEXTS', () =
       addMediaMaxMb: 8,
       importMaxMb: 200,
       whatsNew: '',
+      // ROUND-C4 (5.2): the owner's credit rules; empty means today's rules.
+      pricing: {},
     });
     expect(Object.keys(c.director.creatorPlaybook)).toEqual([
       '01-audience-and-goal',

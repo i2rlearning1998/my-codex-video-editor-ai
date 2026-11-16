@@ -174,7 +174,13 @@ export function publicConfig(c: PlatformConfig): PlatformConfig {
 export function createServerApp(o: ServerOptions) {
   const now = o.now ?? (() => Date.now());
   const log = o.log ?? (() => {});
-  const cfg = storeConfig(o.store, now);
+  // ROUND-C4: how long a published config may stay cached (default 30 s).
+  const ttl = Number(o.env.CONFIG_TTL_MS ?? '');
+  const cfg = storeConfig(
+    o.store,
+    now,
+    Number.isFinite(ttl) && ttl >= 0 && o.env.CONFIG_TTL_MS ? ttl : 30_000,
+  );
   // P3-ENGINE:begin
   const people = o.p3Settings
     ? new PaymentAwarePeople(o.store, now)

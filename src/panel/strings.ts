@@ -99,6 +99,11 @@ const S = {
     'लगभग {min}–{max} क्रेडिट प्रति {per}',
   ],
   'styles.use': ['Use this Style', 'यह स्टाइल लें'],
+  // ROUND-C4 (1.7, T1 plan-locked).
+  'styles.planLocked': [
+    'This Style is part of the {plan} plan.',
+    'यह स्टाइल {plan} प्लान में शामिल है।',
+  ],
   'styles.empty': ['No Style matches.', 'कोई स्टाइल मेल नहीं खाता।'],
   'brief.title': ['Brief Room: {style}', 'ब्रीफ़ रूम: {style}'],
   'brief.strength': ['Brief strength: {label}', 'ब्रीफ़ की मज़बूती: {label}'],

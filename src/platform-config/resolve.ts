@@ -30,6 +30,15 @@ export const publicPlans = (c: PlatformConfig): Plan[] =>
   c.plans.filter((p) => p.public).sort((a, b) => a.sortOrder - b.sortOrder);
 export const canUse = (plan: Plan, requires: readonly string[]): boolean =>
   requires.every((f) => plan.features.includes(f));
+/**
+ * ROUND-C4 (1.7): whether a person's plan opens a Style: its features
+ * (`requires`) and, when the owner set them, the plans that include it.
+ */
+export const styleOpen = (
+  plan: Plan,
+  s: { requires: readonly string[]; plans?: readonly string[] | undefined },
+): boolean =>
+  canUse(plan, s.requires) && (!s.plans?.length || s.plans.includes(plan.id));
 export const costById = (c: PlatformConfig, id: string): Cost | undefined =>
   c.costs.find((x) => x.id === id);
 export const styleById = (c: PlatformConfig, id: string): Style | undefined =>
