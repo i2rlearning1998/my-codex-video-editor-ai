@@ -96,3 +96,13 @@ form and interview.
 - `workspace.ownerEmails`: the owner's own accounts (lower case); they also see Draft and Tested Styles.
 - Readymade Style fields on `styles[]`, all optional: `status` (draft, tested, published; missing = published), `version`, `sample` {video, poster}, `planTemplate` (a Video Plan v4 with `{{slot}}` markers), `slots[]` {name, kind, default, route, label}, `inputs[]`, `looks[]` (3 or 4: id, name, palette, fonts, caption style), `kit` {notes, blocks}, `tests[]` {topic, date, passed}, `publishOverride` (the owner's reason). Script rules reuse `playbookText`; the cost range reuses `priceHint`. `validateStyle` checks them.
 - New defaults: the C3 rulebook (T1) and the skill texts (T2, T3) in `src/platform-config/texts/`; a saved config keeps its own texts.
+
+## Round C4 additions (schema version 1, additive; defaults parse)
+
+- `styles[].plans` (optional, ids of plans; missing or empty: every plan). `requires` stays the feature gate. `styleOpen(plan, style)` decides both (D-467).
+- `styles[].tests[].note` and `.videoId` (optional): the owner's note and the Video a test was made in.
+- `styles[].kit.items` (optional): the Style's own code graphics (id, tier, source, meta, name, summary), given to a Project started from it (D-471).
+- `director.fieldLibrary.blocks[].example` and `.default` (optional), `director.fieldLibrary.types[].blocks[].group` and `.playbook` (optional) (D-472).
+- `mcp.pricing` (default `{}` = today's rules): per action (`build`, `new-graphic`, `new-scene`, `export`, `web-search`, `page-fetch`) `{multiplier, fixed}` (D-474).
+- Which Admin screen edits each field of `director`, `styles[]`, `mcp`, `plans`, `site` and `studios`: docs/ADMIN-COVERAGE.md (generated; a test guards it).
+- The server's config cache is 30 s; `CONFIG_TTL_MS` changes it (tests use 0).

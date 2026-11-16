@@ -1,5 +1,13 @@
 # Changelog
 
+## Round C4: the Admin Styles Builder (16 Nov)
+
+- Admin › Readymade Styles: list, edit every field, plan template with slot checks, Check the Style, status and tests with the publish rules, versions and rollback, delete and restore, copy, order, plans, export and import (D-465 to D-469).
+- Make a Style from a Project (the owner's own account, read-only and audited) (D-470, D-471).
+- Admin › Brief fields (the field library editor) and Admin › Director limits (D-472, D-473); docs/ADMIN-COVERAGE.md with a guard test.
+- MCP tab: per-action credit rules and file limits (D-474); plan availability for Styles in the panel and through Claude (D-467).
+- Reused media cost only what is new (D-464); card vs editor export measured and recorded as a Bug (D-463).
+
 ## Round C3: Claude as a full Director (16 Nov)
 
 - Code graphics (Tier B and C) export inside the chat card, drawn in a nested sandbox frame with no network (D-450).

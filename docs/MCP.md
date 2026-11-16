@@ -109,3 +109,12 @@ docs/CAPABILITY-MATRIX.md (generated from src/director/capability-matrix.ts) lis
 - That a real host allows the card's nested sandbox frame (`frameDomains`).
 - A real Supabase run of `mcp_grants` and the confirmation email's return address.
 - Claude following the guidance (the whole Brief in one message, asking for the asset choice, rewriting a graphic after a check) with a real model.
+
+## Round C4: plan availability and credit rules
+
+- A Readymade Style may be limited to some plans (Admin › Readymade Styles › Availability by plan). `list_styles` marks such a Style for a person whose plan does not include it: "(locked: This Style is part of the Pro plan. The person would need to upgrade.)". `create_project(style_id)` refuses it in one sentence and makes nothing.
+- A Project started from a Style made from a Video gets the Style's code graphics in its library (`kit.items`).
+- What costs credits through the connector, and the owner's rule (Admin › MCP › What costs credits through Claude; default: today's rule): building after approve_plan (the plan's scene methods), a new graphic, a new scene (edit_video, after `confirm_scene`), make_asset (the Studio's own price), export (`export_video`'s tool price, counted in `export_done`), web search and page fetch (their tool prices). A multiplier or a fixed price per action; `get_plan_cost` shows the total after the rule.
+- A scene that only reuses media the person already has costs nothing for its method; new graphics and Studio runs keep their own lines (D-464).
+- Claude's guidance (start_here) now says each refusal's sentence, as the owner wrote it.
+- Not proven: any of this with a real Claude, a real Supabase or a public address.

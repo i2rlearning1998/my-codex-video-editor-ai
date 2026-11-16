@@ -91,3 +91,8 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - Round C3: the Owner App has no editor yet for the new Style fields (template, slots, looks, tests); they are edited in the config JSON for now.
 - Round C3: the card's export is equal to an editor export by construction; a pixel comparison of the two would make it measured.
 - Round C3: a new scene added by Claude is charged at the scene's method cost even when it reuses media the person already has.
+- Round C4: card export vs editor export differ near motion and the scene cut (RDC4-004, reports/round-c4/export-compare.json); check for a one-frame time offset between the two encodes.
+- Round C4: the website's sections and showcase have no Admin editor (config-only, docs/ADMIN-COVERAGE.md).
+- Round C4: the Styles builder's frame sample is an SVG sketch; a rendered frame needs a browser on the Owner App side.
+- Round C4: keeping Director-made Videos' plans on the server would let "Make a Style from a Project" use them (owner decision).
+- Round C4: per-scene lines of get_plan_cost do not show the owner's build multiplier; only the total does.
