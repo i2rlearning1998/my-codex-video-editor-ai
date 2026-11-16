@@ -902,6 +902,16 @@ export function createStyleRoutes(d: StylesDeps) {
             `The block "${id}" is still used by ${users.join(', ')}, so it cannot be deleted.`,
           );
       }
+      // The library's own rules first, in plain sentences.
+      const own = checkFieldLibrary(
+        {
+          blocks: lib?.blocks ?? [],
+          types: lib?.types ?? [],
+          fallbackType: lib?.fallbackType ?? '',
+        } as Library,
+        Object.keys(c.director.playbooks ?? {}),
+      );
+      if (own.length) throw new HttpFail(400, own.join(' '));
       const parsed = parseConfig({
         ...c,
         director: { ...c.director, fieldLibrary: lib },

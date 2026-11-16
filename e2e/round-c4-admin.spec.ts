@@ -234,3 +234,46 @@ test('[RDC4-060] Director limits: every limit with its range; a value out of ran
   await page.locator('[data-tab="limits"]').click();
   await expect(page.locator('#dl-rewrites')).toHaveValue('5');
 });
+
+test('[RDC4-070] verify-only: Dashboard, Users, Plans & Credits, Feature flags, Admin audit, the library audit, Emergency switch and Platform Config open and show their content with no error; the MCP tab shows every action that can cost credits with its rule and the file limits', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await logIn(page);
+  const checks: [string, string][] = [
+    ['dashboard', 'section.card, h2'],
+    ['users', 'section.card, h2'],
+    ['plans', '[data-plan]'],
+    ['flags', 'section.card'],
+    ['gateway', 'section.card'],
+    ['emergency', 'section.card'],
+    ['config', 'textarea'],
+    ['audit', 'table, section.card'],
+  ];
+  for (const [tab, what] of checks) {
+    await page.locator(`[data-tab="${tab}"]`).click();
+    await expect(page.locator(`[data-tab="${tab}"]`)).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(page.locator(what).first()).toBeVisible();
+    await expect(page.locator('#app > p.error')).toHaveCount(0);
+  }
+  await page.locator('[data-tab="mcp"]').click();
+  const pricing = page.locator('#mcp-pricing');
+  await expect(pricing).toBeVisible();
+  for (const a of [
+    'build',
+    'new-graphic',
+    'new-scene',
+    'make-asset',
+    'export',
+    'web-search',
+    'page-fetch',
+  ])
+    await expect(pricing).toContainText(a);
+  await expect(page.locator('#mcp-mult-build')).toHaveValue('1');
+  await expect(page.locator('#mcp-add-media-max')).toHaveValue('8');
+  await expect(page.locator('#mcp-import-max')).toHaveValue('200');
+  await page.screenshot({ path: `${SHOTS}/mcp-pricing.png`, fullPage: true });
+});

@@ -162,7 +162,8 @@ function claudeGuidance(config: PlatformConfig): string[] {
     .filter((r) => r.when.en.trim())
     .map(
       (r) =>
-        `- ${r.when.en}${r.alternative ? ` (offer instead: ${r.alternative.en})` : ''}`,
+        // ROUND-C4 (4.2): the sentence the person reads, as the owner wrote it.
+        `- ${r.when.en}${r.reply.en.trim() ? `: say "${r.reply.en.trim()}"` : ''}${r.alternative ? ` (offer instead: ${r.alternative.en})` : ''}`,
     );
   const questions = lib.blocks
     .slice(0, 40)
