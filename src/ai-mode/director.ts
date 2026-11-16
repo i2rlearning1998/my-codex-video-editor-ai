@@ -9,8 +9,15 @@ import {
   graphicsCredits,
   planTotals,
   rewritesLeft,
+  fileMatches,
+  sceneReusesMedia,
 } from '../director/plan-costs';
 import type { EditorCommand } from '../core';
+/** ROUND-C4: what the reuse rule reads of a project asset. */
+interface AssetName {
+  readonly name: string;
+  readonly metadata: Readonly<Record<string, unknown>>;
+}
 import type { OrbState } from '../contracts/p3';
 import {
   canUse,
@@ -1320,11 +1327,19 @@ export class Director {
       s.connected(id),
     );
     this.#flow.plan = plan;
+    // ROUND-C4 (0.5): a scene whose media the person already has in this
+    // Video (by file name, as the build matches them) costs only what is new.
+    const names: string[] = [];
+    const state: unknown = this.#host.engine.state;
+    for (const a of (state as { assets: readonly AssetName[] }).assets)
+      names.push(String(a.metadata.fileName ?? a.name));
+    const owns = (q: string) => names.some((n) => fileMatches(q, n));
     const totals = planTotals(
       base,
       plan.scenes.length,
       extra,
       this.#graphicsCredits(plan),
+      plan.scenes.map((sc) => sceneReusesMedia(sc as never, owns)),
     );
     this.#flow.max = totals.max;
     this.#flow.sceneCosts = totals.sceneCosts;

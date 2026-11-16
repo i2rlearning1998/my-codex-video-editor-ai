@@ -637,7 +637,7 @@ export async function createServices(
         // editor's My library for that Video (as the Director's plan
         // graphics, pack plan-graphics) and a row in the Asset Library.
         graphics: async (videoId, items) => {
-          const { CreatorLibrary } = await import('../ui/creator-library');
+          const { CreatorLibrary } = await import('../library/creator-library');
           const lib = new CreatorLibrary(Promise.resolve(media), () => videoId);
           await lib.ready;
           const have = new Set(lib.list().map((e) => e.key));

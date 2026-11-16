@@ -12,7 +12,13 @@ declare global {
   interface Window {
     __callTool(params: unknown): Promise<unknown>;
     __host: {
-      downloads: { name: string; chars: number; at: number }[];
+      downloads: {
+        name: string;
+        chars: number;
+        at: number;
+        /** ROUND-C4 (0.4): the file itself (base64), to compare frames. */
+        blob?: string;
+      }[];
       context: unknown[];
       calls: string[];
       /** ROUND-C3: every message the host window got that carries "leak". */
@@ -59,6 +65,7 @@ window.startCard = async (o) => {
           name: c.resource.uri,
           chars: (c.resource.blob as string).length,
           at: performance.now(),
+          blob: c.resource.blob as string,
         });
     return {};
   };
