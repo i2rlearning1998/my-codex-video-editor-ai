@@ -55,9 +55,9 @@ describe('[RDC3-070] the C3 TEXTS and who each rule is for', () => {
     expect(SKILL_VIDEO_DIRECTOR).not.toContain('Ask ONE question at a time');
     expect(SKILL_SETUP.trimEnd().endsWith(SKILL_SETUP_ADD_C3)).toBe(true);
     const files = bundleFiles('https://example.org');
-    const skill = files['video-director.zip'][0]![1];
+    const skill = files['video-director.zip']![0]![1];
     expect(skill).toContain(SKILL_START_4_C3);
-    expect(files['setup.zip'][0]![1]).toContain(
+    expect(files['setup.zip']![0]![1]).toContain(
       'start a NEW chat. If they cleared their browser',
     );
   });
