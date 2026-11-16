@@ -1,0 +1,32 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`[RDC3-010] the shared functions keep the Director identical > [RDC3-010] the Plan card's numbers, the brief functions and the Director's manual are what the Director computed before the move 1`] = `
+{
+  "type": "explainer",
+  "values": {
+    "language": "hi",
+    "length": "60",
+    "topic": "Explain how rain forms, in Hindi, 1 minute",
+  },
+}
+`;
+
+exports[`[RDC3-010] the shared functions keep the Director identical > [RDC3-010] the Plan card's numbers, the brief functions and the Director's manual are what the Director computed before the move 2`] = `
+[
+  "Type: Explainer",
+  "What is the video about?: Explain how rain forms, in Hindi, 1 minute",
+  "Language: हिन्दी",
+  "Length: 1 minute",
+]
+`;
+
+exports[`[RDC3-010] the shared functions keep the Director identical > [RDC3-010] the Plan card's numbers, the brief functions and the Director's manual are what the Director computed before the move 3`] = `[]`;
+
+exports[`[RDC3-010] the shared functions keep the Director identical > [RDC3-010] the Plan card's numbers, the brief functions and the Director's manual are what the Director computed before the move 4`] = `
+{
+  "captions": "style:bold",
+  "music": "style:calm",
+  "script": "style:short lines",
+  "voice": "style:warm",
+}
+`;

@@ -1685,3 +1685,12 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC3-007 | P0 | W10 | Verified | A person with an account and a cleared browser: Sign up page, Log in keeps next, Allow; the Claude connection and what Claude made survive and come back after logging in |
 | RDC3-008 | P0 | W10 | Verified | Sign-up with email confirmation: the page says to confirm then log in and press Allow, or go back to Claude and press Connect again; the confirmation email returns to Log in with next kept |
 | RDC3-009 | P0 | W10 | Verified | The Connect Claude page on the website (header button, logged-out visitors) and in the panel (Home button): what it does, the address with Copy, the two steps, the downloads, the own-Claude-plan line, loading and error states |
+| RDC3-010 | P0 | W10 | Verified | The Plan card's numbers (new graphics, rewrites, totals) and the brief functions are shared DOM-free functions; the Director's output is unchanged (snapshots) and its manual stays the rulebook view |
+| RDC3-011 | P0 | W10 | Verified | get_brief_fields returns every field at once with what the message and the Project style fill in, what is missing and "you decide"; save_brief names the required fields still empty and keeps a reference link |
+| RDC3-012 | P0 | W10 | Verified | add_file_note keeps the Director's FileNote (capped); read_memory returns the notes and the reference link |
+| RDC3-013 | P0 | W10 | Verified | get_plan_cost lists each scene, each new graphic, media costs, the total and the rewrites left; submit_plan repairs once then refuses in one sentence and counts rewrites against director.rewritesPerVideo |
+| RDC3-014 | P0 | W10 | Verified | A new scene through edit_video is shown with its cost and changes nothing until confirm_scene after a yes; then added and charged once (and a new scene no longer repeats the ids of scene 1) |
+| RDC3-015 | P0 | W10 | Verified | edit_video dry_run runs the ops on a copy and says what would change in sentences; nothing is saved |
+| RDC3-016 | P0 | W10 | Verified | The server writes the Video sheet after save_brief, submit_plan (a line per scene), approve_plan and edit_video, with the Director's caps |
+| RDC3-017 | P0 | W10 | Verified | start_here gives Claude's view of the one manual (Guidance, the owner's refusals, Brief fields, memory caps, attachment limits, rewrites, video types); the Director keeps the rulebook view |
+

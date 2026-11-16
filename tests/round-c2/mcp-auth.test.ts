@@ -423,6 +423,8 @@ describe('[RDC2-007] one manual for both Directors', () => {
     ).body.balance as number;
     const plan = parsed.plans.find((p) => p.id === 'free') ?? parsed.plans[0]!;
     const manual = buildManual(parsed, {
+      // ROUND-C3: start_here is Claude's view of the one manual.
+      for: 'claude',
       videoType: 'explainer',
       person: {
         planName: plan.name.en,

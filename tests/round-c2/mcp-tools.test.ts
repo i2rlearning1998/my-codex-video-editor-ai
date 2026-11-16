@@ -256,11 +256,12 @@ describe('[RDC2-014] the Brief', () => {
     const f = await s.call(client, 'get_brief_fields', {
       video_type: 'explainer',
     });
+    // ROUND-C3 (1.1): every field at once, with what is still needed.
     expect(f.text).toMatch(
-      /^Brief for explainer:\n1\. topic: What is the video about\? \(required\) \(free text\)/,
+      /^Brief for explainer \(Explainer\), all fields:\n1\. topic: What is the video about\? \(required\)\. Still needed\./,
     );
     expect(f.text).toMatch(
-      /language: Language \(required\): hi \(हिन्दी\), en \(English\)/,
+      /language: Language \(required\)\. Still needed\. Choices: hi \(हिन्दी\), en \(English\),/,
     );
     const bad = await s.call(client, 'save_brief', {
       video_id: videoId,
@@ -275,7 +276,7 @@ describe('[RDC2-014] the Brief', () => {
       answers: { topic: 'Rivers', language: 'en' },
     });
     expect(ok.text).toMatch(
-      /^Saved\. Still to ask: length\.$|The brief is complete\./,
+      /^Saved\. Required and still empty: length\.$|The brief is complete\./,
     );
   });
 });
@@ -400,7 +401,7 @@ describe('[RDC2-017] cost and approval', () => {
       .balance as number;
     expect(
       (await s.call(client, 'get_plan_cost', { video_id: videoId })).text,
-    ).toMatch(/^Approving this video costs up to 6 credits\./);
+    ).toMatch(/Total: up to 6 credits\./);
     expect(
       (await s.call(client, 'approve_plan', { video_id: videoId })).text,
     ).toMatch(/^Approved; 6 credits were spent\./);

@@ -12,6 +12,17 @@ import { z } from 'zod';
 import type { PlatformConfig, Plan } from '../../src/platform-config';
 import { costById } from '../../src/platform-config/resolve';
 import { buildManual, withPlatform } from '../../src/director-rules/manual';
+import {
+  classifyType,
+  fillFromStyle,
+  fillFromText,
+  missingRequired,
+  YOU_DECIDE,
+  type StyleLike,
+} from '../../src/director/field-library';
+import { checkPlan, methodOf } from '../../src/director/planner';
+import { mediaCredits } from '../../src/director/build';
+import { graphicsCredits, rewritesLeft } from '../../src/director/plan-costs';
 import { REFERENCES } from '../../src/director-rules/references.gen';
 import type { UsageLog } from '../../src/gateway/usage';
 import type { ToolOutcome } from '../../src/tools';
@@ -437,6 +448,7 @@ export function createMcpTools(s: McpServices) {
       async run(a, c) {
         return {
           text: buildManual(c.config, {
+            for: 'claude',
             videoType: a.video_type as string | undefined,
             person: {
               planName: c.plan.name.en,
@@ -625,25 +637,69 @@ export function createMcpTools(s: McpServices) {
       name: 'get_brief_fields',
       title: 'Brief questions',
       description: desc(
-        "Lists the Brief questions for a video type (the same as the panel's Brief card). Ask the person ONE question at a time.",
+        "Returns ALL the Brief fields the video needs at once (the panel's Brief card), with what is already understood from the person's message and the Project's style filled in, and what is still missing. Show the person the whole list in one message and ask only for what is missing; \"you decide\" is always allowed.",
         'save_brief with the answers.',
       ),
-      input: { video_type: z.string().max(48) },
+      input: {
+        video_id: id.optional(),
+        video_type: z.string().max(48).optional(),
+        message: z.string().max(4000).optional(),
+      },
       annotations: A.read,
       async run(a, c) {
         const lib = c.config.director.fieldLibrary;
+        const d = await doc(c.userId);
+        const f = a.video_id ? findVideo(d, a.video_id as string) : null;
+        if (a.video_id && !f) return noVideo;
+        const message = (a.message as string | undefined) ?? '';
         const type =
-          lib.types.find((t) => t.id === a.video_type) ??
+          lib.types.find(
+            (t) => t.id === ((a.video_type as string) ?? f?.v.videoType),
+          ) ??
+          (message ? classifyType(lib, message) : undefined) ??
           lib.types.find((t) => t.id === lib.fallbackType)!;
+        const style = (f?.p.style ?? null) as StyleLike | null;
+        const values = {
+          ...fillFromStyle(lib, type, style),
+          ...(message ? fillFromText(lib, type, message) : {}),
+          ...(f?.v.brief ?? {}),
+        };
+        const shown = (v: string) =>
+          v === YOU_DECIDE || v === 'you-decide'
+            ? 'you decide'
+            : v.startsWith('style:')
+              ? `${v.slice(6)} (from the Project's style)`
+              : v;
         const lines = type.blocks.map((ref, i) => {
           const b = lib.blocks.find((x) => x.id === ref.id);
           if (!b) return `${i + 1}. ${ref.id}`;
           const opts = b.options.length
-            ? `: ${b.options.map((o) => `${o.value} (${o.label.en})`).join(', ')}`
-            : ' (free text)';
-          return `${i + 1}. ${ref.id}: ${b.label.en}${ref.required ? ' (required)' : ''}${opts}${b.youDecide ? '; "you decide" is allowed' : ''}`;
+            ? ` Choices: ${b.options.map((o) => `${o.value} (${o.label.en})`).join(', ')}.`
+            : '';
+          const have = values[ref.id]?.trim();
+          return `${i + 1}. ${ref.id}: ${b.label.en}${ref.required ? ' (required)' : ''}. ${
+            have ? `Understood: ${shown(have)}.` : 'Still needed.'
+          }${opts}${b.youDecide ? ' "You decide" is allowed.' : ''}`;
         });
-        return { text: `Brief for ${type.id}:\n${lines.join('\n')}` };
+        const missing = missingRequired(lib, type, values).map((b) => b.id);
+        const brand = Object.keys(
+          ((await s.store.profile(c.userId))?.brandKit ?? {}) as object,
+        ).length
+          ? 'The person has a Brand Kit: ask whether to use it (brand_kit: yes or no).'
+          : '';
+        return {
+          text: [
+            `Brief for ${type.id} (${type.name.en}), all fields:`,
+            ...lines,
+            missing.length
+              ? `Required and still missing: ${missing.join(', ')}.`
+              : 'Every required field is answered.',
+            brand,
+            'Optional: reference_url, a link the person gives as a reference.',
+          ]
+            .filter(Boolean)
+            .join('\n'),
+        };
       },
     },
     {
@@ -656,6 +712,7 @@ export function createMcpTools(s: McpServices) {
       input: {
         video_id: id,
         answers: z.record(z.string().max(48), z.string().max(4000)),
+        reference_url: z.string().url().max(2000).optional(),
       },
       annotations: A.writeIdem,
       async run(a, c) {
@@ -684,9 +741,11 @@ export function createMcpTools(s: McpServices) {
         }
         if (problems.length) return oops(problems.join(' '));
         f.v.brief = { ...f.v.brief, ...answers };
-        const missing = type.blocks
-          .filter((r) => r.required && !f.v.brief[r.id])
-          .map((r) => r.id);
+        if (a.reference_url) f.v.referenceUrl = a.reference_url as string;
+        const missing = missingRequired(lib, type, {
+          ...fillFromStyle(lib, type, (f.p.style ?? null) as StyleLike | null),
+          ...f.v.brief,
+        }).map((b) => b.id);
         addSheet(
           c.config,
           f.v,
@@ -700,7 +759,7 @@ export function createMcpTools(s: McpServices) {
         await save(c.userId, d);
         return {
           text: missing.length
-            ? `Saved. Still to ask: ${missing.join(', ')}.`
+            ? `Saved. Required and still empty: ${missing.join(', ')}.`
             : 'The brief is complete.',
         };
       },
@@ -948,12 +1007,23 @@ export function createMcpTools(s: McpServices) {
           return oops(
             `The video was changed since you last read it, so it was not rebuilt. Use read_video and edit_video instead.\n${describeProject(projectOf(row))}`,
           );
-        const checked = validatePlan(a.plan);
-        if (!checked.ok || !checked.plan)
+        // ROUND-C3 (1.3): the Director's loop: validate, repair once, refuse.
+        const checkedRun = checkPlan(a.plan);
+        if (!checkedRun.ok)
           return oops(
-            `Fix these first: ${checked.errors.slice(0, 20).join(' ')}`,
+            `${checkedRun.message} Fix these first: ${checkedRun.errors.slice(0, 20).join(' ')}`,
           );
-        const built = await build(c.userId, f.v, a.plan);
+        const checked = { plan: checkedRun.plan };
+        // A new plan after the first is a rewrite (the Director's counter).
+        if (f.v.plan) {
+          const used = f.v.rewrites ?? 0;
+          if (rewritesLeft(c.config, used) <= 0)
+            return oops(
+              `This video has used all ${c.config.director.rewritesPerVideo} plan rewrites. Change the video with edit_video instead.`,
+            );
+          f.v.rewrites = used + 1;
+        }
+        const built = await build(c.userId, f.v, checked.plan);
         if (!built.project)
           return oops(
             `The plan could not be built: ${built.errors.slice(0, 10).join(' ')}`,
@@ -981,21 +1051,23 @@ export function createMcpTools(s: McpServices) {
             );
           throw e;
         }
-        f.v.plan = built.plan ?? a.plan;
+        f.v.plan = built.plan ?? checked.plan;
         f.v.cost = planCost(c.config, checked.plan as never);
         f.v.approved = false;
         f.v.costShownFor = null;
         f.v.seenRevision = saved.revision;
-        addSheet(
-          c.config,
-          f.v,
-          note(
+        // ROUND-C3 (1.5): one sheet line per scene, written by the server.
+        for (const [i, sc] of checked.plan.scenes.entries())
+          addSheet(
             c.config,
-            `Claude built ${checked.plan.scenes.length} scenes.`,
-            'claude',
-            s.now(),
-          ),
-        );
+            f.v,
+            note(
+              c.config,
+              `Scene ${i + 1} "${sc.title}": ${sc.narration?.slice(0, 160) ?? ''} (${methodOf(sc) || 'code'}).`,
+              'claude',
+              s.now(),
+            ),
+          );
         await save(c.userId, d);
         const missing = built.flags
           .map((fl) => fl.reason ?? fl.name ?? fl.key)
@@ -1021,7 +1093,10 @@ export function createMcpTools(s: McpServices) {
                   .map((x) => x.text)
                   .join(' ')}`
               : '',
-            `Cost when approved: up to ${f.v.cost} credits (the person has ${s.balance(c.userId)}).`,
+            checkedRun.repaired
+              ? 'The plan had small problems that were repaired once.'
+              : '',
+            `Cost when approved: up to ${f.v.cost} credits (the person has ${s.balance(c.userId)}). Plan rewrites left: ${rewritesLeft(c.config, f.v.rewrites ?? 0)}.`,
           ]
             .filter(Boolean)
             .join('\n'),
@@ -1043,12 +1118,53 @@ export function createMcpTools(s: McpServices) {
         if (!f) return noVideo;
         if (!f.v.plan)
           return oops('There is no plan yet. Call submit_plan first.');
-        const cost = planCost(c.config, f.v.plan as never);
+        const plan = f.v.plan as {
+          scenes: {
+            title?: string;
+            narration?: string;
+            notes?: string;
+            layers?: unknown[];
+          }[];
+          defs?: { blocks?: { id: string; summary?: string }[] };
+        };
+        const sceneCost = (sc: { notes?: string }) => {
+          const tool = c.config.director.tools.find(
+            (t) => t.id === methodOf(sc),
+          );
+          return tool?.costId ? (costById(c.config, tool.costId)?.max ?? 0) : 0;
+        };
+        const graphics = graphicsCredits(c.config, plan as never);
+        const media = mediaCredits(
+          c.config,
+          c.plan,
+          plan as never,
+          false,
+          () => false,
+        );
+        const cost = planCost(c.config, plan as never) + media;
         f.v.cost = cost;
         f.v.costShownFor = hash(f.v.plan);
         await save(c.userId, d);
+        const each = graphics / Math.max(1, plan.defs?.blocks?.length ?? 1);
         return {
-          text: `Approving this video costs up to ${cost} credits. The person has ${s.balance(c.userId)}.`,
+          text: [
+            'The plan, scene by scene:',
+            ...plan.scenes.map((sc, i) => {
+              const how = c.config.director.tools.find(
+                (t) => t.id === methodOf(sc),
+              );
+              return `${i + 1}. ${sc.title ?? `Scene ${i + 1}`}: ${(sc.narration ?? '').slice(0, 120).replace(/[.!?]\s*$/, '') || `${sc.layers?.length ?? 0} layers`}. Made with ${how ? (how.name?.en ?? how.id) : 'code (shapes, text and graphics)'}; ${sceneCost(sc)} credits.`;
+            }),
+            ...(plan.defs?.blocks ?? []).map(
+              (g) =>
+                `New graphic "${g.id}"${g.summary ? ` (${g.summary})` : ''}: ${each} credits.`,
+            ),
+            media
+              ? `Media that costs: ${media} credits.`
+              : 'No media costs credits.',
+            `Total: up to ${cost} credits. The person has ${s.balance(c.userId)}.`,
+            `Plan rewrites left: ${rewritesLeft(c.config, f.v.rewrites ?? 0)} of ${c.config.director.rewritesPerVideo}.`,
+          ].join('\n'),
         };
       },
     },
@@ -1132,7 +1248,15 @@ export function createMcpTools(s: McpServices) {
         "Makes small changes (text, media, timing, scenes, look, captions, camera) as one undo step. Read the video first; the person's own edits are kept.",
         'check_video.',
       ),
-      input: { video_id: id, ops: z.array(editOp).min(1).max(30) },
+      input: {
+        video_id: id,
+        ops: z.array(editOp).min(1).max(30),
+        // ROUND-C3 (1.4): run on a copy and say what would change.
+        dry_run: z.boolean().optional(),
+        // ROUND-C3 (1.3): a new scene is shown with its cost first; send
+        // its id here after the person says yes to that cost.
+        confirm_scene: z.string().max(80).optional(),
+      },
       annotations: A.destructive,
       async run(a, c) {
         const d = await doc(c.userId);
@@ -1148,8 +1272,38 @@ export function createMcpTools(s: McpServices) {
             `The video was changed since you last read it, so nothing was applied. This is how it is now; make your changes on it:\n${describeProject(projectOf(row))}`,
           );
         }
+        // ROUND-C3 (1.3): a new scene costs like a plan scene and is charged
+        // only after the person's yes (the approve_plan rule).
+        const adding = (a.ops as EditOp[]).filter(
+          (o): o is Extract<EditOp, { op: 'add_scene' }> =>
+            o.op === 'add_scene',
+        );
+        let sceneCharge = 0;
+        if (adding.length && !a.dry_run) {
+          const extra = planCost(c.config, {
+            scenes: adding.map((o) => o.scene) as { notes?: string }[],
+          } as never);
+          const key = hash(adding.map((o) => o.scene));
+          if (extra > 0 && a.confirm_scene !== key) {
+            f.v.pendingScene = { plan: adding, cost: extra, hash: key };
+            await save(c.userId, d);
+            return {
+              text: [
+                `The new scene${adding.length > 1 ? 's' : ''}: ${adding.map((o) => `"${o.scene.title}" (${(o.scene.narration ?? '').slice(0, 100)})`).join('; ')}.`,
+                `It costs up to ${extra} credits (the person has ${s.balance(c.userId)}). Nothing was changed or charged.`,
+                `After the person says yes, call edit_video again with the same ops and confirm_scene "${key}".`,
+              ].join('\n'),
+            };
+          }
+          if (extra > 0 && s.balance(c.userId) < extra)
+            return oops(
+              `The person has ${s.balance(c.userId)} credits and the new scene needs ${extra}. Nothing was changed.`,
+            );
+          sceneCharge = extra;
+        }
         let commands: Command[];
         let engine: EditorEngine;
+        const before = describeProject(projectOf(row));
         try {
           engine = new EditorEngine(JSON.parse(row.document));
           commands = await editCommands(
@@ -1163,6 +1317,28 @@ export function createMcpTools(s: McpServices) {
           return oops(`Nothing was changed: ${(e as Error).message}`);
         }
         const next = engine.state as unknown as Projectish;
+        if (a.dry_run) {
+          // Nothing is saved: the same ops ran on a copy.
+          const after = describeProject(next);
+          const was = new Set(before.split('\n'));
+          const changed = after.split('\n').filter((l) => !was.has(l));
+          const gone = before
+            .split('\n')
+            .filter((l) => !new Set(after.split('\n')).has(l));
+          return {
+            text: [
+              'Preview only; nothing was saved.',
+              `These changes would run: ${(a.ops as EditOp[]).map((o) => o.op.replace(/_/g, ' ')).join(', ')}.`,
+              changed.length ? `After them:\n${changed.join('\n')}` : '',
+              gone.length ? `Before them:\n${gone.join('\n')}` : '',
+              changed.length || gone.length
+                ? ''
+                : 'The scenes would read the same.',
+            ]
+              .filter(Boolean)
+              .join('\n'),
+          };
+        }
         try {
           const saved = await s.store.saveCloudProject(
             c.userId,
@@ -1193,8 +1369,19 @@ export function createMcpTools(s: McpServices) {
             s.now(),
           ),
         );
+        if (sceneCharge > 0) {
+          s.charge(
+            c.userId,
+            sceneCharge,
+            `New scene in ${f.v.name}`,
+            `mcp:scene:${a.video_id as string}:${a.confirm_scene as string}`,
+          );
+          f.v.pendingScene = null;
+        }
         await save(c.userId, d);
-        return { text: `Done as one step.\n${describeProject(next)}` };
+        return {
+          text: `Done as one step.${sceneCharge ? ` ${sceneCharge} credits were spent for the new scene.` : ''}\n${describeProject(next)}`,
+        };
       },
     },
     {
@@ -1259,8 +1446,57 @@ export function createMcpTools(s: McpServices) {
               .map((m) => `- ${m.at.slice(0, 16).replace('T', ' ')} ${m.text}`)
               .join('\n')
           : '';
+        const notes = f?.v.fileNotes?.length
+          ? `\nFile notes:\n${f.v.fileNotes.map((n) => `- ${n.name} (${n.kind}): ${n.note}`).join('\n')}`
+          : '';
+        const ref = f?.v.referenceUrl
+          ? `\nReference link: ${f.v.referenceUrl}`
+          : '';
         return {
-          text: `Project "${p.name}" memory:\n${mem}${f ? `\nVideo "${f.v.name}" sheet:\n${sheet}` : ''}`,
+          text: `Project "${p.name}" memory:\n${mem}${f ? `\nVideo "${f.v.name}" sheet:\n${sheet}` : ''}${notes}${ref}`,
+        };
+      },
+    },
+    {
+      name: 'add_file_note',
+      title: 'Note what a file shows',
+      description: desc(
+        "Keeps a short note of what you saw in one of the person's files (a picture, a PDF, a clip), so a new chat and the in-panel Director know it. Look at the file yourself first.",
+        'continue the brief or the plan.',
+      ),
+      input: {
+        video_id: id,
+        name: z.string().min(1).max(200),
+        kind: z.string().min(1).max(40),
+        note: z.string().min(1).max(2000),
+        bytes: z
+          .number()
+          .int()
+          .min(0)
+          .max(2 ** 40)
+          .optional(),
+      },
+      annotations: A.write,
+      async run(a, c) {
+        const d = await doc(c.userId);
+        const f = findVideo(d, a.video_id as string);
+        if (!f) return noVideo;
+        const caps = c.config.director.context;
+        const entry = {
+          id: `fn-${randomUUID().slice(0, 8)}`,
+          name: (a.name as string).trim(),
+          kind: (a.kind as string).trim(),
+          bytes: (a.bytes as number | undefined) ?? 0,
+          note: (a.note as string).trim().slice(0, caps.maxNoteChars),
+          at: new Date(s.now()).toISOString(),
+        };
+        f.v.fileNotes = [
+          ...(f.v.fileNotes ?? []).filter((n) => n.name !== entry.name),
+          entry,
+        ].slice(-caps.maxFileNotes);
+        await save(c.userId, d);
+        return {
+          text: `Noted "${entry.name}". The Video has ${f.v.fileNotes.length} file note${f.v.fileNotes.length === 1 ? '' : 's'}.`,
         };
       },
     },
@@ -1560,7 +1796,13 @@ export function createMcpTools(s: McpServices) {
         const one = {
           format: 'video-plan',
           version: 4,
-          meta: { ...(base.meta ?? { title: v.name }), build: 'scenes' },
+          // ROUND-C3: a fresh title per added scene, so its built ids never
+          // repeat the ids of scenes already in the video ("Duplicate ID").
+          meta: {
+            ...(base.meta ?? {}),
+            title: `${String((base.meta as { title?: string } | undefined)?.title ?? v.name)} ${randomUUID().slice(0, 6)}`,
+            build: 'scenes',
+          },
           scenes: [
             { ...o.scene, id: `${o.scene.id}-${randomUUID().slice(0, 6)}` },
           ],

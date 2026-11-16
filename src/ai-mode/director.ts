@@ -4,6 +4,11 @@
 // reads `engine.state` fresh on every message, previews with the engine's
 // preview path and changes things only as ONE transaction per Apply.
 // Everything that costs credits is a card with its cost and an Approve.
+import {
+  graphicsCredits,
+  planTotals,
+  rewritesLeft,
+} from '../director/plan-costs';
 import type { EditorCommand } from '../core';
 import type { OrbState } from '../contracts/p3';
 import {
@@ -1261,13 +1266,7 @@ export class Director {
   }
   /** ROUND-C1: credits of the plan's new graphics (the owner's cost each). */
   #graphicsCredits(plan: VideoPlan) {
-    const each = costOf(
-      this.#c,
-      this.#c.director.authoring.newGraphicCostId,
-      1,
-      'max',
-    );
-    return (plan.defs?.blocks.length ?? 0) * each;
+    return graphicsCredits(this.#c, plan);
   }
   async #setPlan(plan: VideoPlan) {
     const { s, user } = this.#env;
@@ -1280,12 +1279,14 @@ export class Director {
       s.connected(id),
     );
     this.#flow.plan = plan;
-    this.#flow.max = Math.ceil(
-      (base?.max ?? 0) + extra + this.#graphicsCredits(plan),
+    const totals = planTotals(
+      base,
+      plan.scenes.length,
+      extra,
+      this.#graphicsCredits(plan),
     );
-    this.#flow.sceneCosts = plan.scenes.map((_, i) =>
-      Math.ceil(base?.scenes[i]?.max ?? 0),
-    );
+    this.#flow.max = totals.max;
+    this.#flow.sceneCosts = totals.sceneCosts;
     this.#saveFlow();
   }
   async #planMessage(text: string) {
@@ -1301,10 +1302,7 @@ export class Director {
     );
   }
   #rewritesLeft() {
-    return Math.max(
-      0,
-      this.#c.director.rewritesPerVideo - this.#mem.rewrites(this.#videoId),
-    );
+    return rewritesLeft(this.#c, this.#mem.rewrites(this.#videoId));
   }
   #toolName(id: string) {
     const tool = this.#c.director.tools.find((x) => x.id === id);

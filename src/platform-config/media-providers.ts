@@ -348,6 +348,12 @@ export const rulebookSchema = z
       id,
       en: z.string().max(600),
       hi: z.string().max(600).optional(),
+      /**
+       * ROUND-C3 (7.1): who the item is for. Missing means both: the
+       * Director reads both + director items as rules, Claude both + claude
+       * items as guidance.
+       */
+      appliesTo: z.enum(['both', 'director', 'claude']).optional(),
     }),
   )
   .max(60)
