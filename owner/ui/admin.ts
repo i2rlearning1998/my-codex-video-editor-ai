@@ -31,6 +31,10 @@ export type AdminTab =
   | 'styles'
   | 'fields'
   | 'limits'
+  // ROUND-C5: Website & Brand, Appearance, Features & access.
+  | 'site'
+  | 'appearance'
+  | 'access'
   | 'config';
 
 export const ADMIN_TABS: readonly AdminTab[] = [
@@ -50,6 +54,9 @@ export const ADMIN_TABS: readonly AdminTab[] = [
   'styles',
   'fields',
   'limits',
+  'site',
+  'appearance',
+  'access',
   'config',
 ];
 export const ADMIN_LABELS: Record<AdminTab, { en: string; hi: string }> = {
@@ -69,6 +76,9 @@ export const ADMIN_LABELS: Record<AdminTab, { en: string; hi: string }> = {
   styles: { en: 'Readymade Styles', hi: 'रेडीमेड स्टाइल' },
   fields: { en: 'Brief fields', hi: 'ब्रीफ़ फ़ील्ड' },
   limits: { en: 'Director limits', hi: 'डायरेक्टर सीमाएँ' },
+  site: { en: 'Website & Brand', hi: 'वेबसाइट और ब्रांड' },
+  appearance: { en: 'Appearance', hi: 'रूप-रंग' },
+  access: { en: 'Features & access', hi: 'फ़ीचर और एक्सेस' },
   config: { en: 'Platform Config', hi: 'प्लेटफॉर्म कॉन्फ़िग' },
 };
 
@@ -163,6 +173,13 @@ export async function adminScreen(
       return (await builder()).limitsScreen(ctx, (c, note) =>
         saveConfig(ctx, c, note),
       );
+    // ROUND-C5: a fourth module, loaded when the owner opens one of these.
+    case 'site':
+      return (await content()).siteScreen(ctx);
+    case 'appearance':
+      return (await content()).appearanceScreen(ctx);
+    case 'access':
+      return (await content()).accessScreen(ctx);
     case 'config':
       return rawConfig(ctx);
   }
@@ -172,6 +189,8 @@ export async function adminScreen(
 
 let builderModule: typeof import('./builder.js') | null = null;
 const builder = async () => (builderModule ??= await import('./builder.js'));
+let contentModule: typeof import('./content.js') | null = null;
+const content = async () => (contentModule ??= await import('./content.js'));
 
 const message = (error: unknown) =>
   error instanceof Error ? error.message : String(error);

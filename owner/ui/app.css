@@ -344,3 +344,22 @@ details.card[open] > summary {
 #status:empty {
   display: none;
 }
+
+/* ROUND-C5: Website & Brand preview and colour rows. */
+.brand-preview-strip {
+  padding: 12px;
+  border-radius: 12px;
+  align-items: center;
+  gap: 8px;
+}
+.brand-preview-logo {
+  height: 28px;
+}
+.brand-preview-pill {
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+.colour-key {
+  min-width: 80px;
+}

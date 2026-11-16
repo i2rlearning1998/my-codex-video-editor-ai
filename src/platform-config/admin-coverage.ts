@@ -101,12 +101,14 @@ export const ADMIN_COVERAGE: Readonly<
     public: S('Plans & Credits'),
   },
   site: {
-    sections: C(
-      "The website's sections and texts: edited in Admin › Platform Config; a website editor is not part of this round (BACKLOG).",
-    ),
-    showcase: C(
-      "The website's showcase videos: edited in Admin › Platform Config (BACKLOG).",
-    ),
+    // ROUND-C5 (2.6): the site rows moved from config-only to their screen.
+    sections: S('Website & Brand › Website sections'),
+    showcase: S('Website & Brand › Showcase videos'),
+    nav: S('Website & Brand › Header links'),
+    footer: S('Website & Brand › Footer'),
+    banner: S('Website & Brand › Banner'),
+    maintenance: S('Website & Brand › Maintenance'),
+    legal: S('Website & Brand › Legal pages'),
   },
   studio: {
     id: S('Studio tools & forms'),

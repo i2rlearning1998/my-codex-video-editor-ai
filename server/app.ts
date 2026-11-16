@@ -34,8 +34,21 @@ import {
   planFor,
   providerById,
   studioById,
+  maintenanceFor,
+  c5,
   type PlatformConfig,
 } from '../src/platform-config';
+
+/** ROUND-C5 (1.6): new writes refused under maintenance (normal people). */
+const MAINTENANCE_WRITES = new Set([
+  'POST /v1/workspace/claim',
+  'POST /v1/workspace/change',
+  'POST /v1/workspace/sync',
+  'POST /v1/run',
+  'POST /v1/reserve',
+  'POST /v1/plan',
+  'POST /v1/topup',
+]);
 import { mockPayment } from '../src/payments';
 import { AuthError, signLocalToken, type Caller } from './auth';
 import { createServerTools, realResolve } from './tools';
@@ -1275,6 +1288,15 @@ export function createServerApp(o: ServerOptions) {
       );
       if (req.method === 'GET' && path === '/v1/health')
         return send(res, 200, { ok: true, api: API_VERSION });
+      // ROUND-C5 (1.6): the editor asks this before a cloud save (public).
+      if (req.method === 'GET' && path === '/v1/maintenance') {
+        const m = maintenanceFor((await cfg.get()).config.site, 'editor');
+        return send(res, 200, {
+          on: !!m,
+          message: m ? c5('maintenance-refused') : '',
+          messageHi: m ? c5('maintenance-refused', 'hi') : '',
+        });
+      }
       if (req.method === 'GET' && path === '/v1/config') {
         const live = await cfg.get();
         // P4 security: everyone may read the live settings, but a provider's
@@ -1422,6 +1444,17 @@ export function createServerApp(o: ServerOptions) {
       if (!route) throw new HttpError(404, 'not-found', 'Not found.');
       const caller = await o.authenticate(req.headers.authorization);
       who = caller.userId.slice(0, 8);
+      // ROUND-C5 (1.6): under maintenance a normal person's NEW writes are
+      // refused with one sentence; reads, running jobs (call, settle, an
+      // export being counted) and the admin and owner accounts go through.
+      if (MAINTENANCE_WRITES.has(`${req.method} ${path}`) && !caller.admin) {
+        const live = (await cfg.get()).config;
+        if (
+          maintenanceFor(live.site, 'panel') &&
+          !live.workspace.ownerEmails.includes(caller.email.toLowerCase())
+        )
+          throw new HttpError(503, 'maintenance', c5('maintenance-refused'));
+      }
       const out = await route(body, caller);
       return send(res, 200, out);
     } catch (e) {

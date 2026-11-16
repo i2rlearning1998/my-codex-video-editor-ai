@@ -15,11 +15,17 @@ import {
 import { createSupabaseBackend } from '../cloud/supabase';
 import {
   enabledStyles,
+  footerOf,
+  legalLinks,
+  legalPage,
+  navOf,
+  paragraphs,
   publicPlans,
   text as say,
   type PlatformConfig,
 } from '../platform-config';
 import { applyBrand, brandMark } from '../panel/app';
+import { maintenancePage, siteBanner } from '../panel/site-notices';
 import { h, clear, put } from '../panel/dom';
 import { posterArt } from '../panel/art';
 import { icon } from '../panel/icons';
@@ -70,11 +76,18 @@ function header() {
       },
       document.documentElement.lang === 'hi' ? 'English' : 'हिंदी',
     ),
-    // ROUND-C3 (0.5): the Connect Claude page, for everyone.
-    h(
-      'a',
-      { class: 'button ghost', href: '#/claude', id: 'site-claude' },
-      t('site.claudeNav'),
+    // ROUND-C3 (0.5): the Connect Claude page, for everyone. ROUND-C5
+    // (1.4): the header links are the owner's (default: that one link).
+    ...navOf(config.site).map((link, i) =>
+      h(
+        'a',
+        {
+          class: 'button ghost site-nav-link',
+          href: link.href,
+          id: link.href === '#/claude' ? 'site-claude' : `site-nav-${i}`,
+        },
+        config.site.nav ? L(link.label) : t('site.claudeNav'),
+      ),
     ),
     signedIn
       ? h(
@@ -342,7 +355,91 @@ function landing(out: HTMLElement) {
         signedIn ? t('site.openPanel') : t('site.signup'),
       ),
     ),
-    h('footer', { class: 'site-footer' }, h('p', { text: t('site.footer') })),
+    siteFooter(),
+  );
+}
+
+/** ROUND-C5 (1.4, 1.7): the owner's footer, with the published legal pages. */
+function siteFooter() {
+  const f = footerOf(config.site);
+  const legal = legalLinks(config.site);
+  return h(
+    'footer',
+    { class: 'site-footer', id: 'site-footer' },
+    f.groups.length
+      ? h(
+          'div',
+          { class: 'site-footer-groups' },
+          ...f.groups.map((g) =>
+            h(
+              'nav',
+              { class: 'site-footer-group' },
+              h('h3', { text: L(g.title) }),
+              ...g.links.map((l) => h('a', { href: l.href, text: L(l.label) })),
+            ),
+          ),
+        )
+      : null,
+    legal.length
+      ? h(
+          'nav',
+          { class: 'site-footer-legal', id: 'site-footer-legal' },
+          ...legal.map((p) =>
+            h('a', {
+              href: `#/legal/${p.id}`,
+              'data-legal': p.id,
+              text: L(p.title),
+            }),
+          ),
+        )
+      : null,
+    h('p', { text: f.copyright ? L(f.copyright) : t('site.footer') }),
+  );
+}
+
+/** ROUND-C5 (1.7): a published legal page, plain paragraphs, https links. */
+function legalView(main: HTMLElement, id: string) {
+  const page = legalPage(config.site, id);
+  if (!page) {
+    main.append(
+      h(
+        'section',
+        { class: 'site-section', id: 'legal-missing' },
+        h('h1', { text: t('site.legalMissing') }),
+        h('a', { class: 'button', href: '#/', text: t('site.home') }),
+      ),
+    );
+    return;
+  }
+  const body = L(page.body);
+  main.append(
+    h(
+      'article',
+      { class: 'site-section site-legal', id: `legal-${page.id}` },
+      h('h1', { text: L(page.title) }),
+      page.updated
+        ? h('p', {
+            class: 'muted',
+            text: `${t('site.legalUpdated')} ${page.updated} · v${page.version}`,
+          })
+        : null,
+      ...paragraphs(body).map((parts) =>
+        h(
+          'p',
+          null,
+          ...parts.map((x) =>
+            x.href
+              ? h('a', {
+                  href: x.href,
+                  rel: 'noopener noreferrer',
+                  target: '_blank',
+                  text: x.text,
+                })
+              : document.createTextNode(x.text),
+          ),
+        ),
+      ),
+    ),
   );
 }
 
@@ -463,6 +560,21 @@ function authForm(out: HTMLElement, mode: 'login' | 'signup' | 'reset') {
       mode === 'reset' && codeSent ? code : null,
       error,
       note,
+      // ROUND-C5 (1.7): the published legal pages, linked on sign-up.
+      mode === 'signup' && legalLinks(config.site).length
+        ? h(
+            'p',
+            { class: 'muted auth-legal', id: 'auth-legal' },
+            t('site.legalAgree'),
+            ...legalLinks(config.site).map((p) =>
+              h('a', {
+                href: `#/legal/${p.id}`,
+                'data-legal': p.id,
+                text: ` ${L(p.title)}`,
+              }),
+            ),
+          )
+        : null,
       h(
         'button',
         { type: 'submit', class: 'button primary', id: 'auth-submit' },
@@ -634,11 +746,21 @@ function claudePage(out: HTMLElement) {
 function route() {
   const [name = ''] = location.hash.replace(/^#\//, '').split(/[/?]/);
   const main = h('main', { class: 'site-main' });
-  if (name === 'login' || name === 'signup' || name === 'reset')
-    authForm(main, name);
+  const auth = name === 'login' || name === 'signup' || name === 'reset';
+  // ROUND-C5 (1.6): under maintenance the website shows its page; signing
+  // in stays open, so the owner is never locked out.
+  const closed = auth ? null : maintenancePage(config, 'website');
+  if (closed) {
+    clear(root, header(), closed);
+    return;
+  }
+  if (auth) authForm(main, name);
   else if (name === 'claude') claudePage(main);
+  else if (name === 'legal')
+    legalView(main, location.hash.split('/')[2]?.split('?')[0] ?? '');
   else landing(main);
-  clear(root, header(), main);
+  const banner = siteBanner(config, 'website');
+  clear(root, ...(banner ? [banner] : []), header(), main);
   reveal(main);
   spotlight(main);
   tilt(main);

@@ -10,7 +10,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import type { PlatformConfig, Plan } from '../../src/platform-config';
-import { mcpPrice } from '../../src/platform-config';
+import { c5, maintenanceFor, mcpPrice } from '../../src/platform-config';
 import { costById } from '../../src/platform-config/resolve';
 import { buildManual, withPlatform } from '../../src/director-rules/manual';
 import {
@@ -2725,6 +2725,22 @@ export function createMcpTools(s: McpServices) {
           'refused',
           0,
           'tool-off',
+        );
+      // ROUND-C5 (1.6): under maintenance no new writes (reads, and the
+      // card's export_done for an export already running, still work); the
+      // owner's own accounts are never locked out.
+      if (
+        !tool.annotations.readOnlyHint &&
+        tool.name !== 'export_done' &&
+        tool.name !== 'submit_frames' &&
+        !c.owner &&
+        maintenanceFor(c.config.site, 'panel')
+      )
+        return done(
+          oops(c5('maintenance-refused')),
+          'refused',
+          0,
+          'maintenance',
         );
       const t = s.now();
       const hits = (rate.get(c.userId) ?? []).filter((x) => t - x < 60_000);

@@ -9,6 +9,7 @@ import {
   learnItems,
   publicPlans,
   text as sayIn,
+  legalLinks,
 } from '../../platform-config';
 import { paymentProviders } from '../../payments';
 import { h, clear, put } from '../dom';
@@ -626,6 +627,20 @@ export const creditsScreen: Screen = (ctx, _a, out) => {
         providers.length > 1 ? choices : h('p', { text: provider.name }),
         chosen,
         h('p', { class: 'muted pay-secure', text: t('credits.secure') }),
+        // ROUND-C5 (1.7): the published legal pages, linked at checkout.
+        ...legalLinks(ctx.s.config.site).map((p) =>
+          h('a', {
+            href: `/site/#/legal/${p.id}`,
+            target: '_blank',
+            rel: 'noopener',
+            class: 'pay-legal',
+            'data-legal': p.id,
+            text: sayIn(
+              p.title,
+              document.documentElement.lang === 'hi' ? 'hi' : 'en',
+            ),
+          }),
+        ),
         h(
           'div',
           { class: 'actions' },

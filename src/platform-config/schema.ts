@@ -38,6 +38,8 @@ export const brandSchema = z.object({
   tagline: textSchema.optional(),
   defaultLocale: z.enum(['en', 'hi']).default('en'),
   colors: z.record(z.string(), z.string()).default({}),
+  /** ROUND-C5 (1.1): the browser tab icon (https or same-site; absent: the default). */
+  faviconUrl: z.string().max(2000).optional(),
 });
 
 export const planSchema = z.object({
@@ -714,6 +716,14 @@ export const directorSchema = z.object({
 });
 export type DirectorRules = z.infer<typeof directorSchema>;
 
+/** ROUND-C5 (1.4): a link in the website's header or footer. */
+export const siteLinkSchema = z.object({
+  label: textSchema,
+  href: z.string().max(2000),
+  enabled: z.boolean().default(true),
+});
+export type SiteLink = z.infer<typeof siteLinkSchema>;
+
 export const siteSchema = z.object({
   sections: z.array(
     z.object({
@@ -745,6 +755,63 @@ export const siteSchema = z.object({
       posterUrl: z.string().default(''),
     }),
   ),
+  /** ROUND-C5 (1.4): the header links (absent: today's Connect Claude link). */
+  nav: z.array(siteLinkSchema).max(12).optional(),
+  /** ROUND-C5 (1.4): the footer (absent: today's one line). */
+  footer: z
+    .object({
+      groups: z
+        .array(
+          z.object({
+            title: textSchema,
+            links: z.array(siteLinkSchema).max(12).default([]),
+          }),
+        )
+        .max(6)
+        .default([]),
+      copyright: textSchema.optional(),
+    })
+    .optional(),
+  /** ROUND-C5 (1.5): one notice line over the website and/or the panel. */
+  banner: z
+    .object({
+      enabled: z.boolean().default(false),
+      text: textSchema,
+      link: z.string().max(2000).optional(),
+      color: z.enum(['info', 'success', 'warning', 'danger']).default('info'),
+      where: z.array(z.enum(['website', 'panel'])).default(['website']),
+      start: z.string().max(40).optional(),
+      end: z.string().max(40).optional(),
+      dismissible: z.boolean().default(true),
+      /** Bumped on every save, so a closed banner shows again when it changes. */
+      version: z.number().int().min(1).default(1),
+    })
+    .optional(),
+  /** ROUND-C5 (1.6): the maintenance switch. */
+  maintenance: z
+    .object({
+      on: z.boolean().default(false),
+      message: textSchema.optional(),
+      backAt: z.string().max(40).optional(),
+      covers: z
+        .array(z.enum(['website', 'panel', 'editor']))
+        .default(['website', 'panel', 'editor']),
+    })
+    .optional(),
+  /** ROUND-C5 (1.7): legal pages, plain paragraphs (/site/#/legal/<id>). */
+  legal: z
+    .array(
+      z.object({
+        id,
+        title: textSchema,
+        body: textSchema,
+        version: z.number().int().min(1).default(1),
+        updated: z.string().max(40).default(''),
+        published: z.boolean().default(false),
+      }),
+    )
+    .max(20)
+    .optional(),
 });
 
 export const backendSchema = z.object({
@@ -901,6 +968,47 @@ export const comboSchema = z.object({
 });
 export type Combo = z.infer<typeof comboSchema>;
 
+/** ROUND-C5 (2.2): one picture or video slot of the panel or website. */
+export const appearanceSlotSchema = z.object({
+  image: z.string().max(2000).optional(),
+  video: z.string().max(2000).optional(),
+  poster: z.string().max(2000).optional(),
+  fit: z.enum(['cover', 'contain']).default('cover'),
+  /** Where the picture stays in view when it is cut (percent). */
+  focus: z
+    .object({ x: z.number().min(0).max(100), y: z.number().min(0).max(100) })
+    .default({ x: 50, y: 50 }),
+  play: z.enum(['hover', 'auto', 'still']).default('auto'),
+  title: textSchema.optional(),
+  blurb: textSchema.optional(),
+  order: z.number().optional(),
+  enabled: z.boolean().default(true),
+});
+export type AppearanceSlot = z.infer<typeof appearanceSlotSchema>;
+export const appearanceSchema = z.object({
+  /** Keyed by slot id (src/panel/appearance.ts lists them). */
+  slots: z
+    .record(
+      z.string().regex(/^[a-z]+(:[a-zA-Z0-9-]{1,64})?$/, 'slot id'),
+      appearanceSlotSchema,
+    )
+    .default({}),
+  limits: z
+    .object({
+      imageBytes: z
+        .number()
+        .int()
+        .min(1024)
+        .max(20 * 1024 * 1024),
+      videoBytes: z
+        .number()
+        .int()
+        .min(1024)
+        .max(200 * 1024 * 1024),
+    })
+    .optional(),
+});
+
 export const platformConfigSchema = z
   .object({
     schemaVersion: z.literal(CONFIG_SCHEMA_VERSION),
@@ -947,6 +1055,8 @@ export const platformConfigSchema = z
     assignments: z.record(roleId, id).default({}),
     /** ROUND-C2: the Claude connector (MCP) switches and limits. */
     mcp: mcpSchema,
+    /** ROUND-C5 (Part 2): pictures and videos of the panel's cards and heroes. */
+    appearance: appearanceSchema.optional(),
   })
   .superRefine((c, ctx) => {
     const dup = (label: string, ids: string[]) => {

@@ -1,7 +1,7 @@
 // P2-17: the user panel shell: sidebar, top bar with the credits pill, hash
 // routing, and loading, empty and error states. Logged-out people never see
 // it (owner rule 5): they are sent to the website.
-import { text as say, type LText } from '../platform-config';
+import { safeHref, text as say, type LText } from '../platform-config';
 import { h, clear } from './dom';
 import type { Prefs, Services, CloudUser } from './services';
 import { setLocale, t, type Key } from './strings';
@@ -57,6 +57,17 @@ export function applyBrand(c: Services['config']) {
   if (/^#[0-9a-f]{6}$/i.test(c.brand.colors.accent ?? ''))
     root.style.setProperty('--accent', c.brand.colors.accent!);
   document.title = c.brand.name;
+  // ROUND-C5 (1.1): the owner's favicon (https or same-site only).
+  const fav = c.brand.faviconUrl;
+  if (fav && safeHref(fav)) {
+    let link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.append(link);
+    }
+    link.href = fav;
+  }
 }
 export const brandMark = (c: Services['config'], cls = 'brand') =>
   h(

@@ -42,6 +42,8 @@ export interface RealBackendOptions {
   readonly collect: SyncCollector;
   readonly storage: Pick<Storage, 'getItem' | 'setItem'> | null;
   readonly signedIn: () => boolean;
+  /** ROUND-C5 (1.6): the owner's maintenance sentence when saving is paused, else null. */
+  readonly maintenance?: () => Promise<string | null>;
 }
 
 const SIZES_KEY = 'aive.cloudSent';
@@ -56,6 +58,22 @@ const hashOf = (text: string): string => {
     h = ((h << 5) + h + text.charCodeAt(i)) | 0;
   return `${text.length}:${(h >>> 0).toString(36)}`;
 };
+
+/** ROUND-C5 (1.6): asks the gateway (if any) whether saving is paused. */
+export async function maintenanceSentence(
+  base: string | null,
+  hindi: boolean,
+): Promise<string | null> {
+  if (!base) return null;
+  const r = await fetch(`${base}/v1/maintenance`);
+  if (!r.ok) return null;
+  const m = (await r.json()) as {
+    on: boolean;
+    message: string;
+    messageHi: string;
+  };
+  return m.on ? (hindi ? m.messageHi : m.message) : null;
+}
 
 export function realSyncBackend(
   options: RealBackendOptions,
@@ -81,6 +99,10 @@ export function realSyncBackend(
     lastSent: read,
     async push(projectId, group: SyncGroup, _size: GroupSize) {
       if (!options.signedIn()) return;
+      // ROUND-C5 (1.6): nothing is sent while the platform is updated; the
+      // project stays saved in this browser.
+      const paused = await options.maintenance?.().catch(() => null);
+      if (paused) throw new Error(paused);
       const cloud = await options.cloud();
       const sent = read();
       const limit = options.limitBytes();
