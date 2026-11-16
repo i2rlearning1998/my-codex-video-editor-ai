@@ -1693,4 +1693,8 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC3-015 | P0 | W10 | Verified | edit_video dry_run runs the ops on a copy and says what would change in sentences; nothing is saved |
 | RDC3-016 | P0 | W10 | Verified | The server writes the Video sheet after save_brief, submit_plan (a line per scene), approve_plan and edit_video, with the Director's caps |
 | RDC3-017 | P0 | W10 | Verified | start_here gives Claude's view of the one manual (Guidance, the owner's refusals, Brief fields, memory caps, attachment limits, rewrites, video types); the Director keeps the rulebook view |
-
+| RDC3-020 | P0 | W10 | Verified | get_asset_needs lists each file the plan needs by its exact name, kind and use (and the voice-over), which of the person's files fill it, and every way: give it, a Studio (fields, cost), a prompt, the library, later, or Claude and other tools |
+| RDC3-021 | P0 | W10 | Verified | set_asset_choice records make, upload, prompt, library, later or own in the Video sheet; an unknown file is refused |
+| RDC3-022 | P0 | W10 | Verified | make_asset needs get_asset_cost first; it runs the Studio through the panel's /v1/run path (plan limits, credits, usage); the file is saved under the slot name and an earlier one is kept; without a connected model it is one plain sentence |
+| RDC3-023 | P0 | W10 | Verified | add_media takes an outside file as base64 (mcp.addMediaMaxMb) or an https link through the network guard (mcp.importMaxMb); wrong type, too big and private links get one sentence; never charged |
+| RDC3-024 | P0 | W10 | Verified | check_video names the files still blank and stops naming one once a file for it arrives |

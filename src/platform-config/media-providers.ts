@@ -498,6 +498,12 @@ export const mcpSchema = z
     exportMaxSeconds: z.number().int().min(5).max(600).default(120),
     /** Calls per person per minute. */
     ratePerMinute: z.number().int().min(1).max(600).default(60),
+    /** ROUND-C3 (2.4): a file sent inside the chat (base64), in MB. */
+    addMediaMaxMb: z.number().min(0.1).max(64).default(8),
+    /** ROUND-C3 (2.4): a file fetched from a link, in MB. */
+    importMaxMb: z.number().min(1).max(2000).default(200),
+    /** ROUND-C3 (4.4): the owner's note on what changed (start_here). */
+    whatsNew: z.string().max(4000).default(''),
   })
   .default({});
 export type McpRules = z.infer<typeof mcpSchema>;

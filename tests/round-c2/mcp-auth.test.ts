@@ -517,6 +517,10 @@ describe('[RDC2-009] Platform Config: mcp, creator playbook and the TEXTS', () =
       tools: {},
       exportMaxSeconds: 120,
       ratePerMinute: 60,
+      // ROUND-C3 (2.4, 4.4): added with defaults.
+      addMediaMaxMb: 8,
+      importMaxMb: 200,
+      whatsNew: '',
     });
     expect(Object.keys(c.director.creatorPlaybook)).toEqual([
       '01-audience-and-goal',

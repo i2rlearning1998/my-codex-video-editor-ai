@@ -39,6 +39,7 @@ import { captionCommands } from '../../src/captions/layers';
 import { joinScenes } from '../../src/export/join';
 import { mediaFingerprint } from '../../src/media/fingerprint';
 import type { Store } from '../store';
+import { assetTools, slotFilled, slotsOf } from './assets';
 import type { CardHost } from './card';
 import type { FrameStore } from './frames';
 import type { McpToolSpec, ToolReply } from './index';
@@ -66,6 +67,18 @@ export interface McpServices {
     locale: 'en' | 'hi';
   }>;
   balance(userId: string): number;
+  /** ROUND-C3 (2.3): runs a Studio exactly as the panel's /v1/run does. */
+  studioRun?(
+    userId: string,
+    body: Record<string, unknown>,
+  ): Promise<{ result: unknown; credits: number }>;
+  /**
+   * ROUND-C3 (2.3): test mode (MCP_TEST_MODE=1) lets the asset step use the
+   * offline mock media models, which make a tiny placeholder file.
+   */
+  testMode?(): boolean;
+  /** ROUND-C3 (2.1): whether a model is connected (its key is set). */
+  connected?(config: PlatformConfig, modelId: string): boolean;
   /** Charges once per key; false when that key was already charged. */
   charge(userId: string, credits: number, note: string, key: string): boolean;
   readonly usage: UsageLog;
@@ -1403,8 +1416,13 @@ export function createMcpTools(s: McpServices) {
           ? checkLayout(checked.plan, c.config.director.layout)
           : [];
         const frames = c.frames.get(c.userId, a.video_id as string).length;
+        // ROUND-C3 (2.5): the files still blank, after any asset arrived.
+        const blank = await blankSlots(c.userId, f.v);
         return {
           text: [
+            blank.length
+              ? `Still blank: ${blank.map((b) => `"${b}"`).join(', ')} (get_asset_needs lists the ways to fill them).`
+              : 'Every file the plan needs is there.',
             found_.length
               ? `Layout check: ${found_
                   .slice(0, 20)
@@ -1688,7 +1706,29 @@ export function createMcpTools(s: McpServices) {
         return { text: 'Counted.' };
       },
     },
+    // ROUND-C3 Part 2: the assets step.
+    ...assetTools({
+      s,
+      doc,
+      save,
+      findVideo,
+      noVideo,
+      note,
+      addSheet,
+      desc,
+      annotations: { read: A.read, write: A.write },
+    }),
   ];
+
+  /** ROUND-C3 (2.5): plan files no media of the video fills yet. */
+  async function blankSlots(u: string, v: ClaudeVideo): Promise<string[]> {
+    const recs = (
+      await Promise.all(v.media.map((fp) => s.store.mediaRecord(u, fp)))
+    ).filter((r): r is MediaRecord => !!r);
+    return slotsOf(v.plan)
+      .filter((sl) => !sl.voice && !recs.some((r) => slotFilled(sl, r)))
+      .map((sl) => sl.name);
+  }
 
   /** The commands of edit_video, checked before anything runs. */
   async function editCommands(
