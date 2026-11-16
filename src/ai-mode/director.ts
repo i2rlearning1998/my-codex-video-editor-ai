@@ -114,6 +114,8 @@ interface Flow {
   plan?: VideoPlan;
   max?: number;
   sceneCosts?: number[];
+  /** ROUND-C3 (3.3): the plan's "Extra ideas" the person can remove. */
+  ideas?: string[];
   slots?: Slot[];
   sceneIds?: string[];
   /** The Project style as this Video last saw it. */
@@ -1129,6 +1131,13 @@ export class Director {
         return;
       }
       let plan = result.plan;
+      // ROUND-C3 (3.3): the upgrade step's ideas, unless the Style turns it off.
+      this.#flow.ideas =
+        this.#style().interview.creativeUpgrade === false
+          ? []
+          : result.upgrades.map((u) => `${u.title}: ${u.why}`).slice(0, 4);
+      for (const idea of this.#flow.ideas)
+        this.#mem.note(this.#videoId, 'decisions', `Extra idea: ${idea}`);
       const aspect = this.#flow.brief.aspect;
       if (aspect && aspect !== YOU_DECIDE && /^\d+:\d+$/.test(aspect))
         plan = { ...plan, meta: { ...plan.meta, aspect: aspect as never } };
@@ -1506,6 +1515,7 @@ export class Director {
       ),
       this.#planScenes(true, turn),
       this.#planGraphics(plan),
+      this.#planIdeas(turn),
       h('p', {
         class: 'ai-muted',
         id: 'ai-plan-rewrites',
@@ -1545,6 +1555,37 @@ export class Director {
             id: 'ai-plan-richer',
             disabled: left <= 0,
           },
+        ),
+      ),
+    );
+  }
+  /** ROUND-C3 (3.3): "Extra ideas" beyond what was asked; each can be removed. */
+  #planIdeas(turn: Turn) {
+    const ideas = this.#flow.ideas ?? [];
+    if (!ideas.length) return null;
+    return h(
+      'div',
+      { class: 'ai-ideas', id: 'ai-plan-ideas' },
+      h('p', { class: 'ai-label', text: t('plan.ideas') }),
+      ...ideas.map((idea, i) =>
+        h(
+          'div',
+          { class: 'ai-row', 'data-idea': String(i) },
+          h('span', { text: idea }),
+          (() => {
+            const b = this.#button('plan.removeIdea', () => {
+              this.#flow.ideas = ideas.filter((_, j) => j !== i);
+              this.#mem.note(
+                this.#videoId,
+                'decisions',
+                `Extra idea removed: ${idea}`,
+              );
+              this.#saveFlow();
+              this.#repaint(turn.id);
+            });
+            b.setAttribute('aria-label', `${t('plan.removeIdea')}: ${idea}`);
+            return b;
+          })(),
         ),
       ),
     );

@@ -1698,3 +1698,9 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC3-022 | P0 | W10 | Verified | make_asset needs get_asset_cost first; it runs the Studio through the panel's /v1/run path (plan limits, credits, usage); the file is saved under the slot name and an earlier one is kept; without a connected model it is one plain sentence |
 | RDC3-023 | P0 | W10 | Verified | add_media takes an outside file as base64 (mcp.addMediaMaxMb) or an https link through the network guard (mcp.importMaxMb); wrong type, too big and private links get one sentence; never charged |
 | RDC3-024 | P0 | W10 | Verified | check_video names the files still blank and stops naming one once a file for it arrives |
+| RDC3-030 | P0 | W10 | Verified | The first approved Video of a Project saves the Project's style (styleFromPlan) and says so; get_style reads it in sentences; later Videos add examples |
+| RDC3-031 | P0 | W10 | Verified | create_video in a Project with a style starts the Brief from it and says so; get_brief_fields shows the style's answers |
+| RDC3-032 | P0 | W10 | Verified | style_chat proposes a before/after list (styleReply) and saves nothing; apply_style_change saves it for later videos only |
+| RDC3-033 | P0 | W10 | Verified | Claude's plan carries "Extra ideas" (submit_plan extra_ideas, kept in the Video sheet); get_plan_cost lists them as removable or asks for them; a Style's creativeUpgrade off turns the step off |
+| RDC3-034 | P0 | W10 | Verified | The Director's Plan card in AI mode lists "Extra ideas" from the planner (unless the Style turns the step off); each can be removed; both steps go to the Video sheet |
+

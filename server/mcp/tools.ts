@@ -40,6 +40,7 @@ import { joinScenes } from '../../src/export/join';
 import { mediaFingerprint } from '../../src/media/fingerprint';
 import type { Store } from '../store';
 import { assetTools, slotFilled, slotsOf } from './assets';
+import { rememberStyle, styleOf, styleTools } from './style';
 import type { CardHost } from './card';
 import type { FrameStore } from './frames';
 import type { McpToolSpec, ToolReply } from './index';
@@ -628,7 +629,14 @@ export function createMcpTools(s: McpServices) {
         p.videos[vid] = {
           name: (a.name as string).trim(),
           videoType: type,
-          brief: {},
+          // ROUND-C3 (3.1): a Project with a style starts the Brief from it.
+          brief: (() => {
+            const lib = c.config.director.fieldLibrary;
+            const t = lib.types.find((x) => x.id === type);
+            return t && styleOf(p).source !== 'empty'
+              ? fillFromStyle(lib, t, styleOf(p))
+              : {};
+          })(),
           plan: null,
           cost: null,
           approved: false,
@@ -642,7 +650,7 @@ export function createMcpTools(s: McpServices) {
         };
         await save(c.userId, d);
         return {
-          text: `Video "${a.name as string}" is made (video_id ${vid}, type ${type}).`,
+          text: `Video "${a.name as string}" is made (video_id ${vid}, type ${type}).${styleOf(p).source !== 'empty' ? " Its Brief starts from the Project's style (get_brief_fields shows what it fills)." : ''}`,
         };
       },
     },
@@ -1009,7 +1017,13 @@ export function createMcpTools(s: McpServices) {
         "Builds the video from a checked plan and saves it to the person's video (free). A video the person changed by hand is never overwritten.",
         'get_plan_cost, tell the person the cost and wait for a clear yes.',
       ),
-      input: { video_id: id, plan: planInput },
+      input: {
+        video_id: id,
+        plan: planInput,
+        // ROUND-C3 (3.3): one or two upgrades beyond what was asked; the
+        // person can remove them (submit again without them).
+        extra_ideas: z.array(z.string().min(1).max(300)).max(4).optional(),
+      },
       annotations: A.write,
       async run(a, c) {
         const d = await doc(c.userId);
@@ -1065,6 +1079,18 @@ export function createMcpTools(s: McpServices) {
           throw e;
         }
         f.v.plan = built.plan ?? checked.plan;
+        f.v.upgrades = (a.extra_ideas as string[] | undefined) ?? [];
+        if (f.v.upgrades.length)
+          addSheet(
+            c.config,
+            f.v,
+            note(
+              c.config,
+              `Extra ideas: ${f.v.upgrades.join('; ')}.`,
+              'claude',
+              s.now(),
+            ),
+          );
         f.v.cost = planCost(c.config, checked.plan as never);
         f.v.approved = false;
         f.v.costShownFor = null;
@@ -1177,7 +1203,10 @@ export function createMcpTools(s: McpServices) {
               : 'No media costs credits.',
             `Total: up to ${cost} credits. The person has ${s.balance(c.userId)}.`,
             `Plan rewrites left: ${rewritesLeft(c.config, f.v.rewrites ?? 0)} of ${c.config.director.rewritesPerVideo}.`,
-          ].join('\n'),
+            upgradeLine(c.config, f.p, f.v.upgrades ?? []),
+          ]
+            .filter(Boolean)
+            .join('\n'),
         };
       },
     },
@@ -1215,6 +1244,8 @@ export function createMcpTools(s: McpServices) {
           `mcp:approve:${a.video_id as string}:${f.v.costShownFor}`,
         );
         f.v.approved = true;
+        // ROUND-C3 (3.1): the first approved Video saves the Project style.
+        const styled = rememberStyle(f.p, a.video_id as string, f.v.plan);
         addSheet(
           c.config,
           f.v,
@@ -1227,7 +1258,7 @@ export function createMcpTools(s: McpServices) {
         );
         await save(c.userId, d);
         return {
-          text: `Approved; ${f.v.cost} credits were spent. The person has ${s.balance(c.userId)} left.`,
+          text: `Approved; ${f.v.cost} credits were spent. The person has ${s.balance(c.userId)} left.${styled ? ` ${styled}` : ''}`,
         };
       },
     },
@@ -1706,6 +1737,13 @@ export function createMcpTools(s: McpServices) {
         return { text: 'Counted.' };
       },
     },
+    // ROUND-C3 Part 3: the Project's style.
+    ...styleTools({
+      doc,
+      save,
+      desc,
+      annotations: { read: A.read, write: A.write },
+    }),
     // ROUND-C3 Part 2: the assets step.
     ...assetTools({
       s,
@@ -1719,6 +1757,16 @@ export function createMcpTools(s: McpServices) {
       annotations: { read: A.read, write: A.write },
     }),
   ];
+
+  /** ROUND-C3 (3.3): the plan summary's "Extra ideas" (or why there are none). */
+  function upgradeLine(c: PlatformConfig, p: ClaudeProject, ideas: string[]) {
+    const style = c.styles.find((x) => x.id === p.styleId);
+    if (style && style.interview.creativeUpgrade === false)
+      return 'This Style turns the upgrade step off: no extra ideas.';
+    return ideas.length
+      ? `Extra ideas (the person can remove them): ${ideas.join('; ')}.`
+      : 'Extra ideas: none were given. Think of one or two upgrades beyond what was asked and send them with submit_plan (extra_ideas).';
+  }
 
   /** ROUND-C3 (2.5): plan files no media of the video fills yet. */
   async function blankSlots(u: string, v: ClaudeVideo): Promise<string[]> {

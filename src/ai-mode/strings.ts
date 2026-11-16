@@ -86,6 +86,11 @@ const S = {
   'plan.credits': ['{n} credits', '{n} क्रेडिट'],
   'plan.upTo': ['up to {n} credits', 'अधिकतम {n} क्रेडिट'],
   'plan.total': ['Total: up to {n} credits', 'कुल: अधिकतम {n} क्रेडिट'],
+  'plan.ideas': [
+    'Extra ideas (beyond what you asked; remove any you do not want)',
+    'अतिरिक्त आइडिया (आपकी माँग से आगे; जो न चाहिए उसे हटाएँ)',
+  ],
+  'plan.removeIdea': ['Remove', 'हटाएँ'],
   'graphic.new': ['New graphic', 'नया ग्राफ़िक'],
   'graphic.cost': ['{n} credits', '{n} क्रेडिट'],
   'graphic.serverOnly': [
