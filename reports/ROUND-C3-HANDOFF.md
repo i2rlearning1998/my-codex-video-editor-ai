@@ -10,8 +10,8 @@ Branch `claude/round-c3-parity`, draft PR #56 to `claude/round-c2-mcp`. LIMIT MO
 | 3 Project style, Style chat, upgrade step | Done | RDC3-030 to 034 |
 | 4 Editor's full power (code-graphic ops, capability matrix, guard, live data, check-and-fix) | Done | RDC3-040 to 043 |
 | 5 A Claude video is a tool video (AI library) | Done | RDC3-050 to 052 |
-| 6 Readymade Style structure and Door 2 | Not started | |
+| 6 Readymade Style structure and Door 2 | Done | RDC3-060 to 062 |
 | 7 Rulebook appliesTo (schema and manual done in Part 1), C3 TEXTS, skill | Partly: `appliesTo` and Claude's manual view exist; TEXTS not loaded | |
 | 8 Docs, report | Not started | |
 
-Last commit: see `git log -1`. Next step: Part 6, the Readymade Style fields on styleSchema (status exists already, optional), validateStyle, the panel's published-only lists, list_styles/get_style(style_id)/create_project(style_id)/start_video_from_style.
+Last commit: see `git log -1`. Next step: Part 7: load the C3 TEXTS (rulebook T1, skills T2 and T3) into src/platform-config/texts, the appliesTo selector in Admin Rules, rebuild the zips and docs/creator-playbook.

@@ -411,6 +411,73 @@ export const styleSchema = z.object({
       scriptRules: textSchema.optional(),
     })
     .optional(),
+  // ROUND-C3 (Part 6): the Readymade Style structure. Every field is
+  // optional, so the existing Styles load unchanged. Script rules reuse
+  // `playbookText`; the cost range reuses `priceHint`.
+  version: z.number().int().min(1).optional(),
+  /** The sample the Style shows (files in the owner's media). */
+  sample: z
+    .object({ video: z.string().max(400), poster: z.string().max(400) })
+    .optional(),
+  /**
+   * A Video Plan v4 with `{{slot}}` markers where what changes goes (topic,
+   * script, language, voice, length, brand); everything else is fixed.
+   */
+  planTemplate: z.record(z.unknown()).optional(),
+  slots: z
+    .array(
+      z.object({
+        name: id,
+        kind: z.enum(['text', 'image', 'video', 'audio', 'choice']),
+        /** The value used when the person gives none (and by validateStyle). */
+        default: z.string().max(4000).default(''),
+        route: z
+          .enum(['make', 'upload', 'prompt', 'library', 'later'])
+          .default('later'),
+        label: textSchema.optional(),
+      }),
+    )
+    .max(40)
+    .optional(),
+  /** What a person can start from. */
+  inputs: z
+    .array(z.enum(['photo', 'pdf', 'link', 'script']))
+    .max(4)
+    .optional(),
+  looks: z
+    .array(
+      z.object({
+        id,
+        name: textSchema,
+        palette: z
+          .array(z.string().regex(/^#[0-9a-fA-F]{6}$/))
+          .min(1)
+          .max(8),
+        headingFont: z.string().max(60),
+        bodyFont: z.string().max(60),
+        captionStyle: z.string().max(60),
+      }),
+    )
+    .max(4)
+    .optional(),
+  kit: z
+    .object({
+      notes: z.string().max(4000).default(''),
+      blocks: z.array(id).max(40).default([]),
+    })
+    .optional(),
+  tests: z
+    .array(
+      z.object({
+        topic: z.string().min(1).max(200),
+        date: z.string().max(40),
+        passed: z.boolean(),
+      }),
+    )
+    .max(50)
+    .optional(),
+  /** The owner's written reason to publish without three passed tests. */
+  publishOverride: z.string().max(600).optional(),
 });
 export type Style = z.infer<typeof styleSchema>;
 
@@ -777,6 +844,11 @@ export const workspaceSchema = z.object({
     .default({}),
   /** ROUND-A: "Your own Claude" (the connector is Round C). Off: never shown. */
   claudeConnector: z.boolean().default(false),
+  /**
+   * ROUND-C3 (Part 6): the owner's own accounts (lower-case emails): they
+   * also see Draft and Tested Styles, marked.
+   */
+  ownerEmails: z.array(z.string().max(200)).max(20).default([]),
   /** Whether the Style chat (talking to a Style's Director) is on. */
   styleChat: z.boolean().default(true),
 });

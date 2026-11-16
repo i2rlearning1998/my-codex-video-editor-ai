@@ -66,6 +66,8 @@ export function describeStyle(st: StyleRecord): string {
 }
 
 export function styleTools(h: {
+  /** ROUND-C3 (6.2): a Readymade Style in sentences, or null (not visible). */
+  readymade?(c: McpCtx, styleId: string): string | null;
   doc(u: string): Promise<ClaudeDoc>;
   save(u: string, d: ClaudeDoc): Promise<void>;
   desc(what: string, next: string): string;
@@ -85,13 +87,24 @@ export function styleTools(h: {
       name: 'get_style',
       title: "The Project's style",
       description: desc(
-        "Reads the Project's saved style (colours, fonts, captions, graphics, voice, music, script rules). New videos in the Project start from it.",
+        "Reads the Project's saved style (project_id), or a Readymade Style (style_id from list_styles: the fields to ask, looks, slots, script rules, inputs). New videos in a Project start from its style.",
         'get_brief_fields for a new video, or style_chat to change it.',
       ),
-      input: { project_id: id },
+      input: { project_id: id.optional(), style_id: id.optional() },
       annotations: A.read,
       async run(a, c) {
-        const p = (await doc(c.userId)).projects[a.project_id as string];
+        // ROUND-C3 (6.2): a Readymade Style by its id.
+        if (a.style_id) {
+          const r = h.readymade?.(c, a.style_id as string);
+          return r
+            ? { text: r }
+            : oops(
+                `There is no Style "${a.style_id as string}". Call list_styles.`,
+              );
+        }
+        const p = (await doc(c.userId)).projects[
+          (a.project_id as string) ?? ''
+        ];
         if (!p) return noProject;
         const st = styleOf(p);
         if (st.source === 'empty')

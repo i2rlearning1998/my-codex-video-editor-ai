@@ -796,6 +796,37 @@ function rawDefault(): PlatformConfigInput {
         formats: ['9:16', '16:9'],
         requires: [],
         priceHint: { min: 25, max: 60, per: 'minute' },
+        // ROUND-C3 (6.3): the Readymade structure (no plan template, so
+        // the Director plans these sample Styles exactly as before).
+        version: 1,
+        inputs: ['photo', 'pdf', 'link', 'script'],
+        looks: [
+          {
+            id: 'chalk',
+            name: L('Chalkboard', 'Chalkboard'),
+            palette: ['#1f2b24', '#f4f1e8', '#ffd166'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'bold-box',
+          },
+          {
+            id: 'bright',
+            name: L('Bright', 'Bright'),
+            palette: ['#ffffff', '#1d1d1f', '#3a86ff'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'clean',
+          },
+          {
+            id: 'night',
+            name: L('Night', 'Night'),
+            palette: ['#0f1222', '#e8ecff', '#8b5cf6'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'karaoke',
+          },
+        ],
+        kit: { notes: '', blocks: [] },
         brief: {
           groups: [
             { id: 'story', label: L('The story', 'कहानी'), open: true },
@@ -943,6 +974,37 @@ function rawDefault(): PlatformConfigInput {
         enabled: true,
         formats: ['9:16', '1:1'],
         priceHint: { min: 15, max: 35, per: 'video' },
+        // ROUND-C3 (6.3): the Readymade structure (no plan template, so
+        // the Director plans these sample Styles exactly as before).
+        version: 1,
+        inputs: ['photo', 'link', 'script'],
+        looks: [
+          {
+            id: 'punch',
+            name: L('Punch', 'Punch'),
+            palette: ['#111111', '#ffffff', '#ff4d6d'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'bold-box',
+          },
+          {
+            id: 'fresh',
+            name: L('Fresh', 'Fresh'),
+            palette: ['#f7fff7', '#1b1b1b', '#2ec4b6'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'headline',
+          },
+          {
+            id: 'neon',
+            name: L('Neon', 'Neon'),
+            palette: ['#0b0b14', '#f0f0ff', '#00f5d4'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'karaoke',
+          },
+        ],
+        kit: { notes: '', blocks: [] },
         brief: {
           fields: [
             field(
@@ -1044,6 +1106,37 @@ function rawDefault(): PlatformConfigInput {
         formats: ['16:9'],
         requires: ['studio-video'],
         priceHint: { min: 120, max: 400, per: 'minute' },
+        // ROUND-C3 (6.3): the Readymade structure (no plan template, so
+        // the Director plans these sample Styles exactly as before).
+        version: 1,
+        inputs: ['photo', 'pdf', 'link', 'script'],
+        looks: [
+          {
+            id: 'film',
+            name: L('Film', 'Film'),
+            palette: ['#0a0a0a', '#f5f0e6', '#c9a227'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'minimal',
+          },
+          {
+            id: 'dawn',
+            name: L('Dawn', 'Dawn'),
+            palette: ['#1a1423', '#fdf6ec', '#ff9f68'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'lower-third',
+          },
+          {
+            id: 'steel',
+            name: L('Steel', 'Steel'),
+            palette: ['#101820', '#e6edf3', '#56b4d3'],
+            headingFont: 'Poppins',
+            bodyFont: 'Inter',
+            captionStyle: 'clean',
+          },
+        ],
+        kit: { notes: '', blocks: [] },
         brief: {
           fields: [
             field('idea', 'longtext', L('The story', 'कहानी'), true),

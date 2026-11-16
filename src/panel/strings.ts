@@ -424,6 +424,11 @@ const S = {
   'site.login': ['Log in', 'लॉग इन'],
   'site.signup': ['Sign up', 'साइन अप'],
   'site.claudeNav': ['Connect Claude', 'Claude जोड़ें'],
+  'style.draft': ['Draft (only you see it)', 'ड्राफ़्ट (सिर्फ़ आपको दिखता है)'],
+  'style.tested': [
+    'Tested (only you see it)',
+    'टेस्टेड (सिर्फ़ आपको दिखता है)',
+  ],
   'site.claudeTitle': [
     'Make videos with your own Claude',
     'अपने Claude से वीडियो बनाएँ',

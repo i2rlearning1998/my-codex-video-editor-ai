@@ -21,6 +21,8 @@ import {
   type StyleLike,
 } from '../../src/director/field-library';
 import { checkPlan, methodOf } from '../../src/director/planner';
+import { enabledStyles, isOwnerEmail } from '../../src/platform-config/resolve';
+import { styleFromTemplate } from '../../src/project/style-from';
 import { mediaCredits } from '../../src/director/build';
 import { graphicsCredits, rewritesLeft } from '../../src/director/plan-costs';
 import { REFERENCES } from '../../src/director-rules/references.gen';
@@ -46,6 +48,7 @@ import { codeLayerCommands, codeRecord } from '../../src/code-layer/layer';
 import type { CodeLayer } from '../../src/core';
 import { setMixerVolume } from '../../src/audio/mixer';
 import { rememberStyle, styleOf, styleTools } from './style';
+import { fillTemplate } from '../../src/director/style-check';
 import type { CardHost } from './card';
 import type { FrameStore } from './frames';
 import type { McpToolSpec, ToolReply } from './index';
@@ -114,6 +117,8 @@ export interface McpServices {
 }
 export interface McpCtx {
   readonly userId: string;
+  /** ROUND-C3 (6.2): one of the owner's own accounts (sees Draft Styles). */
+  readonly owner?: boolean;
   readonly config: PlatformConfig;
   readonly origin: string;
   readonly plan: Plan;
@@ -721,7 +726,7 @@ export function createMcpTools(s: McpServices) {
       name: 'create_project',
       title: 'Create a project',
       description: desc(
-        'Creates a Project (one style; several videos share it). style_id is optional; no styles exist yet.',
+        "Creates a Project (one style; several videos share it). With style_id (from list_styles) the Project takes that Readymade Style's look and rules.",
         'create_video in it.',
       ),
       input: {
@@ -730,13 +735,29 @@ export function createMcpTools(s: McpServices) {
       },
       annotations: A.write,
       async run(a, c) {
+        // ROUND-C3 (6.2): a Readymade Style the person may see.
+        const style = a.style_id
+          ? visibleStyles(c).find((x) => x.id === a.style_id)
+          : undefined;
+        if (a.style_id && !style)
+          return oops(
+            `There is no Style "${a.style_id as string}" for this person. Call list_styles.`,
+          );
         const pid = `proj-${randomUUID()}`;
         await s.claim(c.userId, 'project', pid);
         const d = await doc(c.userId);
         const name = (a.name as string).trim();
         d.projects[pid] = {
           name,
-          styleId: null,
+          styleId: style?.id ?? null,
+          ...(style
+            ? {
+                style: styleFromTemplate(
+                  style,
+                  (await s.person(c.userId)).locale,
+                ) as unknown as Record<string, unknown>,
+              }
+            : {}),
           memory: [],
           videos: {},
           createdAt: new Date(s.now()).toISOString(),
@@ -744,7 +765,7 @@ export function createMcpTools(s: McpServices) {
         };
         await save(c.userId, d);
         return {
-          text: `Project "${name}" is made (project_id ${pid}).${a.style_id ? ' Styles are not available yet, so it has no style.' : ''}`,
+          text: `Project "${name}" is made (project_id ${pid}).${style ? ` It uses the Style "${style.name.en}": new videos start from its look and rules.` : ''}`,
         };
       },
     },
@@ -1975,8 +1996,106 @@ export function createMcpTools(s: McpServices) {
         return { text: 'Counted.' };
       },
     },
+    // ROUND-C3 (6.2): Readymade Styles.
+    {
+      name: 'list_styles',
+      title: 'Readymade Styles',
+      description: desc(
+        'Lists the Readymade Styles: what each is, what it needs, its looks and its cost range.',
+        'get_style with a style_id, then create_project with it.',
+      ),
+      input: {},
+      annotations: A.read,
+      async run(_a, c) {
+        const list = visibleStyles(c);
+        if (!list.length) return { text: 'There are no Readymade Styles yet.' };
+        return {
+          text: list
+            .map(
+              (st) =>
+                `- ${st.id}: ${st.name.en}${(st.status ?? 'published') !== 'published' ? ` (${st.status}, only the owner sees it)` : ''}. ${st.blurb.en}${st.looks?.length ? ` Looks: ${st.looks.map((l) => l.name.en).join(', ')}.` : ''}${st.priceHint ? ` About ${st.priceHint.min} to ${st.priceHint.max} credits a ${st.priceHint.per}.` : ''}`,
+            )
+            .join('\n'),
+        };
+      },
+    },
+    {
+      name: 'start_video_from_style',
+      title: "Start a video from its Project's Style",
+      description: desc(
+        "Builds the first draft of a video from its Project's Readymade Style template, the slots filled from the answers (topic, script, language, voice, length, brand). Adapt it afterwards with edit_video.",
+        'get_plan_cost, then approve_plan after a yes.',
+      ),
+      input: {
+        video_id: id,
+        answers: z.record(z.string().max(48), z.string().max(4000)).default({}),
+      },
+      annotations: A.write,
+      async run(a, c) {
+        const d = await doc(c.userId);
+        const f = findVideo(d, a.video_id as string);
+        if (!f) return noVideo;
+        const st = f.p.styleId
+          ? visibleStyles(c).find((x) => x.id === f.p.styleId)
+          : undefined;
+        if (!st?.planTemplate)
+          return oops(
+            "This video's Project has no Readymade Style with a template. Plan it with submit_plan.",
+          );
+        const answers = a.answers as Record<string, string>;
+        const values = Object.fromEntries(
+          (st.slots ?? []).map((x) => [
+            x.name,
+            answers[x.name]?.trim() || x.default,
+          ]),
+        );
+        const unknown = Object.keys(answers).filter((k) => !(k in values));
+        if (unknown.length)
+          return oops(
+            `The Style has no slot ${unknown.map((u) => `"${u}"`).join(', ')}. Its slots: ${Object.keys(values).join(', ')}.`,
+          );
+        const submit = tools.find((x) => x.name === 'submit_plan')!;
+        return submit.run(
+          { video_id: a.video_id, plan: fillTemplate(st.planTemplate, values) },
+          c,
+        );
+      },
+    },
     // ROUND-C3 Part 3: the Project's style.
     ...styleTools({
+      readymade: (c, sid) => {
+        const st = visibleStyles(c).find((x) => x.id === sid);
+        if (!st) return null;
+        const lib = c.config.director.fieldLibrary;
+        const fields = st.brief.fields.map(
+          (f) => `${f.id}${f.required ? ' (required)' : ''}: ${f.label.en}`,
+        );
+        return [
+          `Style "${st.name.en}" (${st.id})${(st.status ?? 'published') !== 'published' ? `, ${st.status} (only the owner sees it)` : ''}: ${st.blurb.en}`,
+          `Formats: ${st.formats.join(', ')}.${st.priceHint ? ` Cost: about ${st.priceHint.min} to ${st.priceHint.max} credits a ${st.priceHint.per}.` : ''}`,
+          `Ask the person: ${fields.join('; ') || 'nothing more than the Brief'}.`,
+          st.looks?.length
+            ? `Looks: ${st.looks.map((l) => `${l.id} (${l.name.en}: ${l.palette.join(', ')}, ${l.headingFont}/${l.bodyFont}, captions ${l.captionStyle})`).join('; ')}.`
+            : '',
+          st.slots?.length
+            ? `What changes per video (slots): ${st.slots.map((x) => `${x.name} (${x.kind}${x.default ? `, default "${x.default.slice(0, 40)}"` : ''})`).join(', ')}.`
+            : '',
+          st.inputs?.length
+            ? `A person can start from: ${st.inputs.join(', ')}.`
+            : '',
+          st.playbookText
+            ? `Script rules: ${st.playbookText.slice(0, 1500)}`
+            : '',
+          st.planTemplate
+            ? 'It has a template: create_project with style_id, create_video, then start_video_from_style with the answers.'
+            : `It has no template: plan it with submit_plan (types: ${lib.types
+                .map((t) => t.id)
+                .slice(0, 6)
+                .join(', ')}).`,
+        ]
+          .filter(Boolean)
+          .join('\n');
+      },
       doc,
       save,
       desc,
@@ -1996,6 +2115,10 @@ export function createMcpTools(s: McpServices) {
     }),
   ];
 
+  /** ROUND-C3 (6.2): the Styles this person may see (owner: all). */
+  function visibleStyles(c: McpCtx) {
+    return enabledStyles(c.config, { owner: !!c.owner });
+  }
   /** ROUND-C3 (3.3): the plan summary's "Extra ideas" (or why there are none). */
   function upgradeLine(c: PlatformConfig, p: ClaudeProject, ideas: string[]) {
     const style = c.styles.find((x) => x.id === p.styleId);
@@ -2449,9 +2572,11 @@ export function createMcpTools(s: McpServices) {
       origin: string,
     ): Promise<McpCtx> {
       const p = await s.person(userId);
+      const cfg = p.config ?? config;
       return {
         userId,
-        config: p.config ?? config,
+        owner: isOwnerEmail(cfg, (await s.store.profile(userId))?.email),
+        config: cfg,
         origin,
         plan: p.plan,
         card: s.card,

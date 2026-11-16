@@ -4,6 +4,7 @@
 // reads `engine.state` fresh on every message, previews with the engine's
 // preview path and changes things only as ONE transaction per Apply.
 // Everything that costs credits is a card with its cost and an Approve.
+import { fillTemplate } from '../director/style-check';
 import {
   graphicsCredits,
   planTotals,
@@ -1050,66 +1051,97 @@ export class Director {
           );
         status.textContent = t('plan.working');
       }
-      const result = await llmPlan({
-        gateway: s.gateway,
-        config: this.#c,
-        style: this.#style(),
-        answers: input.answers,
-        notes: [
-          ...input.notes,
-          ...extraNotes,
-          ...(style?.look.palette.length
-            ? [`Project colours: ${style.look.palette.join(', ')}.`]
-            : []),
-          ...(style?.graphics
-            ? [`Graphics: ${clip(style.graphics, 300)}`]
-            : []),
-          ...memory.slice(0, 8).map((m) => `Remember: ${clip(m, 200)}`),
-        ],
-        plan: s.planOf(user.id),
-        locale: lang(),
-        userId: user.id,
-        modelId: this.#model(),
-        key: `plan-${this.#videoId}-${Date.now().toString(36)}`,
-        // ROUND-C1: the brief's video type, the Project kit, the research
-        // tools and (tests only) the offline model's scripted answers.
-        videoType: this.#flow.typeId || undefined,
-        kit: this.#host.graphicsKit(),
-        research: (tool, input) => this.#research(tool, input),
-        reference,
-        ...(e2eSeen() ? { onAsk: e2eSeen()! } : {}),
-        // ROUND-C1 F2: sample frames of the new graphics, and the vision
-        // check's frames (both drawn off screen by the editor's renderer).
-        frames: async (p) => {
-          status.textContent = this.#line('plan.checkingFrames');
-          const { sampleGraphics } = await import('../ui/sample-frames');
-          return sampleGraphics(p, { signal: stop.signal });
-        },
-        visionFrames: async (p) => {
-          status.textContent = this.#line('plan.lookingFrames');
-          const { planFrames } = await import('../ui/sample-frames');
-          const { browserRenderFrames } = await import('../ui/render-frames');
-          // Through the shared tools (renderFrames), drawn by the browser.
-          return planFrames(p, {
-            signal: stop.signal,
-            tools: {
-              config: this.#c,
-              planId: s.planOf(user.id).id,
-              userId: user.id,
-              media: { builtin: {}, rest: async () => [] },
-              renderFrames: browserRenderFrames(stop.signal),
+      // ROUND-C3 (6.1): a Readymade Style with a plan template builds the
+      // first plan from it, its slots filled from the Brief (else their
+      // defaults); the Director then adapts it (rewrites). Styles without a
+      // template (the three samples) plan exactly as before.
+      const template = rewrite ? undefined : this.#style().planTemplate;
+      const fromTemplate = template
+        ? (() => {
+            const values: Record<string, string> = {};
+            for (const slot of this.#style().slots ?? []) {
+              const v = this.#flow.brief[slot.name];
+              values[slot.name] =
+                v && v !== YOU_DECIDE ? v.replace(/^style:/, '') : slot.default;
+            }
+            const ok = checkPlan(fillTemplate(template, values));
+            return ok.ok
+              ? {
+                  ok: true as const,
+                  plan: ok.plan,
+                  upgrades: [],
+                  warnings: ok.warnings,
+                  repaired: ok.repaired,
+                  credits: 0,
+                  notes: [] as readonly string[],
+                }
+              : null;
+          })()
+        : null;
+      const result =
+        fromTemplate ??
+        (await llmPlan({
+          gateway: s.gateway,
+          config: this.#c,
+          style: this.#style(),
+          answers: input.answers,
+          notes: [
+            ...input.notes,
+            ...extraNotes,
+            ...(style?.look.palette.length
+              ? [`Project colours: ${style.look.palette.join(', ')}.`]
+              : []),
+            ...(style?.graphics
+              ? [`Graphics: ${clip(style.graphics, 300)}`]
+              : []),
+            ...memory.slice(0, 8).map((m) => `Remember: ${clip(m, 200)}`),
+          ],
+          plan: s.planOf(user.id),
+          locale: lang(),
+          userId: user.id,
+          modelId: this.#model(),
+          key: `plan-${this.#videoId}-${Date.now().toString(36)}`,
+          // ROUND-C1: the brief's video type, the Project kit, the research
+          // tools and (tests only) the offline model's scripted answers.
+          videoType: this.#flow.typeId || undefined,
+          kit: this.#host.graphicsKit(),
+          research: (tool, input) => this.#research(tool, input),
+          reference,
+          ...(e2eSeen() ? { onAsk: e2eSeen()! } : {}),
+          // ROUND-C1 F2: sample frames of the new graphics, and the vision
+          // check's frames (both drawn off screen by the editor's renderer).
+          frames: async (p) => {
+            status.textContent = this.#line('plan.checkingFrames');
+            const { sampleGraphics } = await import('../ui/sample-frames');
+            return sampleGraphics(p, { signal: stop.signal });
+          },
+          visionFrames: async (p) => {
+            status.textContent = this.#line('plan.lookingFrames');
+            const { planFrames } = await import('../ui/sample-frames');
+            const { browserRenderFrames } = await import('../ui/render-frames');
+            // Through the shared tools (renderFrames), drawn by the browser.
+            return planFrames(p, {
               signal: stop.signal,
-            },
-          });
-        },
-        onStep: (step) => {
-          if (stop.signal.aborted)
-            throw new DOMException('The plan was stopped.', 'AbortError');
-          if (/^(research:|check-failed|frames-bad|vision-problems)/.test(step))
-            status.textContent = t('plan.working');
-        },
-        ...(e2eScript() ? { script: e2eScript()! } : {}),
-      });
+              tools: {
+                config: this.#c,
+                planId: s.planOf(user.id).id,
+                userId: user.id,
+                media: { builtin: {}, rest: async () => [] },
+                renderFrames: browserRenderFrames(stop.signal),
+                signal: stop.signal,
+              },
+            });
+          },
+          onStep: (step) => {
+            if (stop.signal.aborted)
+              throw new DOMException('The plan was stopped.', 'AbortError');
+            if (
+              /^(research:|check-failed|frames-bad|vision-problems)/.test(step)
+            )
+              status.textContent = t('plan.working');
+          },
+          ...(e2eScript() ? { script: e2eScript()! } : {}),
+        }));
       if (stop.signal.aborted)
         throw new DOMException('The plan was stopped.', 'AbortError');
       await s.sync(user.id).catch(() => undefined);
