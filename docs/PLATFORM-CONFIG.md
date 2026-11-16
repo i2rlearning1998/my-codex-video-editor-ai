@@ -88,3 +88,11 @@ form and interview.
 - `mcp`: `enabled` (true), `proofTools` (false), `tools[toolId] = {enabled, cost: 'free' or a cost id}`, `exportMaxSeconds` (120), `ratePerMinute` (60).
 - New defaults (a saved config keeps its own values): the T1 rulebook, the authoring guide, eight video-type playbooks (D-438, D-439).
 - The emergency switches may hold `mcpOff` (the connector's switch).
+
+## Round C3 additions (schema version 1, additive; defaults parse)
+
+- `director.rulebook[].appliesTo`: `both` (when missing), `director` or `claude`. The Director reads both + director items as rules; the person's Claude reads both + claude items as guidance.
+- `mcp.addMediaMaxMb` (8), `mcp.importMaxMb` (200), `mcp.whatsNew` (the owner's note in start_here).
+- `workspace.ownerEmails`: the owner's own accounts (lower case); they also see Draft and Tested Styles.
+- Readymade Style fields on `styles[]`, all optional: `status` (draft, tested, published; missing = published), `version`, `sample` {video, poster}, `planTemplate` (a Video Plan v4 with `{{slot}}` markers), `slots[]` {name, kind, default, route, label}, `inputs[]`, `looks[]` (3 or 4: id, name, palette, fonts, caption style), `kit` {notes, blocks}, `tests[]` {topic, date, passed}, `publishOverride` (the owner's reason). Script rules reuse `playbookText`; the cost range reuses `priceHint`. `validateStyle` checks them.
+- New defaults: the C3 rulebook (T1) and the skill texts (T2, T3) in `src/platform-config/texts/`; a saved config keeps its own texts.

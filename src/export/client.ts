@@ -141,7 +141,11 @@ export function startExport(
      * export card, where a sandboxed frame may not start one). The file
      * stays in memory; fonts load from `fontBase`.
      */
-    inPage?: { readonly fontBase: string };
+    inPage?: {
+      readonly fontBase: string;
+      /** ROUND-C3: baked code frames kept in memory (the export card). */
+      readonly codeStore?: MediaStore;
+    };
   },
 ): ExportRun {
   let worker: Worker | null = null;
@@ -265,6 +269,7 @@ export function startExport(
         cancelled: () => stop,
         fontBase: deps.inPage.fontBase,
         opfs: false,
+        ...(deps.inPage.codeStore ? { codeStore: deps.inPage.codeStore } : {}),
       }).catch((error: unknown) =>
         finish!.reject(
           error instanceof Error ? error : new Error(String(error)),

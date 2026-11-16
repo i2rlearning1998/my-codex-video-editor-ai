@@ -37,6 +37,8 @@ export interface FakeCloud {
   files: Map<string, Buffer>;
   /** P2-R2: sign-up asks for email confirmation first (no session). */
   confirmEmail?: boolean;
+  /** ROUND-C3: where each sign-up's confirmation email would return. */
+  signupRedirects?: (string | null)[];
   /** P1-31: training-data records, one per owner and project. */
   training?: {
     owner_id: string;
@@ -141,6 +143,7 @@ export async function fakeCloud(
         return json(route, 200, { error: 'exists' });
       const user = { id: crypto.randomUUID(), email, password };
       cloud.users.set(user.id, user);
+      (cloud.signupRedirects ??= []).push(url.searchParams.get('redirect_to'));
       // P2-R2: with email confirmation on, GoTrue answers the user, no session.
       if (cloud.confirmEmail)
         return json(route, 200, {

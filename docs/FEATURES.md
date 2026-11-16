@@ -1671,3 +1671,48 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC2-042 | P0 | W10 | Verified | A Project and Video Claude makes appear in the panel with "Made with Claude" on the Projects page, the Project page and the video card; "+ New video" offers Door 4 too |
 | RDC2-043 | P0 | W10 | Verified | The panel pulls what Claude made (Projects, Videos, a built Video's file and media) and keeps Claude's steps per Video; AI mode's chat list shows them read-only, newest first; Editor mode shows nothing new |
 | RDC2-050 | P0 | W10 | Verified | npm run mcp:bundle writes the video-director skill and the setup skill (TEXTS, platform name filled), and a plugin (manifest, skills, the rules, the connector address); the server serves them for Door 4 |
+
+## RDC3: Round C3 (Claude as a full Director, the Readymade Style structure; briefs/ROUND-C3.md)
+
+| ID | Priority | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| RDC3-001 | P0 | W10 | Verified | A video with a Tier B block and a Tier C free-code scene exports inside the chat card: the code is drawn in a nested frame (sandbox allow-scripts only, our sandbox page, connect-src 'none'), the file plays and downloads (D-447 superseded) |
+| RDC3-002 | P0 | W10 | Verified | The nested sandbox stops fetch, XMLHttpRequest, WebSocket, eval of a network string, localStorage and reading the card; a postMessage to the top window runs no tool; the plan checks refuse such code before it is sent; export_video no longer refuses code graphics |
+| RDC3-003 | P0 | W10 | Verified | A code graphic that never returns is stopped by the time limit and the card says so in one plain sentence; nothing is counted; a host that refuses the nested frame gets the fallback sentence |
+| RDC3-004 | P0 | W10 | Verified | Measured: a 60 s 9:16 video with six code graphics renders in the card (time in reports/round-c3/code-export-timing.json) |
+| RDC3-005 | P0 | W10 | Verified | OAuth consents (30 minutes) and codes (5 minutes, single use, kept as a hash) live in the store; a server restart ends neither; expired ones are swept |
+| RDC3-006 | P0 | W10 | Verified | A person with no account: Claude's Connect opens Sign up with the consent page as next; after sign-up the consent page, Allow, and Claude gets a token |
+| RDC3-007 | P0 | W10 | Verified | A person with an account and a cleared browser: Sign up page, Log in keeps next, Allow; the Claude connection and what Claude made survive and come back after logging in |
+| RDC3-008 | P0 | W10 | Verified | Sign-up with email confirmation: the page says to confirm then log in and press Allow, or go back to Claude and press Connect again; the confirmation email returns to Log in with next kept |
+| RDC3-009 | P0 | W10 | Verified | The Connect Claude page on the website (header button, logged-out visitors) and in the panel (Home button): what it does, the address with Copy, the two steps, the downloads, the own-Claude-plan line, loading and error states |
+| RDC3-010 | P0 | W10 | Verified | The Plan card's numbers (new graphics, rewrites, totals) and the brief functions are shared DOM-free functions; the Director's output is unchanged (snapshots) and its manual stays the rulebook view |
+| RDC3-011 | P0 | W10 | Verified | get_brief_fields returns every field at once with what the message and the Project style fill in, what is missing and "you decide"; save_brief names the required fields still empty and keeps a reference link |
+| RDC3-012 | P0 | W10 | Verified | add_file_note keeps the Director's FileNote (capped); read_memory returns the notes and the reference link |
+| RDC3-013 | P0 | W10 | Verified | get_plan_cost lists each scene, each new graphic, media costs, the total and the rewrites left; submit_plan repairs once then refuses in one sentence and counts rewrites against director.rewritesPerVideo |
+| RDC3-014 | P0 | W10 | Verified | A new scene through edit_video is shown with its cost and changes nothing until confirm_scene after a yes; then added and charged once (and a new scene no longer repeats the ids of scene 1) |
+| RDC3-015 | P0 | W10 | Verified | edit_video dry_run runs the ops on a copy and says what would change in sentences; nothing is saved |
+| RDC3-016 | P0 | W10 | Verified | The server writes the Video sheet after save_brief, submit_plan (a line per scene), approve_plan and edit_video, with the Director's caps |
+| RDC3-017 | P0 | W10 | Verified | start_here gives Claude's view of the one manual (Guidance, the owner's refusals, Brief fields, memory caps, attachment limits, rewrites, video types); the Director keeps the rulebook view |
+| RDC3-020 | P0 | W10 | Verified | get_asset_needs lists each file the plan needs by its exact name, kind and use (and the voice-over), which of the person's files fill it, and every way: give it, a Studio (fields, cost), a prompt, the library, later, or Claude and other tools |
+| RDC3-021 | P0 | W10 | Verified | set_asset_choice records make, upload, prompt, library, later or own in the Video sheet; an unknown file is refused |
+| RDC3-022 | P0 | W10 | Verified | make_asset needs get_asset_cost first; it runs the Studio through the panel's /v1/run path (plan limits, credits, usage); the file is saved under the slot name and an earlier one is kept; without a connected model it is one plain sentence |
+| RDC3-023 | P0 | W10 | Verified | add_media takes an outside file as base64 (mcp.addMediaMaxMb) or an https link through the network guard (mcp.importMaxMb); wrong type, too big and private links get one sentence; never charged |
+| RDC3-024 | P0 | W10 | Verified | check_video names the files still blank and stops naming one once a file for it arrives |
+| RDC3-030 | P0 | W10 | Verified | The first approved Video of a Project saves the Project's style (styleFromPlan) and says so; get_style reads it in sentences; later Videos add examples |
+| RDC3-031 | P0 | W10 | Verified | create_video in a Project with a style starts the Brief from it and says so; get_brief_fields shows the style's answers |
+| RDC3-032 | P0 | W10 | Verified | style_chat proposes a before/after list (styleReply) and saves nothing; apply_style_change saves it for later videos only |
+| RDC3-033 | P0 | W10 | Verified | Claude's plan carries "Extra ideas" (submit_plan extra_ideas, kept in the Video sheet); get_plan_cost lists them as removable or asks for them; a Style's creativeUpgrade off turns the step off |
+| RDC3-034 | P0 | W10 | Verified | The Director's Plan card in AI mode lists "Extra ideas" from the planner (unless the Style turns the step off); each can be removed; both steps go to the Video sheet |
+| RDC3-040 | P0 | W10 | Verified | Claude's code graphics: edit_video add_graphic (cost first), replace_graphic_code (same checks as the Director's loop, the person's settings kept), set_graphic_params, read_graphic; plan defs and added graphics join the Project's AI library; set_frame, add_marker and set_master_volume reach the frame, markers and the mix |
+| RDC3-041 | P0 | W10 | Verified | The capability matrix (src/director/capability-matrix.ts, docs/CAPABILITY-MATRIX.md) names every editor command and plan v4 field with Claude's way; a unit test fails on drift; AGENTS.md section 3 holds the owner's rule |
+| RDC3-042 | P0 | W10 | Verified | start_here gives a version, what Claude can reach, the modes, Studios and Styles, and what changed since the version this person saw, with the owner's mcp.whatsNew (Admin); list_modes; create_video takes a mode |
+| RDC3-043 | P0 | W10 | Verified | Check and fix: a deliberately bad graphic gets its checks back before any cost; the rewrite is accepted and checked again |
+| RDC3-050 | P0 | W10 | Verified | A video Claude builds is a tool video: its editor file has the Video's id; the panel shows its Project and Video, the Asset Library lists its graphic under the Video's AI library, the editor opens the same layers and its AI category lists the graphic |
+| RDC3-051 | P0 | W10 | Verified | The panel's sync saves a Claude Video's graphics to its My library and one Asset Library row each (once), and writes its Video sheet and file notes to the browser's Video memory (AI mode and the Director continue from them) |
+| RDC3-052 | P0 | W10 | Verified | A person who cleared the browser and logs in again gets Claude's Projects, Videos and their libraries back (the server keeps them) |
+| RDC3-060 | P0 | W10 | Verified | Readymade Style fields on styleSchema (status, version, sample, planTemplate, slots, inputs, looks, kit, tests, publishOverride; workspace.ownerEmails); the 3 sample Styles load unchanged with looks and no template; validateStyle checks the template with defaults, slot names, looks and the published rule |
+| RDC3-061 | P0 | W10 | Verified | list_styles (published only; the owner also sees Draft and Tested, marked), get_style(style_id), create_project(style_id) applies the style record, start_video_from_style builds the first draft from the template |
+| RDC3-062 | P0 | W10 | Verified | The panel's Styles page and Home show published Styles only; the owner sees Tested ones marked; a Style with a template gives the Director its first plan with the slots filled from the Brief (Styles without a template plan as before) |
+| RDC3-070 | P0 | W10 | Verified | The C3 TEXTS word for word: T1 (two replaced rules keep their ids, six new rules, each with appliesTo) in the default rulebook; the Director's manual reads both + director items as its Rulebook, Claude's both + claude items as Guidance; the skills carry T2 and T3 and the zips match |
+| RDC3-071 | P0 | W10 | Verified | Admin › Rules & Playbooks: each rule has an Applies to choice; the preview shows the Director's view and Claude's view |
+

@@ -1,5 +1,14 @@
 # Changelog
 
+## Round C3: Claude as a full Director (16 Nov)
+
+- Code graphics (Tier B and C) export inside the chat card, drawn in a nested sandbox frame with no network (D-450).
+- OAuth consents and codes survive a server restart; logging in through Claude's Connect works for new people, cleared browsers and email confirmation; a Connect Claude page on the website and the panel (D-451, D-452).
+- Claude shares the Director's logic: the whole Brief at once, file notes, the plan card scene by scene with rewrites, new scenes and graphics charged after a yes, dry runs, the Video sheet written by the server (D-453 to D-454).
+- The assets step for Claude: needs, choices, Studio runs and outside files (D-455). The Project style, the Style chat and the upgrade step for both Directors (D-456).
+- Code graphics through edit_video, the capability matrix and its guard, live data in start_here (D-457). A Claude video is a tool video in the panel, editor and AI mode (D-458).
+- Readymade Styles: the structure, validateStyle, published-only lists and Claude's Style tools (D-459). The C3 TEXTS and Applies to in Admin (D-460).
+
 ## Round C2: Claude as Director (15 Nov)
 
 - The person's own Claude connects through an MCP connector (OAuth 2.1 in two clicks, consent page in the panel) and uses the same tools as the Director on the same Projects and Videos; every call is checked, priced, rate-limited and logged (D-441 to D-444).

@@ -275,6 +275,19 @@ export function createServerApp(o: ServerOptions) {
         return { config, plan, locale: profile.locale };
       },
       balance: (u) => people.ledgerNow(u).balance(),
+      // ROUND-C3 (2.3): a Studio run through the same /v1/run path the
+      // panel's Studio uses (limits, credits, usage log); and which models
+      // are connected (so Claude is offered only Studios that can run).
+      studioRun: async (u, body) => {
+        const profile = await o.store.profile(u);
+        return routes['POST /v1/run']!(body, {
+          userId: u,
+          email: profile?.email ?? '',
+          admin: false,
+        } as Caller) as Promise<{ result: unknown; credits: number }>;
+      },
+      connected: (c, modelId) => connected(c, modelId),
+      testMode: () => o.env.MCP_TEST_MODE === '1',
       charge: (u, credits, note, key) => {
         const l = people.ledgerNow(u);
         const r = l.reserve(credits, key, note);

@@ -423,6 +423,8 @@ describe('[RDC2-007] one manual for both Directors', () => {
     ).body.balance as number;
     const plan = parsed.plans.find((p) => p.id === 'free') ?? parsed.plans[0]!;
     const manual = buildManual(parsed, {
+      // ROUND-C3: start_here is Claude's view of the one manual.
+      for: 'claude',
       videoType: 'explainer',
       person: {
         planName: plan.name.en,
@@ -435,7 +437,8 @@ describe('[RDC2-007] one manual for both Directors', () => {
         },
       },
     });
-    expect(here.text).toBe(manual);
+    // ROUND-C3 (4.4): the manual byte for byte, then the live part.
+    expect(here.text.startsWith(`${manual}\n\n## Live (version `)).toBe(true);
     // Without the person part (the Director plans before a person is known),
     // the Director's prompt holds exactly buildManual(config, type).
     const style = parsed.styles[0]!;
@@ -515,6 +518,10 @@ describe('[RDC2-009] Platform Config: mcp, creator playbook and the TEXTS', () =
       tools: {},
       exportMaxSeconds: 120,
       ratePerMinute: 60,
+      // ROUND-C3 (2.4, 4.4): added with defaults.
+      addMediaMaxMb: 8,
+      importMaxMb: 200,
+      whatsNew: '',
     });
     expect(Object.keys(c.director.creatorPlaybook)).toEqual([
       '01-audience-and-goal',

@@ -85,6 +85,16 @@ export const madeWithClaude = () =>
     text: t('claude.madeWith'),
   });
 
+/** ROUND-C3 (5.1): one graphic of a Project's AI library. */
+export interface ClaudeGraphic {
+  id: string;
+  name: string;
+  summary: string;
+  tier: 'B' | 'C';
+  source: string;
+  meta: Record<string, unknown>;
+  videoId: string;
+}
 /** Claude's workspace as the server keeps it (names, origin, activity). */
 export interface ClaudeWorkspace {
   readonly projects: readonly {
@@ -97,7 +107,17 @@ export interface ClaudeWorkspace {
       origin: 'claude' | 'panel';
       built: boolean;
       activity: readonly { at: string; text: string; by: string }[];
+      /** ROUND-C3 (5.2): the Video sheet's lines and the file notes. */
+      sheet?: readonly string[];
+      fileNotes?: readonly {
+        name: string;
+        kind: string;
+        bytes: number;
+        note: string;
+      }[];
     }[];
+    /** ROUND-C3 (5.1): the Project's AI library (Claude's graphics). */
+    library?: readonly ClaudeGraphic[];
   }[];
 }
 export async function claudeWorkspace(
@@ -271,3 +291,22 @@ export function claudeDoor(ctx: Ctx, gatewayUrl: string): HTMLElement {
   void draw();
   return box;
 }
+
+/**
+ * ROUND-C3 (0.5): the panel's Connect Claude page (Home's button): what it
+ * does, then Door 4 (address with Copy, the two steps, the downloads, the
+ * connection state).
+ */
+export const claudePageScreen: Screen = async (ctx, _args, out) => {
+  const { gatewayBase } = await import('../../usage-report');
+  out.append(
+    h(
+      'section',
+      { class: 'card', id: 'panel-claude-page' },
+      h('h1', { text: t('site.claudeTitle') }),
+      h('p', { text: t('site.claudeWhat') }),
+      h('p', { class: 'muted', text: t('site.claudePlan') }),
+    ),
+    claudeDoor(ctx as Ctx, gatewayBase() ?? ''),
+  );
+};

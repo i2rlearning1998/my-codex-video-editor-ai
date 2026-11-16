@@ -193,13 +193,20 @@ describe('[RDC2-012] free and credit tools, switches per tool, usage rows', () =
 describe('[RDC2-013] Projects and Videos', () => {
   it('[RDC2-013] create_project and create_video go through the plan limits and carry origin claude in the registry; list_projects and list_videos show them; style_id is kept as a parameter', async () => {
     const { client, token } = await person('p-ws');
+    // ROUND-C3 (6.2): Styles exist now; an unknown one is refused.
+    expect(
+      (
+        await s.call(client, 'create_project', {
+          name: 'History',
+          style_id: 'any-style',
+        })
+      ).text,
+    ).toBe('There is no Style "any-style" for this person. Call list_styles.');
     const p = await s.call(client, 'create_project', {
       name: 'History',
-      style_id: 'any-style',
+      style_id: 'story-explainer',
     });
-    expect(p.text).toMatch(
-      /Project "History" is made .* Styles are not available yet/,
-    );
+    expect(p.text).toMatch(/Project "History" is made .* It uses the Style /);
     const projectId = /project_id (proj-[0-9a-f-]+)/.exec(p.text)![1]!;
     const v = await s.call(client, 'create_video', {
       project_id: projectId,
@@ -256,11 +263,12 @@ describe('[RDC2-014] the Brief', () => {
     const f = await s.call(client, 'get_brief_fields', {
       video_type: 'explainer',
     });
+    // ROUND-C3 (1.1): every field at once, with what is still needed.
     expect(f.text).toMatch(
-      /^Brief for explainer:\n1\. topic: What is the video about\? \(required\) \(free text\)/,
+      /^Brief for explainer \(Explainer\), all fields:\n1\. topic: What is the video about\? \(required\)\. Still needed\./,
     );
     expect(f.text).toMatch(
-      /language: Language \(required\): hi \(हिन्दी\), en \(English\)/,
+      /language: Language \(required\)\. Still needed\. Choices: hi \(हिन्दी\), en \(English\),/,
     );
     const bad = await s.call(client, 'save_brief', {
       video_id: videoId,
@@ -275,7 +283,7 @@ describe('[RDC2-014] the Brief', () => {
       answers: { topic: 'Rivers', language: 'en' },
     });
     expect(ok.text).toMatch(
-      /^Saved\. Still to ask: length\.$|The brief is complete\./,
+      /^Saved\. Required and still empty: length\.$|The brief is complete\./,
     );
   });
 });
@@ -400,7 +408,7 @@ describe('[RDC2-017] cost and approval', () => {
       .balance as number;
     expect(
       (await s.call(client, 'get_plan_cost', { video_id: videoId })).text,
-    ).toMatch(/^Approving this video costs up to 6 credits\./);
+    ).toMatch(/Total: up to 6 credits\./);
     expect(
       (await s.call(client, 'approve_plan', { video_id: videoId })).text,
     ).toMatch(/^Approved; 6 credits were spent\./);
@@ -577,7 +585,7 @@ describe('[RDC2-020] out of order and twice', () => {
 });
 
 describe('[RDC2-023] export refusals before the card', () => {
-  it('[RDC2-023] a video with a code graphic, or one whose file would pass 100 MB, is refused with a plain sentence and the options; nothing is counted', async () => {
+  it('[RDC2-023] [RDC3-002] a video whose file would pass 100 MB is refused with a plain sentence and the options; a video with a code graphic is no longer refused (it is drawn in the card, D-447 superseded); nothing is counted', async () => {
     const { client, token } = await person('p-export');
     const { videoId } = await newVideo(client);
     await s.call(client, 'submit_plan', { video_id: videoId, plan: plan() });
@@ -596,9 +604,8 @@ describe('[RDC2-023] export refusals before the card', () => {
       },
     });
     const code = await s.call(client, 'export_video', { video_id: videoId });
-    expect(code.text).toMatch(
-      /^This video has new code graphics, and the chat export cannot draw those yet\./,
-    );
+    expect(code.text).not.toMatch(/code graphics/);
+    expect(code.isError).toBeFalsy();
     // A long video at 600 s: past the 100 MB cap at the standard preset.
     await s.publish((c) => {
       c.mcp.exportMaxSeconds = 600;

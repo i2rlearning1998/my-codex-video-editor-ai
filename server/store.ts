@@ -33,6 +33,7 @@ import {
   type ClaudeDoc,
   type CloudProjectRow,
   type McpClient,
+  type McpGrant,
   type McpConnection,
   type McpStore,
   type MediaRecord,
@@ -102,6 +103,7 @@ interface Data {
   live: number;
   /** ROUND-C2: the Claude connector (server/mcp/records.ts). */
   mcpClients?: Record<string, McpClient>;
+  mcpGrants?: Record<string, McpGrant>;
   mcpConnections?: Record<string, McpConnection>;
   claude?: Record<string, ClaudeDoc>;
   cloudProjects?: Record<string, Record<string, CloudProjectRow>>;
@@ -363,6 +365,28 @@ class JsonStore implements Store {
   async saveWorkspaceRegistry(u: string, r: Registry) {
     (this.data.workspaces ??= {})[u] = structuredClone(r);
     this.save();
+  }
+  // ROUND-C3 (0.3): OAuth consents and codes.
+  async mcpGrant(key: string) {
+    return structuredClone(this.data.mcpGrants?.[key] ?? null);
+  }
+  async saveMcpGrant(g: McpGrant) {
+    (this.data.mcpGrants ??= {})[g.key] = structuredClone(g);
+    this.save();
+  }
+  async deleteMcpGrant(key: string) {
+    if (!this.data.mcpGrants?.[key]) return;
+    delete this.data.mcpGrants[key];
+    this.save();
+  }
+  async sweepMcpGrants(now: string) {
+    let changed = false;
+    for (const [k, g] of Object.entries(this.data.mcpGrants ?? {}))
+      if (g.expiresAt < now) {
+        delete this.data.mcpGrants![k];
+        changed = true;
+      }
+    if (changed) this.save();
   }
   // ROUND-C2: the Claude connector.
   async mcpClient(id: string) {

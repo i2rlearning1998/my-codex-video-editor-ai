@@ -56,10 +56,45 @@ export interface ClaudeVideo {
   costShownFor: string | null;
   createdAt: string;
   origin: 'claude' | 'panel';
+  /** ROUND-C3 (1.2): what was seen in the person's files (FileNote shape). */
+  fileNotes?: {
+    id: string;
+    name: string;
+    kind: string;
+    bytes: number;
+    note: string;
+    at: string;
+  }[];
+  /** ROUND-C3 (1.2): a link the person gave for the brief. */
+  referenceUrl?: string;
+  /** ROUND-C3 (1.3): plan rewrites used (the Director's counter rule). */
+  rewrites?: number;
+  /** ROUND-C3 (2.2): the person's choice per asset slot. */
+  assetChoices?: Record<string, string>;
+  /** ROUND-C3 (3.3): the plan's "Extra ideas" (the upgrade step). */
+  upgrades?: string[];
+  /** ROUND-C3 (1.3): a new scene shown with its cost, waiting for a yes. */
+  pendingScene?: { plan: unknown; cost: number; hash: string } | null;
 }
 export interface ClaudeProject {
   name: string;
   styleId: string | null;
+  /**
+   * ROUND-C3 (4.1, 5.1): the Project's AI library: every new graphic Claude
+   * made (a checked def), as the Director saves its plan graphics.
+   */
+  library?: {
+    id: string;
+    tier: 'B' | 'C';
+    source: string;
+    meta: Record<string, unknown>;
+    name: string;
+    summary: string;
+    savedAt: string;
+    videoId: string;
+  }[];
+  /** ROUND-C3 (3.1): the Project's style record (StyleFields shape). */
+  style?: Record<string, unknown> | null;
   memory: SheetEntry[];
   videos: Record<string, ClaudeVideo>;
   createdAt: string;
@@ -67,6 +102,11 @@ export interface ClaudeProject {
 }
 export interface ClaudeDoc {
   projects: Record<string, ClaudeProject>;
+  /**
+   * ROUND-C3 (4.4): the capability lines Claude saw last time (start_here
+   * says what changed since).
+   */
+  seen?: { version: string; lines: string[] };
 }
 export const emptyClaudeDoc = (): ClaudeDoc => ({ projects: {} });
 
@@ -98,7 +138,24 @@ export class RevisionConflict extends Error {
   }
 }
 
+/**
+ * ROUND-C3 (0.3): an OAuth consent waiting for Allow, or an authorization
+ * code. Kept in the store so a server restart ends neither; codes are kept
+ * by their sha256 only. Expired rows are swept.
+ */
+export interface McpGrant {
+  readonly key: string;
+  readonly kind: 'consent' | 'code';
+  readonly data: Record<string, unknown>;
+  readonly expiresAt: string;
+}
+
 export interface McpStore {
+  mcpGrant(key: string): Promise<McpGrant | null>;
+  saveMcpGrant(g: McpGrant): Promise<void>;
+  deleteMcpGrant(key: string): Promise<void>;
+  /** Removes every grant that expired before `now` (ISO time). */
+  sweepMcpGrants(now: string): Promise<void>;
   mcpClient(id: string): Promise<McpClient | null>;
   saveMcpClient(c: McpClient): Promise<void>;
   /** A person's connections, or everyone's (Admin) when no id is given. */

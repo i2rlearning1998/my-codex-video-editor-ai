@@ -4,6 +4,7 @@
 import {
   canUse,
   enabledStyles,
+  isOwnerEmail,
   enabledStudios,
   learnItems,
   publicPlans,
@@ -52,6 +53,14 @@ const styleCard = (ctx: Ctx, s: ReturnType<typeof enabledStyles>[number]) => {
         'div',
         { class: 'poster-cap' },
         h('h3', { text: ctx.say(s.name) }),
+        // ROUND-C3 (6.1): the owner sees unpublished Styles, marked.
+        (s.status ?? 'published') !== 'published'
+          ? h('span', {
+              class: 'chip',
+              'data-style-status': s.status!,
+              text: t(s.status === 'draft' ? 'style.draft' : 'style.tested'),
+            })
+          : null,
         h('p', { class: 'poster-blurb', text: ctx.say(s.blurb) }),
         h('p', { class: 'formats', text: s.formats.join(' · ') }),
         hint && ctx.s.config.director.reveal.credits
@@ -119,7 +128,12 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
     role: 'list',
     'aria-label': t('home.styles'),
   });
-  put(view, ...enabledStyles(c).map((s) => styleCard(ctx, s)));
+  put(
+    view,
+    ...enabledStyles(c, { owner: isOwnerEmail(c, ctx.user.email) }).map((s) =>
+      styleCard(ctx, s),
+    ),
+  );
   const thumb = h('div', { class: 'reel-thumb' });
   const track = h('div', { class: 'reel-track' }, thumb);
   const count = h('span', { class: 'reel-count' });
@@ -158,6 +172,27 @@ export const homeScreen: Screen = async (ctx, _a, out) => {
   const below = h('div', { class: 'home-below' });
   put(
     below,
+    // ROUND-C3 (0.5): make videos with the person's own Claude.
+    h(
+      'section',
+      { class: 'band home-claude' },
+      h(
+        'div',
+        { class: 'section-head' },
+        h(
+          'div',
+          null,
+          h('h2', { text: t('site.claudeTitle') }),
+          h('p', { class: 'muted', text: t('site.claudePlan') }),
+        ),
+        h('a', {
+          class: 'button sm',
+          href: '#/claude',
+          id: 'home-claude',
+          text: t('site.claudeNav'),
+        }),
+      ),
+    ),
     h(
       'section',
       { class: 'band' },
@@ -401,7 +436,9 @@ export const stylesScreen: Screen = async (ctx, _a, out) => {
   let mine = false;
   const grid = h('div', { class: 'grid', id: 'style-grid' });
   const paint = () => {
-    const list = enabledStyles(c).filter(
+    const list = enabledStyles(c, {
+      owner: isOwnerEmail(c, ctx.user.email),
+    }).filter(
       (s) =>
         (!q ||
           `${ctx.say(s.name)} ${ctx.say(s.blurb)} ${s.name.en}`

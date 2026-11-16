@@ -34,8 +34,25 @@ export const costById = (c: PlatformConfig, id: string): Cost | undefined =>
   c.costs.find((x) => x.id === id);
 export const styleById = (c: PlatformConfig, id: string): Style | undefined =>
   c.styles.find((s) => s.id === id);
-export const enabledStyles = (c: PlatformConfig): Style[] =>
-  c.styles.filter((s) => s.enabled).sort((a, b) => a.order - b.order);
+/**
+ * ROUND-C3 (Part 6): people see published Styles only (a Style without a
+ * status is published); the owner's own account also sees Draft and Tested.
+ */
+export const enabledStyles = (
+  c: PlatformConfig,
+  o: { owner?: boolean } = {},
+): Style[] =>
+  c.styles
+    .filter(
+      (s) =>
+        s.enabled && (o.owner || (s.status ?? 'published') === 'published'),
+    )
+    .sort((a, b) => a.order - b.order);
+/** ROUND-C3: whether this email is one of the owner's own accounts. */
+export const isOwnerEmail = (
+  c: PlatformConfig,
+  email: string | null | undefined,
+) => !!email && c.workspace.ownerEmails.includes(email.trim().toLowerCase());
 
 /** Credits for `qty` units at the low or high end of the owner's range. */
 export function costOf(

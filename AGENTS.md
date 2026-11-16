@@ -44,6 +44,7 @@ Do not ask the owner questions in the middle of a session unless you are blocked
 - Do not change frozen contracts, schema, or core semantics unless the brief explicitly authorizes it.
 - New runtime dependencies need a line in the report: name, version, size, reason, alternative considered. Approved by default: whatever `docs/DECISIONS.md` lists. Everything else needs the brief's permission.
 - Do not reformat or refactor unrelated code.
+- A new editor feature, mode, tool or Studio is not done until it has a row in the capability matrix and a way for Claude to reach it. (`src/director/capability-matrix.ts`; a unit test enforces it. Owner, Round C3.)
 
 ## 4. Architecture rules (frozen; carried over and still binding)
 

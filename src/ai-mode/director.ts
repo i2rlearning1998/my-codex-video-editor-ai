@@ -4,6 +4,12 @@
 // reads `engine.state` fresh on every message, previews with the engine's
 // preview path and changes things only as ONE transaction per Apply.
 // Everything that costs credits is a card with its cost and an Approve.
+import { fillTemplate } from '../director/style-check';
+import {
+  graphicsCredits,
+  planTotals,
+  rewritesLeft,
+} from '../director/plan-costs';
 import type { EditorCommand } from '../core';
 import type { OrbState } from '../contracts/p3';
 import {
@@ -109,6 +115,8 @@ interface Flow {
   plan?: VideoPlan;
   max?: number;
   sceneCosts?: number[];
+  /** ROUND-C3 (3.3): the plan's "Extra ideas" the person can remove. */
+  ideas?: string[];
   slots?: Slot[];
   sceneIds?: string[];
   /** The Project style as this Video last saw it. */
@@ -1043,66 +1051,97 @@ export class Director {
           );
         status.textContent = t('plan.working');
       }
-      const result = await llmPlan({
-        gateway: s.gateway,
-        config: this.#c,
-        style: this.#style(),
-        answers: input.answers,
-        notes: [
-          ...input.notes,
-          ...extraNotes,
-          ...(style?.look.palette.length
-            ? [`Project colours: ${style.look.palette.join(', ')}.`]
-            : []),
-          ...(style?.graphics
-            ? [`Graphics: ${clip(style.graphics, 300)}`]
-            : []),
-          ...memory.slice(0, 8).map((m) => `Remember: ${clip(m, 200)}`),
-        ],
-        plan: s.planOf(user.id),
-        locale: lang(),
-        userId: user.id,
-        modelId: this.#model(),
-        key: `plan-${this.#videoId}-${Date.now().toString(36)}`,
-        // ROUND-C1: the brief's video type, the Project kit, the research
-        // tools and (tests only) the offline model's scripted answers.
-        videoType: this.#flow.typeId || undefined,
-        kit: this.#host.graphicsKit(),
-        research: (tool, input) => this.#research(tool, input),
-        reference,
-        ...(e2eSeen() ? { onAsk: e2eSeen()! } : {}),
-        // ROUND-C1 F2: sample frames of the new graphics, and the vision
-        // check's frames (both drawn off screen by the editor's renderer).
-        frames: async (p) => {
-          status.textContent = this.#line('plan.checkingFrames');
-          const { sampleGraphics } = await import('../ui/sample-frames');
-          return sampleGraphics(p, { signal: stop.signal });
-        },
-        visionFrames: async (p) => {
-          status.textContent = this.#line('plan.lookingFrames');
-          const { planFrames } = await import('../ui/sample-frames');
-          const { browserRenderFrames } = await import('../ui/render-frames');
-          // Through the shared tools (renderFrames), drawn by the browser.
-          return planFrames(p, {
-            signal: stop.signal,
-            tools: {
-              config: this.#c,
-              planId: s.planOf(user.id).id,
-              userId: user.id,
-              media: { builtin: {}, rest: async () => [] },
-              renderFrames: browserRenderFrames(stop.signal),
+      // ROUND-C3 (6.1): a Readymade Style with a plan template builds the
+      // first plan from it, its slots filled from the Brief (else their
+      // defaults); the Director then adapts it (rewrites). Styles without a
+      // template (the three samples) plan exactly as before.
+      const template = rewrite ? undefined : this.#style().planTemplate;
+      const fromTemplate = template
+        ? (() => {
+            const values: Record<string, string> = {};
+            for (const slot of this.#style().slots ?? []) {
+              const v = this.#flow.brief[slot.name];
+              values[slot.name] =
+                v && v !== YOU_DECIDE ? v.replace(/^style:/, '') : slot.default;
+            }
+            const ok = checkPlan(fillTemplate(template, values));
+            return ok.ok
+              ? {
+                  ok: true as const,
+                  plan: ok.plan,
+                  upgrades: [],
+                  warnings: ok.warnings,
+                  repaired: ok.repaired,
+                  credits: 0,
+                  notes: [] as readonly string[],
+                }
+              : null;
+          })()
+        : null;
+      const result =
+        fromTemplate ??
+        (await llmPlan({
+          gateway: s.gateway,
+          config: this.#c,
+          style: this.#style(),
+          answers: input.answers,
+          notes: [
+            ...input.notes,
+            ...extraNotes,
+            ...(style?.look.palette.length
+              ? [`Project colours: ${style.look.palette.join(', ')}.`]
+              : []),
+            ...(style?.graphics
+              ? [`Graphics: ${clip(style.graphics, 300)}`]
+              : []),
+            ...memory.slice(0, 8).map((m) => `Remember: ${clip(m, 200)}`),
+          ],
+          plan: s.planOf(user.id),
+          locale: lang(),
+          userId: user.id,
+          modelId: this.#model(),
+          key: `plan-${this.#videoId}-${Date.now().toString(36)}`,
+          // ROUND-C1: the brief's video type, the Project kit, the research
+          // tools and (tests only) the offline model's scripted answers.
+          videoType: this.#flow.typeId || undefined,
+          kit: this.#host.graphicsKit(),
+          research: (tool, input) => this.#research(tool, input),
+          reference,
+          ...(e2eSeen() ? { onAsk: e2eSeen()! } : {}),
+          // ROUND-C1 F2: sample frames of the new graphics, and the vision
+          // check's frames (both drawn off screen by the editor's renderer).
+          frames: async (p) => {
+            status.textContent = this.#line('plan.checkingFrames');
+            const { sampleGraphics } = await import('../ui/sample-frames');
+            return sampleGraphics(p, { signal: stop.signal });
+          },
+          visionFrames: async (p) => {
+            status.textContent = this.#line('plan.lookingFrames');
+            const { planFrames } = await import('../ui/sample-frames');
+            const { browserRenderFrames } = await import('../ui/render-frames');
+            // Through the shared tools (renderFrames), drawn by the browser.
+            return planFrames(p, {
               signal: stop.signal,
-            },
-          });
-        },
-        onStep: (step) => {
-          if (stop.signal.aborted)
-            throw new DOMException('The plan was stopped.', 'AbortError');
-          if (/^(research:|check-failed|frames-bad|vision-problems)/.test(step))
-            status.textContent = t('plan.working');
-        },
-        ...(e2eScript() ? { script: e2eScript()! } : {}),
-      });
+              tools: {
+                config: this.#c,
+                planId: s.planOf(user.id).id,
+                userId: user.id,
+                media: { builtin: {}, rest: async () => [] },
+                renderFrames: browserRenderFrames(stop.signal),
+                signal: stop.signal,
+              },
+            });
+          },
+          onStep: (step) => {
+            if (stop.signal.aborted)
+              throw new DOMException('The plan was stopped.', 'AbortError');
+            if (
+              /^(research:|check-failed|frames-bad|vision-problems)/.test(step)
+            )
+              status.textContent = t('plan.working');
+          },
+          ...(e2eScript() ? { script: e2eScript()! } : {}),
+        }));
       if (stop.signal.aborted)
         throw new DOMException('The plan was stopped.', 'AbortError');
       await s.sync(user.id).catch(() => undefined);
@@ -1124,6 +1163,13 @@ export class Director {
         return;
       }
       let plan = result.plan;
+      // ROUND-C3 (3.3): the upgrade step's ideas, unless the Style turns it off.
+      this.#flow.ideas =
+        this.#style().interview.creativeUpgrade === false
+          ? []
+          : result.upgrades.map((u) => `${u.title}: ${u.why}`).slice(0, 4);
+      for (const idea of this.#flow.ideas)
+        this.#mem.note(this.#videoId, 'decisions', `Extra idea: ${idea}`);
       const aspect = this.#flow.brief.aspect;
       if (aspect && aspect !== YOU_DECIDE && /^\d+:\d+$/.test(aspect))
         plan = { ...plan, meta: { ...plan.meta, aspect: aspect as never } };
@@ -1261,13 +1307,7 @@ export class Director {
   }
   /** ROUND-C1: credits of the plan's new graphics (the owner's cost each). */
   #graphicsCredits(plan: VideoPlan) {
-    const each = costOf(
-      this.#c,
-      this.#c.director.authoring.newGraphicCostId,
-      1,
-      'max',
-    );
-    return (plan.defs?.blocks.length ?? 0) * each;
+    return graphicsCredits(this.#c, plan);
   }
   async #setPlan(plan: VideoPlan) {
     const { s, user } = this.#env;
@@ -1280,12 +1320,14 @@ export class Director {
       s.connected(id),
     );
     this.#flow.plan = plan;
-    this.#flow.max = Math.ceil(
-      (base?.max ?? 0) + extra + this.#graphicsCredits(plan),
+    const totals = planTotals(
+      base,
+      plan.scenes.length,
+      extra,
+      this.#graphicsCredits(plan),
     );
-    this.#flow.sceneCosts = plan.scenes.map((_, i) =>
-      Math.ceil(base?.scenes[i]?.max ?? 0),
-    );
+    this.#flow.max = totals.max;
+    this.#flow.sceneCosts = totals.sceneCosts;
     this.#saveFlow();
   }
   async #planMessage(text: string) {
@@ -1301,10 +1343,7 @@ export class Director {
     );
   }
   #rewritesLeft() {
-    return Math.max(
-      0,
-      this.#c.director.rewritesPerVideo - this.#mem.rewrites(this.#videoId),
-    );
+    return rewritesLeft(this.#c, this.#mem.rewrites(this.#videoId));
   }
   #toolName(id: string) {
     const tool = this.#c.director.tools.find((x) => x.id === id);
@@ -1508,6 +1547,7 @@ export class Director {
       ),
       this.#planScenes(true, turn),
       this.#planGraphics(plan),
+      this.#planIdeas(turn),
       h('p', {
         class: 'ai-muted',
         id: 'ai-plan-rewrites',
@@ -1547,6 +1587,37 @@ export class Director {
             id: 'ai-plan-richer',
             disabled: left <= 0,
           },
+        ),
+      ),
+    );
+  }
+  /** ROUND-C3 (3.3): "Extra ideas" beyond what was asked; each can be removed. */
+  #planIdeas(turn: Turn) {
+    const ideas = this.#flow.ideas ?? [];
+    if (!ideas.length) return null;
+    return h(
+      'div',
+      { class: 'ai-ideas', id: 'ai-plan-ideas' },
+      h('p', { class: 'ai-label', text: t('plan.ideas') }),
+      ...ideas.map((idea, i) =>
+        h(
+          'div',
+          { class: 'ai-row', 'data-idea': String(i) },
+          h('span', { text: idea }),
+          (() => {
+            const b = this.#button('plan.removeIdea', () => {
+              this.#flow.ideas = ideas.filter((_, j) => j !== i);
+              this.#mem.note(
+                this.#videoId,
+                'decisions',
+                `Extra idea removed: ${idea}`,
+              );
+              this.#saveFlow();
+              this.#repaint(turn.id);
+            });
+            b.setAttribute('aria-label', `${t('plan.removeIdea')}: ${idea}`);
+            return b;
+          })(),
         ),
       ),
     );
