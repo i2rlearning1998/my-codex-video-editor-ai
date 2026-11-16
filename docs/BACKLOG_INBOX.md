@@ -96,3 +96,8 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - Round C4: the Styles builder's frame sample is an SVG sketch; a rendered frame needs a browser on the Owner App side.
 - Round C4: keeping Director-made Videos' plans on the server would let "Make a Style from a Project" use them (owner decision).
 - Round C4: per-scene lines of get_plan_cost do not show the owner's build multiplier; only the total does.
+- Round C5: the same-work scenario through AI mode in Playwright (the Director's offline plan built in the browser, compared with the connector's build) was not built; the unit test compares the two builds of one plan.
+- Round C5: the Website & Brand preview draws the sections as plain cards in the Admin; a preview of the real website page with the draft needs a draft address on the website.
+- Round C5: Appearance's drag-and-drop works by dropping a file on a slot card; reordering slots is by the Order field, not by dragging cards.
+- Round C5: the Admin's redraw after a save is asynchronous (screens keep drafts); a shared "saved and redrawn" signal for every Admin screen would make tests and people wait less.
+- Round C5: the emergency switch turns every feature off only in Who has this; the AI work itself is refused by the existing emergency checks.

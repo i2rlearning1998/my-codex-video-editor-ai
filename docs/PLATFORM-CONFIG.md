@@ -106,3 +106,10 @@ form and interview.
 - `mcp.pricing` (default `{}` = today's rules): per action (`build`, `new-graphic`, `new-scene`, `export`, `web-search`, `page-fetch`) `{multiplier, fixed}` (D-474).
 - Which Admin screen edits each field of `director`, `styles[]`, `mcp`, `plans`, `site` and `studios`: docs/ADMIN-COVERAGE.md (generated; a test guards it).
 - The server's config cache is 30 s; `CONFIG_TTL_MS` changes it (tests use 0).
+
+## Round C5 additions (schema version 1, additive; defaults parse)
+
+- `brand.faviconUrl` (optional): the browser tab icon.
+- `site.nav`, `site.footer`, `site.banner`, `site.maintenance`, `site.legal` (all optional; absent gives today's header link and footer line). See docs/WEBSITE-AND-BRAND.md and src/platform-config/site-content.ts.
+- `appearance` (optional): `slots` keyed by slot id (image, video, poster, fit, focus, play, title, blurb, order, enabled, hide) and `limits` (imageBytes, videoBytes). See docs/APPEARANCE.md.
+- `features` (optional): the feature registry (key, label, description, gates, on, beta, rollout). `plans[].archived` (optional). Overrides and cohorts are not in the config (server store, `access_rules`). See docs/FEATURES-AND-ACCESS.md and src/platform-config/access.ts.

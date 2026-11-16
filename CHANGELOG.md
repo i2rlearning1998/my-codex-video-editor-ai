@@ -1,5 +1,13 @@
 # Changelog
 
+## Round C5: Website & Brand, Appearance, Features & access, Director and Claude parity (16 Nov)
+
+- The chat card's export now matches the editor's on every frame (scene cuts and scene backgrounds were missing, D-477); FIX7-024 runs as a normal test (D-478); the website header fits a phone again (D-479).
+- Admin › Website & Brand: brand, colours, favicon, sections, showcase, header and footer links, banner, maintenance and legal pages with versions (D-480, D-481).
+- Admin › Appearance: a picture or video for every card and hero; nothing changes until the owner sets one (D-482).
+- Admin › Features & access: features on or off, rollout, beta, the plan grid with limits and archive, personal and group overrides with an end date, Who has this (D-483).
+- Claude can now make a plan cheaper or richer, remove an extra idea and make a video's look the Project style; a matrix keeps the Director and Claude equal (D-484).
+
 ## Round C4: the Admin Styles Builder (16 Nov)
 
 - Admin › Readymade Styles: list, edit every field, plan template with slot checks, Check the Style, status and tests with the publish rules, versions and rollback, delete and restore, copy, order, plans, export and import (D-465 to D-469).
