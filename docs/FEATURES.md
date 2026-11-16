@@ -1749,6 +1749,7 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC4-032 | P0 | W10 | Verified | A Video made by hand gives the plain sentence and stops |
 | RDC4-033 | P0 | W10 | Verified | A Video with a plan gives a Draft Style that passes validateStyle: slots for topic, language, length, narration and media; the code graphic reaches the kit; cost range from the approved cost; a first draft builds offline |
 | RDC4-034 | P0 | W10 | Verified | Once Published, a person starts from it through Claude: list_styles, get_style, create_project(style_id) with its graphics, start_video_from_style fills the template |
+| RDC4-035 | P0 | W10 | Verified | A Style made from a Video, once Published: panel gallery, choose it, a short Brief, AI mode; the first plan is the template with the person's topic filled in |
 | RDC4-040 | P0 | W10 | Verified | Admin › Readymade Styles in the browser: list, Add a template for a legacy Style, a new Style with its slot report, Check the Style, Save, status moves with the code, history and rollback, filter |
 | RDC4-041 | P0 | W10 | Verified | Admin › Make a Style from a Project without an account says to set it first; the account setting asks for the code |
 | RDC4-050 | P0 | W10 | Verified | Admin › Brief fields in the browser: blocks and types, users of a block, the live Brief card preview, save with a history row |

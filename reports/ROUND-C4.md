@@ -15,7 +15,7 @@
 | ID | Result | Evidence |
 |---|---|---|
 | RDC4-001, 002 | Verified | tests/round-c4/leftovers.test.ts |
-| RDC4-003, 026, 027 | Verified | e2e/round-c4-panel.spec.ts |
+| RDC4-003, 026, 027, 035 | Verified | e2e/round-c4-panel.spec.ts |
 | RDC4-004 | **Bug** (test.fail) | e2e/round-c4-export-compare.spec.ts, reports/round-c4/export-compare.json |
 | RDC4-005 | Verified | tests/round-c4/reuse-cost.test.ts |
 | RDC4-010 to 025 | Verified | tests/round-c4/builder.test.ts |
@@ -40,7 +40,7 @@ The brief's items and where they ended:
 | 2.1 to 2.4 Style from a Project | Done for Claude-made Videos (RDC4-030 to 034) |
 | 2.2 Director-made Videos | **Blocked** (owner decision): their plans live in the person's browser (Round A); keeping them on the server is a choice for the owner |
 | 2.2 sample from the Video's last export | **Blocked** (architecture, D-445): the chat export file is made on the person's device; the server keeps only its id |
-| 2.4 the panel gallery path end to end with a Style made from a Project | Done through Claude (RDC4-034) and the panel's Styles gallery with a templated Style (RDC4-026, RDC3-062); a single test that goes panel gallery → Brief → AI mode with a Style made by "from a Project" was not written (see section 7) |
+| 2.4 the panel gallery path with a Style made from a Video | Done (RDC4-035) and through Claude (RDC4-034) |
 | 3.1 to 3.4 field library editor | Done (RDC4-050 to 052) |
 | 4, 4.1, 4.2 Director limits and coverage | Done (RDC4-060 to 062, 066) |
 | 5.1 Library manager one click | Done (RDC4-060) |
@@ -49,7 +49,7 @@ The brief's items and where they ended:
 | 5.4 providers and assignments | Done (RDC4-065) |
 | 5.5 verify-only Admin tabs | Done (RDC4-070); nothing found broken |
 
-- In-scope rows Verified: 40 of 41. RDC4-004 is a Bug with its reproduction.
+- In-scope rows Verified: 41 of 42. RDC4-004 is a Bug with its reproduction.
 - "Verified" means proven in the harness, not with a real Claude or Supabase.
 
 ## 3. Checks
@@ -59,7 +59,7 @@ LIMIT MODE: the full e2e suite and `npm run verify` were not run locally. Only e
 - Format (`prettier --check` on every changed file): passes. Typecheck: `tsc --noEmit` and `tsc --noEmit -p tsconfig.e2e.json`: both pass.
 - Build (`npm run build`): passes. **Editor first load: 5,994,353 bytes, unchanged from Round C3** (limit C3 + 3,000). With lazy chunks 8,649,162 bytes. The Owner App grows by one transpiled module (owner/ui/builder.ts) and its server by owner/server/styles.ts; the panel grows by a few lines (plan lock).
 - Unit tests (Vitest): tests/round-c4: 32 passed in 6 files. Also run and passing: tests/round-c3, round-c2, round-c1, platform-config, admin-app, director, panel (after two updates, section 5).
-- E2E (Playwright Chromium, Linux sandbox, not Google Chrome): round-c4-admin 5 passed, round-c4-panel 3 passed, round-c4-director 1 passed, round-c4-export-compare 1 expected failure.
+- E2E (Playwright Chromium, Linux sandbox, not Google Chrome): round-c4-admin 5 passed, round-c4-panel 4 passed, round-c4-director 1 passed, round-c4-export-compare 1 expected failure.
 - Ledger: `Ledger OK` (1420 items, Verified 1089, Bug 2).
 - CI: checked once after the last push (see the closing message).
 
@@ -115,7 +115,6 @@ D-461 to D-476 in docs/DECISIONS.md.
 - **Real Claude, real Supabase, public address:** none ran. Claude following list_styles' lock wording, the Style flow in a real chat, the Supabase store for the field library and Styles (they live in Platform Config, which is already in the Supabase store), all unproven live.
 - **Card vs editor export:** a Bug (section 3).
 - **A Director-made Video as the source of a Style:** not possible today (Blocked, D-470).
-- **Panel gallery → Brief → AI mode with a Style made from a Project:** the pieces are proven separately (a Style made from a Project builds through Claude, RDC4-034; a templated Style goes gallery → AI mode → filled first plan, RDC3-062); one test joining them was not written.
 - **Owner App screens:** proven in Playwright for the main flows (list, new, check, save, status, tests, history, rollback, filter, fields, limits, MCP tab). Not driven in the browser: import with the clash dialog, the sample upload button and the Deleted list's Restore button (their server routes are proven in RDC4-020, 021, 023).
 - **Hindi:** the new Admin strings have Hindi (keyed); the older tabs stay English-only (C2 BACKLOG line). The T1 Hindi texts below are mine; the owner should read them.
 - **Phone layout:** the Owner App was not checked on a phone.
@@ -148,7 +147,7 @@ D-461 to D-476 in docs/DECISIONS.md.
 
 ## 9. Ledger and backlog
 
-- RDC4-001 to RDC4-070 added (41 rows): 40 Verified, 1 Bug (RDC4-004).
+- RDC4-001 to RDC4-070 added (42 rows): 41 Verified, 1 Bug (RDC4-004).
 - 5 lines added to docs/BACKLOG_INBOX.md.
 
 ## 10. Git

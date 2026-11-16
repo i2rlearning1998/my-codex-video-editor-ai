@@ -10,7 +10,13 @@ import { test, expect, allowError } from './fixtures';
 import { createHash } from 'node:crypto';
 import { PASSWORD } from './p2-helpers';
 import { startC2Stack, type C2Stack } from './round-c2-stack';
-import type { PlatformConfig, Style } from '../src/platform-config';
+import {
+  defaultConfig,
+  type PlatformConfig,
+  type Style,
+} from '../src/platform-config';
+import { draftStyleFromVideo } from '../src/director/style-builder';
+import { say, toPlan } from './round-b-helpers';
 
 let stack: C2Stack | null = null;
 test.afterEach(async () => {
@@ -192,4 +198,56 @@ test("[RDC4-027] Draft → Published → back to Tested: the panel's Styles page
   await load(page, '/panel/#/styles');
   await expect(page.locator('[data-style]').first()).toBeVisible();
   await expect(page.locator('[data-style="facts-c4"]')).toHaveCount(0);
+});
+
+test("[RDC4-035] a Style made from a Video (draftStyleFromVideo), once Published: panel gallery, choose it, a short Brief, AI mode, and the first plan is the template with the person's topic filled in", async ({
+  page,
+}) => {
+  test.setTimeout(240_000);
+  const made = draftStyleFromVideo(
+    defaultConfig(),
+    {
+      name: 'Volcano facts',
+      plan: {
+        format: 'video-plan',
+        version: 4,
+        meta: { title: 'Volcanoes', language: 'en', aspect: '9:16', fps: 30 },
+        captions: { enabled: false },
+        scenes: [
+          {
+            id: 'open',
+            title: 'Opening',
+            narration: 'Every volcano starts deep below.',
+            durationHint: 4,
+            notes: 'method:library',
+            layers: [
+              { id: 't', kind: 'title', text: 'Deep below', anchor: 'center' },
+            ],
+          },
+        ],
+      },
+      cost: 5,
+    },
+    'volcano-facts',
+  );
+  if (!made.ok) throw new Error(made.message);
+  await start(page, (c) => {
+    c.styles.push({
+      ...made.style,
+      status: 'published',
+      publishOverride: "Made from the owner's tested Video (C4 test).",
+      order: 1,
+    });
+  });
+  await signUpAs(page, `maker-${Date.now()}@example.com`);
+  await page.goto('/panel/#/styles');
+  await page.locator('[data-style="volcano-facts"] [data-use-style]').click();
+  await expect(page.locator('.editor-shell')).toHaveClass(/ai-layout/, {
+    timeout: 30_000,
+  });
+  await say(page, 'How deserts form, in English, 30 seconds');
+  await toPlan(page);
+  await expect(page.locator('#ai-plan-card h4')).toContainText(
+    'How deserts form',
+  );
 });
