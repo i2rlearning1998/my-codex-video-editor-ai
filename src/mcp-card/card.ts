@@ -32,6 +32,8 @@ interface Job {
     assets: unknown[];
     background: string;
     masterVolume?: number;
+    backgrounds?: { start: number; color: string }[];
+    sceneCuts?: unknown[];
   };
   readonly settings: {
     width: number;
@@ -270,6 +272,14 @@ async function run(meta: ExportMeta) {
       background: job.project.background,
       ...(job.project.masterVolume !== undefined
         ? { masterVolume: job.project.masterVolume }
+        : {}),
+      // ROUND-C5 (0.1): the joined scenes' own backgrounds and the
+      // transitions across their cuts, exactly as the editor passes them.
+      ...(job.project.backgrounds?.length
+        ? { backgrounds: job.project.backgrounds }
+        : {}),
+      ...(job.project.sceneCuts?.length
+        ? { sceneCuts: job.project.sceneCuts as never }
         : {}),
       settings: job.settings,
     },

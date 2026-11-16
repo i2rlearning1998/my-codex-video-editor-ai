@@ -49,6 +49,7 @@ import { CAPTION_STYLES, captionStyle } from '../../src/captions/styles';
 import { captionTrackOf, findCaptions } from '../../src/captions/edit';
 import { captionCommands } from '../../src/captions/layers';
 import { joinScenes } from '../../src/export/join';
+import { sceneCuts } from '../../src/core/scene-transitions';
 import { mediaFingerprint } from '../../src/media/fingerprint';
 import type { Store } from '../store';
 import { assetTools, slotFilled, slotsOf } from './assets';
@@ -1985,6 +1986,22 @@ export function createMcpTools(s: McpServices) {
             background: project.settings?.backgroundColor ?? '#000000',
             ...(project.settings?.masterVolume !== undefined
               ? { masterVolume: project.settings.masterVolume }
+              : {}),
+            // ROUND-C5 (0.1, RDC4-004): the same joined-scene inputs the
+            // editor's Export dialog gives the render job: each scene's own
+            // background and the transitions across the cuts. Without them
+            // the card cut hard where the editor faded.
+            ...(scenes.length > 1
+              ? {
+                  backgrounds: scenes.map((scene, index) => ({
+                    start: scenes
+                      .slice(0, index)
+                      .reduce((sum, item) => sum + item.duration, 0),
+                    color: (scene as unknown as { backgroundColor: string })
+                      .backgroundColor,
+                  })),
+                  sceneCuts: sceneCuts(scenes as never),
+                }
               : {}),
           },
           settings: {

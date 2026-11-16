@@ -32,6 +32,10 @@ export interface CardJob {
     readonly assets: readonly unknown[];
     readonly background: string;
     readonly masterVolume?: number;
+    /** ROUND-C5 (0.1): each joined scene keeps its own background, as the editor's export. */
+    readonly backgrounds?: readonly { start: number; color: string }[];
+    /** ROUND-C5 (0.1): transitions across the scene cuts, as the editor's export. */
+    readonly sceneCuts?: readonly unknown[];
   };
   readonly settings: {
     readonly width: number;

@@ -26,7 +26,7 @@ test('[P3U-026] the website pricing cards list what each plan includes and lead 
   await expect(page).toHaveURL(/#\/signup/);
 });
 
-test('[P3U-027] the website pricing and footer read in Hindi and the page does not scroll sideways on a phone', async ({
+test('[P3U-027] [RDC5-003] the website pricing and footer read in Hindi and the page does not scroll sideways on a phone', async ({
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 800 });
