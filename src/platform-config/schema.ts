@@ -362,6 +362,12 @@ export const styleSchema = z.object({
   /** P2-R2: the Style's rules for the planning model (config text). */
   playbookText: z.string().max(8000).default(''),
   enabled: z.boolean().default(true),
+  /**
+   * ROUND-C3 (Part 6): a Readymade Style's state. Missing means published,
+   * so the existing Styles load unchanged; only published ones are shown to
+   * people (the owner's own account also sees draft and tested ones).
+   */
+  status: z.enum(['draft', 'tested', 'published']).optional(),
   cardArt: z.string().default(''),
   formats: z.array(z.enum(['16:9', '9:16', '1:1', '4:5'])).min(1),
   requires: z.array(id).default([]),

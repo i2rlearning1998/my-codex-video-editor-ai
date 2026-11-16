@@ -1703,4 +1703,8 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC3-032 | P0 | W10 | Verified | style_chat proposes a before/after list (styleReply) and saves nothing; apply_style_change saves it for later videos only |
 | RDC3-033 | P0 | W10 | Verified | Claude's plan carries "Extra ideas" (submit_plan extra_ideas, kept in the Video sheet); get_plan_cost lists them as removable or asks for them; a Style's creativeUpgrade off turns the step off |
 | RDC3-034 | P0 | W10 | Verified | The Director's Plan card in AI mode lists "Extra ideas" from the planner (unless the Style turns the step off); each can be removed; both steps go to the Video sheet |
+| RDC3-040 | P0 | W10 | Verified | Claude's code graphics: edit_video add_graphic (cost first), replace_graphic_code (same checks as the Director's loop, the person's settings kept), set_graphic_params, read_graphic; plan defs and added graphics join the Project's AI library; set_frame, add_marker and set_master_volume reach the frame, markers and the mix |
+| RDC3-041 | P0 | W10 | Verified | The capability matrix (src/director/capability-matrix.ts, docs/CAPABILITY-MATRIX.md) names every editor command and plan v4 field with Claude's way; a unit test fails on drift; AGENTS.md section 3 holds the owner's rule |
+| RDC3-042 | P0 | W10 | Verified | start_here gives a version, what Claude can reach, the modes, Studios and Styles, and what changed since the version this person saw, with the owner's mcp.whatsNew (Admin); list_modes; create_video takes a mode |
+| RDC3-043 | P0 | W10 | Verified | Check and fix: a deliberately bad graphic gets its checks back before any cost; the rewrite is accepted and checked again |
 

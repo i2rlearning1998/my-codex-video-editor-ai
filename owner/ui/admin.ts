@@ -2033,6 +2033,18 @@ const C2: Record<string, [string, string]> = {
   switchOff: ['The connector is off for everyone.', 'कनेक्टर सबके लिए बंद है।'],
   proof: ['Developer proof tools', 'डेवलपर प्रूफ़ टूल'],
   rate: ['Calls per person per minute', 'प्रति व्यक्ति प्रति मिनट कॉल'],
+  previewDirector: [
+    "The Director's view (rules: items for both and for the Director):",
+    'डायरेक्टर का रूप (नियम: दोनों और डायरेक्टर के लिए):',
+  ],
+  previewClaude: [
+    "Claude's view (guidance: items for both and for Claude):",
+    'Claude का रूप (मार्गदर्शन: दोनों और Claude के लिए):',
+  ],
+  whatsNew: [
+    'What changed (Claude reads it in start_here)',
+    'क्या बदला (Claude इसे start_here में पढ़ता है)',
+  ],
   maxExport: [
     'Longest chat export (seconds)',
     'सबसे लंबा चैट एक्सपोर्ट (सेकंड)',
@@ -2217,14 +2229,26 @@ async function rulesTab(ctx: AdminCtx) {
       .map((x) => x.t);
     return next;
   };
+  // ROUND-C3: the chosen preview type survives the tab's redraw after a
+  // save (it was reset to the first type before).
   const previewType = pick(
     ctx,
     d.fieldLibrary.types.map((t) => [t.id, t.name.en] as const),
-    d.fieldLibrary.types[0]?.id ?? '',
+    d.fieldLibrary.types.some((t) => t.id === lastPreviewType)
+      ? lastPreviewType
+      : (d.fieldLibrary.types[0]?.id ?? ''),
     'preview-type',
   );
+  previewType.addEventListener('change', () => {
+    lastPreviewType = (previewType as HTMLSelectElement).value;
+  });
   const preview = ctx.el('pre', {
     id: 'manual-preview',
+    class: 'manual-preview',
+  });
+  // ROUND-C3 (7.1): Claude's view of the same manual (guidance).
+  const previewClaude = ctx.el('pre', {
+    id: 'manual-preview-claude',
     class: 'manual-preview',
   });
   return ctx.el(
@@ -2269,7 +2293,7 @@ async function rulesTab(ctx: AdminCtx) {
           ctx,
           tr('preview'),
           async () => {
-            const r = await ctx.api<{ text: string }>(
+            const r = await ctx.api<{ text: string; claude?: string }>(
               'POST',
               '/api/admin/mcp/manual',
               {
@@ -2278,6 +2302,7 @@ async function rulesTab(ctx: AdminCtx) {
               },
             );
             preview.textContent = r.text;
+            previewClaude.textContent = r.claude ?? '';
           },
           { id: 'rules-preview' },
         ),
@@ -2303,7 +2328,10 @@ async function rulesTab(ctx: AdminCtx) {
           { id: 'rules-rollback' },
         ),
       ),
+      note(ctx, tr('previewDirector')),
       preview,
+      note(ctx, tr('previewClaude')),
+      previewClaude,
     ),
   );
 }
@@ -2334,7 +2362,24 @@ const MCP_TOOL_IDS = [
   'update_video_sheet',
   'export_video',
   'get_frames',
+  // ROUND-C3: the new tools, each with the owner's switch and price.
+  'list_modes',
+  'read_graphic',
+  'add_file_note',
+  'get_asset_needs',
+  'set_asset_choice',
+  'get_asset_cost',
+  'make_asset',
+  'add_media',
+  'get_style',
+  'style_chat',
+  'apply_style_change',
+  'list_styles',
+  'start_video_from_style',
 ] as const;
+
+/** ROUND-C3: the Rules tab's preview type, kept across its redraws. */
+let lastPreviewType = '';
 
 async function mcpTab(ctx: AdminCtx) {
   const live = await loadConfig(ctx);
@@ -2345,6 +2390,13 @@ async function mcpTab(ctx: AdminCtx) {
   const proof = tick(ctx, m.proofTools, 'mcp-proof');
   const rate = num(ctx, m.ratePerMinute, 'mcp-rate');
   const maxExport = num(ctx, m.exportMaxSeconds, 'mcp-max-export');
+  // ROUND-C3 (4.4): the owner's note on what changed.
+  const whatsNew = ctx.el('textarea', {
+    id: 'mcp-whats-new',
+    rows: '3',
+    maxlength: '4000',
+  }) as HTMLTextAreaElement;
+  whatsNew.value = m.whatsNew;
   const prices: (readonly [string, string])[] = [
     ['free', tr('free')],
     ...c.costs.map((x) => [x.id, `${x.label.en} (${x.min}–${x.max})`] as const),
@@ -2493,6 +2545,7 @@ async function mcpTab(ctx: AdminCtx) {
         field(ctx, tr('proof'), proof),
         field(ctx, tr('rate'), rate),
         field(ctx, tr('maxExport'), maxExport),
+        field(ctx, tr('whatsNew'), whatsNew),
       ),
       ctx.el('h3', {}, tr('tools')),
       table(
@@ -2515,6 +2568,7 @@ async function mcpTab(ctx: AdminCtx) {
             5,
             Math.min(600, Math.round(Number(maxExport.value) || 120)),
           );
+          next.mcp.whatsNew = whatsNew.value.trim().slice(0, 4000);
           next.mcp.tools = Object.fromEntries(
             rows.map((r) => [
               r.t,

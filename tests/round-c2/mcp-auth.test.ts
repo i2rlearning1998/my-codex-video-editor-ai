@@ -437,7 +437,8 @@ describe('[RDC2-007] one manual for both Directors', () => {
         },
       },
     });
-    expect(here.text).toBe(manual);
+    // ROUND-C3 (4.4): the manual byte for byte, then the live part.
+    expect(here.text.startsWith(`${manual}\n\n## Live (version `)).toBe(true);
     // Without the person part (the Director plans before a person is known),
     // the Director's prompt holds exactly buildManual(config, type).
     const style = parsed.styles[0]!;

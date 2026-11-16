@@ -419,11 +419,12 @@ export function createMcpMount(d: McpMountDeps) {
           'bad-request',
           `The settings are not valid: ${parsed.error.issues[0]?.path.join('.')} ${parsed.error.issues[0]?.message.toLowerCase()}.`,
         );
+      const videoType =
+        typeof body.videoType === 'string' ? body.videoType : undefined;
+      // ROUND-C3 (7.1): both views of the one manual.
       return reply(res, 200, {
-        text: buildManual(parsed.data, {
-          videoType:
-            typeof body.videoType === 'string' ? body.videoType : undefined,
-        }),
+        text: buildManual(parsed.data, { videoType }),
+        claude: buildManual(parsed.data, { videoType, for: 'claude' }),
       });
     }
     throw new McpHttpError(404, 'not-found', 'Not found.');

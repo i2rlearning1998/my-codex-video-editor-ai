@@ -79,6 +79,20 @@ export interface ClaudeVideo {
 export interface ClaudeProject {
   name: string;
   styleId: string | null;
+  /**
+   * ROUND-C3 (4.1, 5.1): the Project's AI library: every new graphic Claude
+   * made (a checked def), as the Director saves its plan graphics.
+   */
+  library?: {
+    id: string;
+    tier: 'B' | 'C';
+    source: string;
+    meta: Record<string, unknown>;
+    name: string;
+    summary: string;
+    savedAt: string;
+    videoId: string;
+  }[];
   /** ROUND-C3 (3.1): the Project's style record (StyleFields shape). */
   style?: Record<string, unknown> | null;
   memory: SheetEntry[];
@@ -88,6 +102,11 @@ export interface ClaudeProject {
 }
 export interface ClaudeDoc {
   projects: Record<string, ClaudeProject>;
+  /**
+   * ROUND-C3 (4.4): the capability lines Claude saw last time (start_here
+   * says what changed since).
+   */
+  seen?: { version: string; lines: string[] };
 }
 export const emptyClaudeDoc = (): ClaudeDoc => ({ projects: {} });
 

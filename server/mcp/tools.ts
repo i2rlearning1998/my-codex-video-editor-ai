@@ -40,6 +40,11 @@ import { joinScenes } from '../../src/export/join';
 import { mediaFingerprint } from '../../src/media/fingerprint';
 import type { Store } from '../store';
 import { assetTools, slotFilled, slotsOf } from './assets';
+import { checkDef } from '../../src/video-plan/defs';
+import { capabilityLines } from '../../src/director/capability-matrix';
+import { codeLayerCommands, codeRecord } from '../../src/code-layer/layer';
+import type { CodeLayer } from '../../src/core';
+import { setMixerVolume } from '../../src/audio/mixer';
 import { rememberStyle, styleOf, styleTools } from './style';
 import type { CardHost } from './card';
 import type { FrameStore } from './frames';
@@ -162,6 +167,13 @@ const oops = (text: string): ToolReply => ({ text, isError: true });
 const id = z.string().min(1).max(80);
 const hash = (v: unknown) =>
   createHash('sha256').update(JSON.stringify(v)).digest('hex').slice(0, 16);
+/** ROUND-C3 (4.4): the video modes (today only the Editor). */
+export const MODES = [
+  {
+    id: 'editor',
+    what: 'a video made of scenes in the editor (open it in the editor or AI mode any time).',
+  },
+] as const;
 const seconds = (n: number) => `${Math.round(n * 10) / 10} s`;
 
 /** The plan as a tool input (Claude fills the fields; never typed as JSON). */
@@ -196,7 +208,64 @@ const planInput = z
   })
   .passthrough();
 
+const graphicDef = z.object({
+  id: z
+    .string()
+    .min(2)
+    .max(48)
+    .regex(/^[a-z0-9][a-z0-9-]*$/),
+  tier: z.enum(['B', 'C']),
+  source: z.string().min(1).max(32768),
+  meta: z.record(z.unknown()).optional(),
+  summary: z.string().max(300).optional(),
+});
 const editOp = z.discriminatedUnion('op', [
+  // ROUND-C3 (4.2): the frame (aspect and frame rate of every scene) and
+  // markers, so every visible editor family has a way for Claude.
+  z.object({
+    op: z.literal('set_frame'),
+    aspect: z.enum(['16:9', '9:16', '1:1', '4:5', '4:3', '21:9']).optional(),
+    fps: z
+      .union([
+        z.literal(24),
+        z.literal(25),
+        z.literal(30),
+        z.literal(50),
+        z.literal(60),
+      ])
+      .optional(),
+  }),
+  z.object({
+    op: z.literal('set_master_volume'),
+    // 1 is as recorded; 0 is silent; up to 2 (+6 dB).
+    volume: z.number().min(0).max(2),
+  }),
+  z.object({
+    op: z.literal('add_marker'),
+    scene: z.number().int().min(1),
+    at: z.number().min(0).max(3600),
+    label: z.string().min(1).max(120),
+  }),
+  // ROUND-C3 (4.1): code graphics through the connector.
+  z.object({
+    op: z.literal('add_graphic'),
+    scene: z.number().int().min(1),
+    at: z.number().min(0).max(3600).default(0),
+    graphic: graphicDef,
+    params: z.record(z.unknown()).optional(),
+  }),
+  z.object({
+    op: z.literal('replace_graphic_code'),
+    scene: z.number().int().min(1),
+    layer: z.string().min(1).max(120),
+    graphic: graphicDef,
+  }),
+  z.object({
+    op: z.literal('set_graphic_params'),
+    scene: z.number().int().min(1),
+    layer: z.string().min(1).max(120),
+    params: z.record(z.unknown()),
+  }),
   z.object({
     op: z.literal('change_text'),
     scene: z.number().int().min(1),
@@ -280,6 +349,7 @@ interface Projectish {
   }[];
   metadata?: { name?: string };
 }
+type ClaudeProjectLib = NonNullable<ClaudeProject['library']>;
 const allLayers = (ls: readonly Layerish[]): Layerish[] =>
   ls.flatMap((l) => [l, ...allLayers(l.children ?? [])]);
 
@@ -460,21 +530,123 @@ export function createMcpTools(s: McpServices) {
       input: { video_type: z.string().max(48).optional() },
       annotations: A.read,
       async run(a, c) {
-        return {
-          text: buildManual(c.config, {
-            for: 'claude',
-            videoType: a.video_type as string | undefined,
-            person: {
-              planName: c.plan.name.en,
-              credits: s.balance(c.userId),
-              limits: {
-                exportsPerMonth: c.plan.limits.exportsPerMonth,
-                maxExportHeight: c.plan.limits.maxExportHeight,
-                projects: c.plan.limits.projects,
-                videosPerProject: c.plan.limits.videosPerProject,
-              },
+        // ROUND-C3 (4.4): live data after the manual: its version, what
+        // Claude can reach, the video modes, and what changed since the
+        // version this person's Claude saw last (the capability list's
+        // difference plus the owner's note).
+        const lines = [
+          ...capabilityLines(),
+          ...MODES.map((m) => `- Mode ${m.id}: ${m.what}`),
+          ...c.config.studios
+            .filter((x) => x.enabled)
+            .map((x) => `- Studio ${x.id}: ${x.name.en}`),
+          ...c.config.styles
+            .filter(
+              (x) => x.enabled && (x.status ?? 'published') === 'published',
+            )
+            .map((x) => `- Style ${x.id}: ${x.name.en}`),
+        ];
+        const version = hash(lines).slice(0, 12);
+        const d = await doc(c.userId);
+        const before = d.seen;
+        const added = before
+          ? lines.filter((l) => !before.lines.includes(l))
+          : [];
+        const gone = before
+          ? before.lines.filter((l) => !lines.includes(l))
+          : [];
+        if (before?.version !== version) {
+          d.seen = { version, lines };
+          await save(c.userId, d);
+        }
+        const changed = !before
+          ? 'This is the first time this person connected: everything above is new.'
+          : before.version === version
+            ? `Nothing changed since version ${version}.`
+            : [
+                `Changed since version ${before.version}:`,
+                ...added.map((l) => `New ${l.slice(2)}`),
+                ...gone.map((l) => `Gone ${l.slice(2)}`),
+              ].join('\n');
+        const manual = buildManual(c.config, {
+          for: 'claude',
+          videoType: a.video_type as string | undefined,
+          person: {
+            planName: c.plan.name.en,
+            credits: s.balance(c.userId),
+            limits: {
+              exportsPerMonth: c.plan.limits.exportsPerMonth,
+              maxExportHeight: c.plan.limits.maxExportHeight,
+              projects: c.plan.limits.projects,
+              videosPerProject: c.plan.limits.videosPerProject,
             },
-          }),
+          },
+        });
+        return {
+          text: [
+            manual,
+            `## Live (version ${version})`,
+            'Tools are listed by the connector itself at the start of every chat; this list says what they reach.',
+            lines.join('\n'),
+            '## What changed',
+            changed,
+            c.config.mcp.whatsNew
+              ? `From the owner: ${c.config.mcp.whatsNew}`
+              : '',
+          ]
+            .filter(Boolean)
+            .join('\n\n'),
+        };
+      },
+    },
+    {
+      name: 'list_modes',
+      title: 'Video modes',
+      description: desc(
+        'Lists the video modes create_video can use. New modes appear here with no change to the skill.',
+        'create_video with the mode.',
+      ),
+      input: {},
+      annotations: A.read,
+      async run() {
+        return {
+          text: MODES.map((m) => `- ${m.id}: ${m.what}`).join('\n'),
+        };
+      },
+    },
+    {
+      name: 'read_graphic',
+      title: "Read a graphic's code",
+      description: desc(
+        'Returns the code and the settings of one code graphic in the video, to rewrite it with replace_graphic_code. Show the code to the person only if they ask.',
+        'edit_video replace_graphic_code.',
+      ),
+      input: {
+        video_id: id,
+        scene: z.number().int().min(1),
+        layer: z.string().min(1).max(120),
+      },
+      annotations: A.read,
+      async run(a, c) {
+        const row = await loadRow(c.userId, a.video_id as string);
+        if (!row)
+          return oops('This video has nothing built yet. Call submit_plan.');
+        const p = projectOf(row);
+        const sc = p.compositions[(a.scene as number) - 1];
+        if (!sc) return oops(`There is no scene ${a.scene as number}.`);
+        const l = allLayers(sc.layers).find(
+          (x) => x.name.toLowerCase() === (a.layer as string).toLowerCase(),
+        );
+        const code = (l as unknown as { code?: CodeLayer } | undefined)?.code;
+        if (!l || !code)
+          return oops(
+            `Scene ${a.scene as number} has no code graphic "${a.layer as string}".`,
+          );
+        const params = Object.entries(code.params)
+          .map(([k, v]) => `${k} = ${String(v)}`)
+          .join(', ');
+        return {
+          text: `Graphic "${l.name}" (tier ${code.tier}). Settings: ${params || 'none'}.\nCode:\n${code.source}`,
         };
       },
     },
@@ -613,6 +785,10 @@ export function createMcpTools(s: McpServices) {
         project_id: id,
         name: z.string().min(1).max(80),
         video_type: z.string().max(48).optional(),
+        // ROUND-C3 (4.4): list_modes names the modes (today: editor).
+        mode: z
+          .enum(MODES.map((m) => m.id) as [string, ...string[]])
+          .optional(),
       },
       annotations: A.write,
       async run(a, c) {
@@ -1080,6 +1256,21 @@ export function createMcpTools(s: McpServices) {
         }
         f.v.plan = built.plan ?? checked.plan;
         f.v.upgrades = (a.extra_ideas as string[] | undefined) ?? [];
+        // ROUND-C3 (4.1): the plan's new graphics join the Project's AI
+        // library, as the Director saves its plan graphics.
+        for (const def of checked.plan.defs?.blocks ?? []) {
+          const ok = checkDef(def as never);
+          if (ok.ok && ok.item?.type === 'motion')
+            remember(f.v, null as never, {
+              id: ok.id,
+              tier: def.tier,
+              source: def.source,
+              meta: { ...ok.meta },
+              name: ok.name ?? def.id,
+              summary: def.summary ?? '',
+            });
+        }
+        flushLibrary(f.p, f.v, a.video_id as string);
         if (f.v.upgrades.length)
           addSheet(
             c.config,
@@ -1322,18 +1513,45 @@ export function createMcpTools(s: McpServices) {
           (o): o is Extract<EditOp, { op: 'add_scene' }> =>
             o.op === 'add_scene',
         );
+        const newGraphics = (a.ops as EditOp[]).filter(
+          (o) => o.op === 'add_graphic',
+        ).length;
+        // A graphic that fails its checks is answered before any cost.
+        for (const o of a.ops as EditOp[])
+          if (o.op === 'add_graphic' || o.op === 'replace_graphic_code') {
+            const ok = checkDef({
+              id: o.graphic.id,
+              tier: o.graphic.tier,
+              source: o.graphic.source,
+              ...(o.graphic.meta ? { meta: o.graphic.meta } : {}),
+            });
+            if (!ok.ok || ok.item?.type !== 'motion')
+              return oops(
+                `Nothing was changed: The graphic "${o.graphic.id}" failed its checks: ${ok.errors.slice(0, 8).join(' ')} Fix exactly these and send it again.`,
+              );
+          }
         let sceneCharge = 0;
-        if (adding.length && !a.dry_run) {
-          const extra = planCost(c.config, {
-            scenes: adding.map((o) => o.scene) as { notes?: string }[],
-          } as never);
-          const key = hash(adding.map((o) => o.scene));
+        if ((adding.length || newGraphics) && !a.dry_run) {
+          const extra =
+            planCost(c.config, {
+              scenes: adding.map((o) => o.scene) as { notes?: string }[],
+            } as never) +
+            graphicsCredits(c.config, {
+              defs: { blocks: new Array(newGraphics).fill({}) },
+            } as never);
+          const key = hash(
+            (a.ops as EditOp[]).filter(
+              (o) => o.op === 'add_scene' || o.op === 'add_graphic',
+            ),
+          );
           if (extra > 0 && a.confirm_scene !== key) {
             f.v.pendingScene = { plan: adding, cost: extra, hash: key };
             await save(c.userId, d);
             return {
               text: [
-                `The new scene${adding.length > 1 ? 's' : ''}: ${adding.map((o) => `"${o.scene.title}" (${(o.scene.narration ?? '').slice(0, 100)})`).join('; ')}.`,
+                adding.length
+                  ? `The new scene${adding.length > 1 ? 's' : ''}: ${adding.map((o) => `"${o.scene.title}" (${(o.scene.narration ?? '').slice(0, 100)})`).join('; ')}.`
+                  : `${newGraphics} new graphic${newGraphics > 1 ? 's' : ''}.`,
                 `It costs up to ${extra} credits (the person has ${s.balance(c.userId)}). Nothing was changed or charged.`,
                 `After the person says yes, call edit_video again with the same ops and confirm_scene "${key}".`,
               ].join('\n'),
@@ -1356,7 +1574,12 @@ export function createMcpTools(s: McpServices) {
             engine.state as unknown as Projectish,
             a.ops as EditOp[],
           );
-          engine.commands.transaction('Claude edit', commands);
+          // ROUND-C3 (4.2): the master volume through the editor's mixer.
+          for (const o of a.ops as EditOp[])
+            if (o.op === 'set_master_volume')
+              setMixerVolume(engine, { scope: 'master', volume: o.volume });
+          if (commands.length)
+            engine.commands.transaction('Claude edit', commands);
         } catch (e) {
           return oops(`Nothing was changed: ${(e as Error).message}`);
         }
@@ -1413,6 +1636,18 @@ export function createMcpTools(s: McpServices) {
             s.now(),
           ),
         );
+        const saved_ = flushLibrary(f.p, f.v, a.video_id as string);
+        if (saved_)
+          addSheet(
+            c.config,
+            f.v,
+            note(
+              c.config,
+              `${saved_} graphic${saved_ > 1 ? 's' : ''} saved to the Project's AI library.`,
+              'claude',
+              s.now(),
+            ),
+          );
         if (sceneCharge > 0) {
           s.charge(
             c.userId,
@@ -1778,6 +2013,142 @@ export function createMcpTools(s: McpServices) {
       .map((sl) => sl.name);
   }
 
+  /**
+   * ROUND-C3 (4.1): a new or rewritten graphic, checked by the same checks
+   * as the Director's new-graphic loop (checkDef: the block compiler or the
+   * Creator Pack checks); a failure throws its sentences, so Claude fixes
+   * the code and sends it again. Accepted graphics join the Project's AI
+   * library (Part 5).
+   */
+  function graphicCommands(
+    _c: McpCtx,
+    v: ClaudeVideo,
+    p: Projectish,
+    o: Extract<
+      EditOp,
+      { op: 'add_graphic' | 'replace_graphic_code' | 'set_graphic_params' }
+    >,
+    scene: (n: number) => Sceneish,
+    layer: (sc: Sceneish, name: string) => Layerish,
+  ): Command[] {
+    const sc = scene(o.scene);
+    if (o.op === 'set_graphic_params') {
+      const l = layer(sc, o.layer);
+      const code = (l as unknown as { code?: CodeLayer }).code;
+      if (!code) throw new Error(`"${l.name}" is not a code graphic.`);
+      const known = new Set(
+        ((code.meta.params as { name: string }[] | undefined) ?? []).map(
+          (x) => x.name,
+        ),
+      );
+      const bad = Object.keys(o.params).filter((k) => !known.has(k));
+      if (bad.length)
+        throw new Error(
+          `"${l.name}" has no setting ${bad.map((b) => `"${b}"`).join(', ')}. Its settings: ${[...known].join(', ') || 'none'}.`,
+        );
+      return [
+        {
+          type: 'SET_LAYER_CODE',
+          compositionId: sc.id,
+          layerId: l.id,
+          code: codeRecord({
+            tier: code.tier,
+            source: code.source,
+            meta: code.meta,
+            params: { ...code.params, ...o.params },
+            ...(code.templateId ? { templateId: code.templateId } : {}),
+          }),
+        } as never,
+      ];
+    }
+    const checked = checkDef({
+      id: o.graphic.id,
+      tier: o.graphic.tier,
+      source: o.graphic.source,
+      ...(o.graphic.meta ? { meta: o.graphic.meta } : {}),
+    });
+    if (!checked.ok || checked.item?.type !== 'motion')
+      throw new Error(
+        `The graphic "${o.graphic.id}" failed its checks: ${checked.errors.slice(0, 8).join(' ')} Fix exactly these and send it again.`,
+      );
+    const params: Record<string, unknown> = {};
+    for (const x of checked.params ?? [])
+      params[x.name] = (x as { default: unknown }).default;
+    const name = checked.name ?? o.graphic.id;
+    const templateId = `plan-graphics-${checked.id}`;
+    remember(v, p, {
+      id: checked.id,
+      tier: o.graphic.tier,
+      source: o.graphic.source,
+      meta: { ...checked.meta },
+      name,
+      summary: o.graphic.summary ?? '',
+    });
+    if (o.op === 'replace_graphic_code') {
+      const l = layer(sc, o.layer);
+      const now = (l as unknown as { code?: CodeLayer }).code;
+      if (!now) throw new Error(`"${l.name}" is not a code graphic.`);
+      // The person's settings are kept where the new code has them.
+      for (const x of checked.params ?? [])
+        if (x.name in now.params) params[x.name] = now.params[x.name];
+      return [
+        {
+          type: 'SET_LAYER_CODE',
+          compositionId: sc.id,
+          layerId: l.id,
+          code: codeRecord({
+            tier: o.graphic.tier,
+            source: o.graphic.source,
+            meta: {
+              ...checked.meta,
+              duration:
+                typeof now.meta.duration === 'number'
+                  ? now.meta.duration
+                  : checked.duration,
+            },
+            params,
+            templateId,
+          }),
+        } as never,
+      ];
+    }
+    return codeLayerCommands(
+      sc as never,
+      {
+        tier: o.graphic.tier,
+        source: o.graphic.source,
+        meta: { ...checked.meta },
+        params: { ...params, ...(o.params ?? {}) },
+        templateId,
+        name,
+      },
+      o.at,
+    ).commands;
+  }
+  /** Keeps an accepted graphic in the Project's AI library (by id, newest). */
+  const pendingLibrary = new Map<ClaudeVideo, ClaudeProjectLib>();
+  function remember(
+    v: ClaudeVideo,
+    _p: Projectish,
+    g: Omit<ClaudeProjectLib[number], 'savedAt' | 'videoId'>,
+  ) {
+    pendingLibrary.set(v, [
+      ...(pendingLibrary.get(v) ?? []).filter((x) => x.id !== g.id),
+      { ...g, savedAt: new Date(s.now()).toISOString(), videoId: '' },
+    ]);
+  }
+  /** After a saved edit or build: the accepted graphics join the library. */
+  function flushLibrary(proj: ClaudeProject, v: ClaudeVideo, videoId: string) {
+    const add = pendingLibrary.get(v) ?? [];
+    pendingLibrary.delete(v);
+    if (!add.length) return 0;
+    proj.library = [
+      ...(proj.library ?? []).filter((x) => !add.some((a) => a.id === x.id)),
+      ...add.map((g) => ({ ...g, videoId })),
+    ].slice(-40);
+    return add.length;
+  }
+
   /** The commands of edit_video, checked before anything runs. */
   async function editCommands(
     c: McpCtx,
@@ -1816,6 +2187,55 @@ export function createMcpTools(s: McpServices) {
       constraints: [],
     });
     for (const o of ops) {
+      // Runs through the editor's own mixer (see edit_video), not here.
+      if (o.op === 'set_master_volume') continue;
+      if (o.op === 'set_frame') {
+        if (!o.aspect && !o.fps)
+          throw new Error('Say the aspect (such as 9:16) or the frame rate.');
+        for (const sc of p.compositions) {
+          if (o.aspect) {
+            const [w, h] = o.aspect.split(':').map(Number) as [number, number];
+            const short = Math.min(sc.width, sc.height);
+            const size =
+              w >= h
+                ? { width: Math.round((short * w) / h / 2) * 2, height: short }
+                : { width: short, height: Math.round((short * h) / w / 2) * 2 };
+            out.push({
+              type: 'SET_COMPOSITION_SIZE',
+              compositionId: sc.id,
+              ...size,
+            } as never);
+          }
+          if (o.fps)
+            out.push({
+              type: 'SET_COMPOSITION_FPS',
+              compositionId: sc.id,
+              fps: o.fps,
+            } as never);
+        }
+        continue;
+      }
+      if (o.op === 'add_marker') {
+        const sc = scene(o.scene);
+        out.push({
+          type: 'ADD_MARKER',
+          compositionId: sc.id,
+          marker: {
+            id: `marker-${randomUUID().slice(0, 8)}`,
+            time: Math.min(o.at, sc.duration),
+            label: o.label,
+          },
+        } as never);
+        continue;
+      }
+      if (
+        o.op === 'add_graphic' ||
+        o.op === 'replace_graphic_code' ||
+        o.op === 'set_graphic_params'
+      ) {
+        out.push(...graphicCommands(c, v, p, o, scene, layer));
+        continue;
+      }
       if (o.op === 'change_text') {
         const sc = scene(o.scene);
         const l = layer(sc, o.layer);
