@@ -8,7 +8,7 @@ import { c5 } from './texts/c5';
 type Site = PlatformConfig['site'];
 export type Surface = 'website' | 'panel' | 'editor';
 
-/** An address a person may follow: https, or a path on this site. */
+/** An address a person may follow: https, a path on this site, or the local catalog. */
 export function safeHref(href: string): boolean {
   const h = href.trim();
   if (!h || h.length > 2000) return false;
@@ -17,7 +17,12 @@ export function safeHref(href: string): boolean {
     return true;
   try {
     const u = new URL(h);
-    return u.protocol === 'https:' && !u.username && !u.password;
+    if (u.username || u.password) return false;
+    // The owner's local catalog (files uploaded in the Owner App on this
+    // computer) is served over http on the loopback address only.
+    if (u.protocol === 'http:')
+      return u.hostname === '127.0.0.1' || u.hostname === 'localhost';
+    return u.protocol === 'https:';
   } catch {
     return false;
   }

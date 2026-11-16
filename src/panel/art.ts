@@ -1,6 +1,7 @@
 // P2-R2 (P2B-29, P2B-30): card art made from the config, no image files: a
 // Style's own `cardArt` URL when the owner set one, else an SVG drawn from
 // its id (the same picture every time) in the brand's aurora colours.
+import { slotMedia } from './appearance';
 import type { PlatformConfig, Style } from '../platform-config';
 import { h } from './dom';
 
@@ -127,11 +128,21 @@ export function posterSvg(
 
 /** P2-R3: a tall film-poster picture for a Style (2:3). */
 export function posterArt(s: Style, c: PlatformConfig): HTMLElement {
-  if (s.cardArt && /^(https:\/\/|\/)/.test(s.cardArt))
-    return h('img', { class: 'art poster-art', src: s.cardArt, alt: '' });
-  const box = h('div', { class: 'art-box poster-art' });
-  box.append(posterSvg(s.id, c));
-  return box;
+  // ROUND-C5 (2.2): the owner's slot first, then the Style's sample poster,
+  // then its card art, then the drawn poster (today's order after the slot).
+  const drawn = (): HTMLElement => {
+    const sample = (s as { sample?: { poster?: string } }).sample?.poster;
+    if (sample && /^(https:\/\/|\/)/.test(sample))
+      return h('img', { class: 'art poster-art', src: sample, alt: '' });
+    if (s.cardArt && /^(https:\/\/|\/)/.test(s.cardArt))
+      return h('img', { class: 'art poster-art', src: s.cardArt, alt: '' });
+    const box = h('div', { class: 'art-box poster-art' });
+    box.append(posterSvg(s.id, c));
+    return box;
+  };
+  const out = slotMedia(c, `style:${s.id}`, drawn) as HTMLElement;
+  out.classList.add('poster-art');
+  return out;
 }
 
 /** P2B-32: a small waveform for a voice option (drawn from its name). */

@@ -29,6 +29,7 @@ import {
   usedMedia,
   APPEARANCE_LIMITS,
 } from '../../src/panel/appearance-data';
+import { allSlots } from '../../src/panel/appearance';
 import {
   HttpFail,
   type StyleBook,
@@ -384,11 +385,9 @@ export function createContentRoutes(d: ContentDeps) {
         version,
         appearance: config.appearance ?? { slots: {} },
         limits: config.appearance?.limits ?? APPEARANCE_LIMITS,
-        styles: config.styles.map((s) => ({ id: s.id, name: s.name })),
-        studios: config.studios.map((s) => ({ id: s.id, name: s.name })),
-        learn: config.learn.map((l) => ({ id: l.id, title: l.title })),
-        plans: config.plans.map((p) => ({ id: p.id, name: p.name })),
+        slots: allSlots(config),
         unused: unusedFiles(config),
+        unusedNote: c5('slot-unused', req.lang),
       });
     }
     if (r === 'POST /api/appearance') {
@@ -440,7 +439,15 @@ export function createContentRoutes(d: ContentDeps) {
   function unusedFiles(c: PlatformConfig) {
     const dir = path.join(d.outDir, 'files');
     if (!existsSync(dir)) return [];
-    const used = usedMedia(c);
+    // A slot of a Style (or Studio, plan...) that no longer exists uses nothing.
+    const known = new Set(allSlots(c).map((x) => x.id));
+    const slots = Object.fromEntries(
+      Object.entries(c.appearance?.slots ?? {}).filter(([id]) => known.has(id)),
+    );
+    const used = usedMedia({
+      ...c,
+      appearance: { ...(c.appearance ?? {}), slots },
+    } as PlatformConfig);
     const mine = new Set(
       (d.book.read() as { uploads?: string[] }).uploads ?? [],
     );

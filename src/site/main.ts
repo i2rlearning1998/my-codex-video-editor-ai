@@ -26,6 +26,7 @@ import {
 } from '../platform-config';
 import { applyBrand, brandMark } from '../panel/app';
 import { maintenancePage, siteBanner } from '../panel/site-notices';
+import { watchSlots } from '../panel/appearance';
 import { h, clear, put } from '../panel/dom';
 import { posterArt } from '../panel/art';
 import { icon } from '../panel/icons';
@@ -773,6 +774,12 @@ async function start() {
   signedIn = !!(await account.user());
   window.addEventListener('hashchange', route);
   route();
+  // ROUND-C5 (2.1): the website's cards and hero are slots too.
+  watchSlots(
+    root,
+    () => config,
+    () => (document.documentElement.lang === 'hi' ? 'hi' : 'en'),
+  );
 }
 put(root);
 void start();

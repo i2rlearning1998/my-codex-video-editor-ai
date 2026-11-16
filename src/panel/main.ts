@@ -14,6 +14,7 @@ import { startControls } from './controls';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
 import { maintenancePage, siteBanner } from './site-notices';
+import { watchSlots } from './appearance';
 import { t } from './strings';
 import type { MockFailure } from '../gateway';
 import {
@@ -97,6 +98,12 @@ async function start() {
     }
     startControls();
     mountPanel(root, services, user, screens);
+    // ROUND-C5 (2.1): every card and hero is a slot the owner may dress.
+    watchSlots(
+      root,
+      () => services.config,
+      () => (document.documentElement.lang === 'hi' ? 'hi' : 'en'),
+    );
     // ROUND-C5 (1.5): the owner's banner over the panel.
     const banner = siteBanner(services.config, 'panel');
     if (banner) root.prepend(banner);

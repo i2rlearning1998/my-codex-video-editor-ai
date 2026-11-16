@@ -363,3 +363,9 @@ details.card[open] > summary {
 .colour-key {
   min-width: 80px;
 }
+.slot-preview img {
+  inline-size: 240px;
+  block-size: 135px;
+  border-radius: 8px;
+  cursor: crosshair;
+}

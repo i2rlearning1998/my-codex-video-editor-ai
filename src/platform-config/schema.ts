@@ -982,7 +982,10 @@ export const appearanceSlotSchema = z.object({
   title: textSchema.optional(),
   blurb: textSchema.optional(),
   order: z.number().optional(),
+  /** False: the owner's media is switched off (today's picture shows). */
   enabled: z.boolean().default(true),
+  /** True: the card or hero is not shown at all. */
+  hide: z.boolean().optional(),
 });
 export type AppearanceSlot = z.infer<typeof appearanceSlotSchema>;
 export const appearanceSchema = z.object({

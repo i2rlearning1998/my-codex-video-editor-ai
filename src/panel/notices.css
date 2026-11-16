@@ -64,3 +64,26 @@
   justify-content: center;
   gap: 16px;
 }
+
+/* ROUND-C5 (2.3): the owner's picture or video on a card or hero. */
+.has-slot-cover {
+  position: relative;
+}
+.slot-cover {
+  display: block;
+  inline-size: 100%;
+  block-size: 140px;
+  border-radius: 12px;
+  margin-block-end: 8px;
+}
+.credit-hero.has-slot-cover > .slot-cover,
+.start-hero.has-slot-cover > .slot-cover,
+.site-section.hero.has-slot-cover > .slot-cover {
+  position: absolute;
+  inset: 0;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0.35;
+  z-index: 0;
+  pointer-events: none;
+}

@@ -1206,10 +1206,371 @@ export async function siteScreen(ctx: Ctx): Promise<HTMLElement> {
 
 export type { AppearanceSlot };
 
-// Filled in Part 2 and Part 3 below.
-export async function appearanceScreen(ctx: Ctx): Promise<HTMLElement> {
-  return ctx.el('div', { id: 'appearance-screen' });
+// ------------------------------------------------------------ Appearance
+
+const A = {
+  title: ['Appearance', 'रूप-रंग'],
+  intro: [
+    'Every card, hero and empty state that can show a picture. Give one a picture or a short video (with its poster); a slot you never set shows what it shows today.',
+    'हर कार्ड, हीरो और खाली हिस्सा जो तस्वीर दिखा सकता है। किसी को तस्वीर या छोटा वीडियो (पोस्टर के साथ) दें; जिसे आपने कभी नहीं बदला वह आज जैसा ही दिखेगा।',
+  ],
+  search: ['Find a slot', 'स्लॉट खोजें'],
+  image: ['Picture', 'तस्वीर'],
+  video: ['Video', 'वीडियो'],
+  poster: ['Poster (needed with a video)', 'पोस्टर (वीडियो के साथ ज़रूरी)'],
+  fit: ['Fit', 'फ़िट'],
+  focus: [
+    'Keep in view (click the picture)',
+    'नज़र में रखें (तस्वीर पर क्लिक करें)',
+  ],
+  play: ['Video plays', 'वीडियो चले'],
+  titleEn: ['Title (English, optional)', 'शीर्षक (अंग्रेज़ी, वैकल्पिक)'],
+  titleHi: ['Title (Hindi)', 'शीर्षक (हिंदी)'],
+  blurbEn: [
+    'Short text (English, optional)',
+    'छोटा टेक्स्ट (अंग्रेज़ी, वैकल्पिक)',
+  ],
+  blurbHi: ['Short text (Hindi)', 'छोटा टेक्स्ट (हिंदी)'],
+  order: ['Order', 'क्रम'],
+  hide: ['Hide this card', 'यह कार्ड छिपाएँ'],
+  on: ['Use my picture', 'मेरी तस्वीर इस्तेमाल करें'],
+  reset: ['Reset to today’s picture', 'आज वाली तस्वीर पर लौटें'],
+  open: ['Open the page', 'पेज खोलें'],
+  drop: ['Drop a picture or video here', 'यहाँ तस्वीर या वीडियो छोड़ें'],
+  unused: ['Unused files', 'बिना इस्तेमाल की फ़ाइलें'],
+  clean: ['Delete unused files', 'बिना इस्तेमाल की फ़ाइलें हटाएँ'],
+  none: ['None.', 'कोई नहीं।'],
+  save: ['Save Appearance', 'रूप-रंग सहेजें'],
+  saved: [
+    'Saved as config version {v}.',
+    'कॉन्फ़िग वर्ज़न {v} के रूप में सहेजा।',
+  ],
+  set: ['set', 'बदला हुआ'],
+} as const;
+const ta = (k: keyof typeof A, vars: Record<string, string | number> = {}) =>
+  A[k][lang() === 'hi' ? 1 : 0].replace(/\{(\w+)\}/g, (w, n: string) =>
+    n in vars ? String(vars[n]) : w,
+  );
+interface AppearanceData {
+  version: number;
+  appearance: NonNullable<PlatformConfig['appearance']>;
+  limits: { imageBytes: number; videoBytes: number };
+  slots: { id: string; kind: string; page: string; label: string }[];
+  unused: { file: string; bytes: number }[];
+  unusedNote: string;
 }
+let lookDraft: { base: number; slots: Record<string, AppearanceSlot> } | null =
+  null;
+let lookQuery = '';
+
+export async function appearanceScreen(ctx: Ctx): Promise<HTMLElement> {
+  const data = await ctx.api<AppearanceData>('GET', q('/api/appearance'));
+  if (!lookDraft || lookDraft.base !== data.version)
+    lookDraft = { base: data.version, slots: clone(data.appearance.slots) };
+  const d = lookDraft;
+  const root = ctx.el('div', { class: 'stack', id: 'appearance-screen' });
+  const blank = (): AppearanceSlot => ({
+    fit: 'cover',
+    focus: { x: 50, y: 50 },
+    play: 'auto',
+    enabled: true,
+  });
+  const list = ctx.el('div', { class: 'stack', id: 'appearance-list' });
+  const draw = () => {
+    list.replaceChildren();
+    const pages = new Map<string, typeof data.slots>();
+    for (const s of data.slots) {
+      if (
+        lookQuery &&
+        !`${s.id} ${s.label}`.toLowerCase().includes(lookQuery.toLowerCase())
+      )
+        continue;
+      pages.set(s.page, [...(pages.get(s.page) ?? []), s]);
+    }
+    for (const [page, slots] of pages)
+      list.append(
+        card(
+          ctx,
+          page,
+          `appearance-page-${page.replace(/[^a-z0-9]+/gi, '-')}`,
+          ctx.el(
+            'a',
+            { href: page, target: '_blank', rel: 'noopener' },
+            ta('open'),
+          ),
+          ...slots.map((info) => slotCard(info)),
+        ),
+      );
+  };
+  const slotCard = (info: AppearanceData['slots'][number]) => {
+    const s = d.slots[info.id];
+    const box = ctx.el('div', {
+      class: 'card slot-card',
+      'data-slot-card': info.id,
+    });
+    const head = ctx.el(
+      'div',
+      { class: 'row' },
+      ctx.el('strong', {}, info.label),
+      ctx.el('code', {}, info.id),
+      s
+        ? ctx.el('span', { class: 'chip', 'data-slot-set': info.id }, ta('set'))
+        : '',
+    );
+    box.append(head);
+    // Drop a file on the card to upload it (2.5).
+    box.ondragover = (e) => e.preventDefault();
+    box.ondrop = async (e) => {
+      e.preventDefault();
+      const f = e.dataTransfer?.files?.[0];
+      if (!f) return;
+      try {
+        const out = await upload(
+          q(`/api/appearance/upload?name=${encodeURIComponent(f.name)}`),
+          f,
+        );
+        const cur = (d.slots[info.id] ??= blank());
+        if (out.kind === 'video') cur.video = out.url;
+        else if (cur.video && !cur.poster) cur.poster = out.url;
+        else cur.image = out.url;
+        draw();
+        say(ctx, out.url, true);
+      } catch (err) {
+        say(ctx, msg(err), false);
+      }
+    };
+    if (!s) {
+      box.append(
+        ctx.el('p', { class: 'muted' }, ta('drop')),
+        button(
+          ctx,
+          ta('on'),
+          () => {
+            d.slots[info.id] = blank();
+            draw();
+            return null;
+          },
+          { 'data-slot-start': info.id },
+        ),
+      );
+      return box;
+    }
+    const preview = ctx.el('div', {
+      class: 'slot-preview',
+      'data-slot-preview': info.id,
+    });
+    const src = s.image || s.poster;
+    if (src) {
+      const img = ctx.el('img', { src, alt: '' });
+      img.style.objectFit = s.fit;
+      img.style.objectPosition = `${s.focus.x}% ${s.focus.y}%`;
+      // The focus picker: a click sets where the picture stays in view.
+      img.onclick = (e) => {
+        const r = img.getBoundingClientRect();
+        s.focus = {
+          x: Math.round(((e.clientX - r.left) / r.width) * 100),
+          y: Math.round(((e.clientY - r.top) / r.height) * 100),
+        };
+        draw();
+      };
+      preview.append(img);
+    }
+    const id = info.id.replace(/[^a-z0-9]+/gi, '-');
+    box.append(
+      preview,
+      media(
+        ctx,
+        ta('image'),
+        s.image ?? '',
+        (v) => (v ? (s.image = v) : delete s.image),
+        '/api/appearance/upload',
+        'image',
+        `slot-${id}-image`,
+      ),
+      media(
+        ctx,
+        ta('video'),
+        s.video ?? '',
+        (v) => (v ? (s.video = v) : delete s.video),
+        '/api/appearance/upload',
+        'video',
+        `slot-${id}-video`,
+      ),
+      media(
+        ctx,
+        ta('poster'),
+        s.poster ?? '',
+        (v) => (v ? (s.poster = v) : delete s.poster),
+        '/api/appearance/upload',
+        'image',
+        `slot-${id}-poster`,
+      ),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(
+          ctx,
+          ta('fit'),
+          select(
+            ctx,
+            [
+              ['cover', 'cover'],
+              ['contain', 'contain'],
+            ],
+            s.fit,
+            (v) => (s.fit = v as 'cover' | 'contain'),
+          ),
+        ),
+        field(
+          ctx,
+          ta('play'),
+          select(
+            ctx,
+            [
+              ['auto', 'auto'],
+              ['hover', 'hover'],
+              ['still', 'still'],
+            ],
+            s.play,
+            (v) => (s.play = v as AppearanceSlot['play']),
+          ),
+        ),
+        ctx.el(
+          'span',
+          { class: 'muted', 'data-slot-focus': info.id },
+          `${ta('focus')}: ${s.focus.x}%, ${s.focus.y}%`,
+        ),
+      ),
+      texts(
+        ctx,
+        s.title,
+        (v) => (v ? (s.title = v) : delete s.title),
+        ['titleEn', 'titleHi'],
+        `slot-${id}-title`,
+      ),
+      ctx.el(
+        'div',
+        { class: 'row' },
+        field(
+          ctx,
+          ta('order'),
+          input(
+            ctx,
+            s.order === undefined ? '' : String(s.order),
+            (v) => {
+              const n = Number(v);
+              if (v.trim() && Number.isFinite(n)) s.order = n;
+              else delete s.order;
+            },
+            { 'data-slot-order': info.id },
+          ),
+        ),
+        field(
+          ctx,
+          ta('on'),
+          check(ctx, s.enabled, (v) => (s.enabled = v), {
+            'data-slot-on': info.id,
+          }),
+        ),
+        field(
+          ctx,
+          ta('hide'),
+          check(ctx, !!s.hide, (v) => (v ? (s.hide = true) : delete s.hide), {
+            'data-slot-hide': info.id,
+          }),
+        ),
+        button(
+          ctx,
+          ta('reset'),
+          () => {
+            delete d.slots[info.id];
+            draw();
+            return null;
+          },
+          { 'data-slot-reset': info.id },
+        ),
+      ),
+    );
+    return box;
+  };
+  draw();
+  const searchBox = input(
+    ctx,
+    lookQuery,
+    (v) => {
+      lookQuery = v;
+      draw();
+    },
+    { id: 'appearance-search', placeholder: ta('search') },
+  );
+  let note = '';
+  root.append(
+    ctx.el('h1', {}, ta('title')),
+    ctx.el('p', { class: 'muted' }, ta('intro')),
+    searchBox,
+    list,
+    card(
+      ctx,
+      ta('unused'),
+      'appearance-unused',
+      ...(data.unused.length
+        ? data.unused.map((f) =>
+            ctx.el(
+              'div',
+              { class: 'row', 'data-unused': f.file, title: data.unusedNote },
+              `${data.unusedNote} `,
+              f.file,
+              ` (${Math.ceil(f.bytes / 1024)} KB)`,
+            ),
+          )
+        : [ctx.el('p', { class: 'muted' }, ta('none'))]),
+      button(
+        ctx,
+        ta('clean'),
+        async () => {
+          const out = await ctx.api<{ removed: string[] }>(
+            'POST',
+            q('/api/appearance/cleanup'),
+            {},
+          );
+          ctx.refresh();
+          return `${out.removed.length}`;
+        },
+        { id: 'appearance-clean' },
+      ),
+    ),
+    ctx.el(
+      'div',
+      { class: 'row' },
+      field(
+        ctx,
+        t('note'),
+        input(ctx, '', (v) => (note = v), { id: 'appearance-note' }),
+      ),
+      button(
+        ctx,
+        ta('save'),
+        async () => {
+          const out = await ctx.api<{ version: number }>(
+            'POST',
+            q('/api/appearance'),
+            {
+              appearance: { ...data.appearance, slots: d.slots },
+              note,
+              baseVersion: d.base,
+            },
+          );
+          lookDraft = null;
+          ctx.refresh();
+          return ta('saved', { v: out.version });
+        },
+        { id: 'appearance-save', class: 'primary' },
+      ),
+    ),
+  );
+  return root;
+}
+
 export async function accessScreen(ctx: Ctx): Promise<HTMLElement> {
   return ctx.el('div', { id: 'access-screen' });
 }
