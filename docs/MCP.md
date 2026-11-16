@@ -67,6 +67,45 @@ Not proven (needs things this sandbox does not have):
 
 Known limits:
 
-- A video with code graphics (Tier B or C) cannot be exported in the chat, because their frames are baked in a worker and the card cannot start one. The owner decides whether that code may run in the card's page (D-447).
+- (Round C3) Code graphics now export in the chat: the card bakes them in a nested sandbox frame (D-450). A host that refuses nested frames gets one plain sentence instead; that a real Claude allows it is not proven.
 - Chat exports stop at `mcp.exportMaxSeconds` (default 120 s) and 100 MB, the largest sizes measured (reports/ROUND-C2-SPIKE.md).
 - OAuth codes and pending consents live in the server's memory. A server restart ends a consent that is still open; already-connected people are not affected.
+
+## Round C3: Claude as a full Director
+
+Claude does the same work as the in-panel Director (same Projects, Videos, Style, memory and credits), in its own way: the Director is bound by the owner's rules; for the person's Claude the rulebook and playbooks are guidance, and the only hard limits are what the connector enforces (security, credits and limits, the owner's tool switches, the emergency switch, never showing the plan or project structure).
+
+### Tools added in Round C3
+
+| Tool                                                                                       | What it does                                                                                                                                                                      |
+| ------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `get_brief_fields` (changed)                                                               | Every Brief field at once, with what the message and the Project style already answer, what is still missing, "you decide"                                                        |
+| `add_file_note`                                                                            | What Claude saw in one of the person's files (the Director's FileNote)                                                                                                            |
+| `get_plan_cost` (changed)                                                                  | Scene by scene, each new graphic, media costs, the total, rewrites left, Extra ideas                                                                                              |
+| `submit_plan` (changed)                                                                    | The Director's validate, repair once, refuse loop; `extra_ideas`; counts rewrites; saves new graphics to the Project's AI library                                                 |
+| `edit_video` (changed)                                                                     | `dry_run`; new scenes and graphics charged after `confirm_scene`; ops `add_graphic`, `replace_graphic_code`, `set_graphic_params`, `set_frame`, `add_marker`, `set_master_volume` |
+| `read_graphic`                                                                             | A graphic's code and settings (to rewrite it)                                                                                                                                     |
+| `get_asset_needs`, `set_asset_choice`, `get_asset_cost`, `make_asset`, `add_media`         | The assets step: every file the plan needs and every way to get it                                                                                                                |
+| `get_style`, `style_chat`, `apply_style_change`                                            | The Project's style (saved from the first approved video) and the Style chat                                                                                                      |
+| `list_styles`, `get_style(style_id)`, `create_project(style_id)`, `start_video_from_style` | Readymade Styles                                                                                                                                                                  |
+| `list_modes`, `create_video(mode)`                                                         | Video modes (today: the Editor)                                                                                                                                                   |
+| `start_here` (changed)                                                                     | Claude's view of the manual, then live data: a version, what Claude can reach, modes, Studios, Styles, what changed since the version this person saw, the owner's note           |
+
+The connector lists its tools itself at the start of every chat; the skill only points to `start_here`, so a new tool, mode, Studio or Style needs no new skill upload.
+
+### The capability matrix
+
+docs/CAPABILITY-MATRIX.md (generated from src/director/capability-matrix.ts) lists every editor command family and every Video Plan v4 field with Claude's way to reach it. A unit test fails when the editor gains a command or a plan field without a row (AGENTS.md section 3). Editor-only bookkeeping that never changes the exported video (nesting, clip links, lane state, the outliner, the playback range, the project's file name) has no connector way, with that reason in the matrix.
+
+### Logging in through Connect
+
+- No account: Claude's Connect opens the consent page; a logged-out person goes to Sign up with the consent page kept as `next`, then lands on it and presses Allow.
+- An account, but a cleared browser: the same page links to Log in, with `next` kept. The Claude connection and what Claude made are the server's; they come back after logging in.
+- Sign-up with email confirmation: the consent request waits 30 minutes (and survives a server restart); the confirmation email returns to Log in with `next`. If the page is gone by then, the person presses Connect in Claude again.
+- The website's Connect Claude page and the panel's Home button explain the two steps and give the address and the zips; the person's own Claude plan is used for the chat.
+
+### Not proven in Round C3 (needs a real Claude, a real Supabase or a public address)
+
+- That a real host allows the card's nested sandbox frame (`frameDomains`).
+- A real Supabase run of `mcp_grants` and the confirmation email's return address.
+- Claude following the guidance (the whole Brief in one message, asking for the asset choice, rewriting a graphic after a check) with a real model.

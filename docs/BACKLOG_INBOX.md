@@ -87,3 +87,7 @@ Codex appends here and never builds from it. Claude triages into the ledger with
 - Round C2: OAuth codes and open consents are kept in one server's memory; several server processes would need them in the store.
 - Round C2: the rest of the Owner App's Admin tabs are English-only (only the two new tabs have keyed strings).
 - Round C2: Claude Code's loopback redirects are allowed only in test mode (MCP_TEST_MODE=1); the connector docs say Claude Code needs them.
+- Round C3: Readymade Style looks have English names copied into Hindi; the owner should write Hindi names in Admin.
+- Round C3: the Owner App has no editor yet for the new Style fields (template, slots, looks, tests); they are edited in the config JSON for now.
+- Round C3: the card's export is equal to an editor export by construction; a pixel comparison of the two would make it measured.
+- Round C3: a new scene added by Claude is charged at the scene's method cost even when it reuses media the person already has.

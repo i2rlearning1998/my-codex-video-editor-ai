@@ -12,6 +12,6 @@ Branch `claude/round-c3-parity`, draft PR #56 to `claude/round-c2-mcp`. LIMIT MO
 | 5 A Claude video is a tool video (AI library) | Done | RDC3-050 to 052 |
 | 6 Readymade Style structure and Door 2 | Done | RDC3-060 to 062 |
 | 7 Rulebook appliesTo, C3 TEXTS, skill | Done | RDC3-070, 071 |
-| 8 Docs, report | Not started | |
+| 8 Docs, report | Done | reports/ROUND-C3.md, D-449 to D-460 |
 
-Last commit: see `git log -1`. Next step: Part 8: DECISIONS D-449 on, STATUS, CHANGELOG, docs/MCP.md, docs/PLATFORM-CONFIG.md, reports/ROUND-C3.md, then push and check CI once.
+Last commit: see `git log -1`. Every part is done. Next step: the owner's review and the tunnel test (reports/ROUND-C3.md, section 4).
