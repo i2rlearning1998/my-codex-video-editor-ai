@@ -132,7 +132,10 @@ describe('[RDC3-040] code graphics through the connector', () => {
       kind: 'block',
       block: 'bar-rise',
     } as never);
-    const sub = await s.call(client, 'submit_plan', { video_id: videoId, plan: p });
+    const sub = await s.call(client, 'submit_plan', {
+      video_id: videoId,
+      plan: p,
+    });
     expect(sub.text, sub.text).toMatch(/^Built 2 scenes/);
     await s.call(client, 'get_plan_cost', { video_id: videoId });
     await s.call(client, 'approve_plan', { video_id: videoId });
