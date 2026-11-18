@@ -13,6 +13,8 @@ import './round-b.css';
 import { startControls } from './controls';
 import { createServices } from './services';
 import { mountPanel, type Screen } from './app';
+import { maintenancePage, siteBanner } from './site-notices';
+import { watchSlots } from './appearance';
 import { t } from './strings';
 import type { MockFailure } from '../gateway';
 import {
@@ -84,8 +86,27 @@ async function start() {
     }
     // Plan, credits and usage (the server's, when it is used).
     await services.sync(user.id);
+    // ROUND-C5 (1.6): under maintenance the panel shows its page; the
+    // owner's own accounts (workspace.ownerEmails) are never locked out.
+    const owner = services.config.workspace.ownerEmails.includes(
+      (user.email ?? '').toLowerCase(),
+    );
+    const closed = owner ? null : maintenancePage(services.config, 'panel');
+    if (closed) {
+      root.replaceChildren(closed);
+      return;
+    }
     startControls();
     mountPanel(root, services, user, screens);
+    // ROUND-C5 (2.1): every card and hero is a slot the owner may dress.
+    watchSlots(
+      root,
+      () => services.config,
+      () => (document.documentElement.lang === 'hi' ? 'hi' : 'en'),
+    );
+    // ROUND-C5 (1.5): the owner's banner over the panel.
+    const banner = siteBanner(services.config, 'panel');
+    if (banner) root.prepend(banner);
     // ROUND-B B1: old Project chats move to their first Video (once).
     void migrateP3Memory({ s: services, user } as never);
   } catch (e) {

@@ -3,7 +3,7 @@
 // chat host does (its own origin, the host's CSP), and an MCP client that
 // plays Claude. No network beyond 127.0.0.1.
 import { createServer, type Server } from 'node:http';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import type { AddressInfo } from 'node:net';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -20,10 +20,25 @@ export const DEV_TOKEN = 'e2e-mcp-dev-token-0123456789';
 
 /** Builds the card engine once when it is missing (npm run build does it in CI). */
 export function ensureCardBuild() {
-  if (
-    !existsSync('dist/mcp-card/card.js') ||
-    !existsSync('dist/mcp-card/sandbox-frame.js')
-  )
+  // ROUND-C5: also rebuild when the card's sources are newer than the build,
+  // so a test never measures a stale card.
+  const built = (f: string) => (existsSync(f) ? statSync(f).mtimeMs : 0);
+  const newest = (dir: string): number =>
+    readdirSync(dir, { withFileTypes: true }).reduce(
+      (n, e) =>
+        Math.max(
+          n,
+          e.isDirectory()
+            ? newest(`${dir}/${e.name}`)
+            : statSync(`${dir}/${e.name}`).mtimeMs,
+        ),
+      0,
+    );
+  const stamp = Math.min(
+    built('dist/mcp-card/card.js'),
+    built('dist/mcp-card/sandbox-frame.js'),
+  );
+  if (!stamp || newest('src/mcp-card') > stamp || newest('src/export') > stamp)
     execFileSync('npx', ['vite', 'build', '--config', 'vite.card.ts'], {
       stdio: 'ignore',
     });

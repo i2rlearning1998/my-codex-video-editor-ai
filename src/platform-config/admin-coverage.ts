@@ -95,18 +95,22 @@ export const ADMIN_COVERAGE: Readonly<
     period: C(RAW),
     monthlyCredits: S('Plans & Credits'),
     watermark: S('Plans & Credits'),
-    limits: S('Plans & Credits'),
-    features: S('Plans & Credits'),
+    limits: S('Plans & Credits; Features & access › Plans (labelled limits)'),
+    features: S('Plans & Credits; Features & access › Plans (feature grid)'),
     sortOrder: C(RAW),
     public: S('Plans & Credits'),
+    // ROUND-C5 (3.2).
+    archived: S('Features & access › Plans (Archived)'),
   },
   site: {
-    sections: C(
-      "The website's sections and texts: edited in Admin › Platform Config; a website editor is not part of this round (BACKLOG).",
-    ),
-    showcase: C(
-      "The website's showcase videos: edited in Admin › Platform Config (BACKLOG).",
-    ),
+    // ROUND-C5 (2.6): the site rows moved from config-only to their screen.
+    sections: S('Website & Brand › Website sections'),
+    showcase: S('Website & Brand › Showcase videos'),
+    nav: S('Website & Brand › Header links'),
+    footer: S('Website & Brand › Footer'),
+    banner: S('Website & Brand › Banner'),
+    maintenance: S('Website & Brand › Maintenance'),
+    legal: S('Website & Brand › Legal pages'),
   },
   studio: {
     id: S('Studio tools & forms'),

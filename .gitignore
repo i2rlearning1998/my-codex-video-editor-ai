@@ -19,3 +19,6 @@ owner-data/
 server-data/
 catalog-out/
 .e2e-library/
+
+# Owner test kit: your own settings (secrets)
+test-kit/settings.env

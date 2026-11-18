@@ -34,8 +34,25 @@ import {
   planFor,
   providerById,
   studioById,
+  maintenanceFor,
+  c5,
+  effectivePlan,
+  featureFor,
+  becauseText,
+  type AccessRules,
   type PlatformConfig,
 } from '../src/platform-config';
+
+/** ROUND-C5 (1.6): new writes refused under maintenance (normal people). */
+const MAINTENANCE_WRITES = new Set([
+  'POST /v1/workspace/claim',
+  'POST /v1/workspace/change',
+  'POST /v1/workspace/sync',
+  'POST /v1/run',
+  'POST /v1/reserve',
+  'POST /v1/plan',
+  'POST /v1/topup',
+]);
 import { mockPayment } from '../src/payments';
 import { AuthError, signLocalToken, type Caller } from './auth';
 import { createServerTools, realResolve } from './tools';
@@ -501,6 +518,11 @@ export function createServerApp(o: ServerOptions) {
         createdAt: new Date(now()).toISOString(),
       };
       await o.store.saveProfile(p);
+    } else if (!p.email && c.email) {
+      // ROUND-C5 (3.3): a profile made first by Claude's connector has no
+      // email yet; the person's own sign-in gives it (overrides, cohorts).
+      p = { ...p, email: c.email };
+      await o.store.saveProfile(p);
     }
     // This month's plan credits, once per plan and month (P2B-11).
     const plan = planFor(config, p.plan);
@@ -526,7 +548,17 @@ export function createServerApp(o: ServerOptions) {
       projects: await o.store.counter(c.userId, 'projects'),
     });
     locales.set(c.userId, profile.locale);
-    return { config, profile, plan: planFor(config, profile.plan) };
+    // ROUND-C5 (3.3): the plan after the owner's switches, rollouts and
+    // overrides (exactly the plan when he set none). Every check below reads
+    // this plan's features and limits: the panel, the editor and Claude.
+    const rules = await o.store.accessRules();
+    const plan = effectivePlan(
+      config,
+      rules,
+      { userId: c.userId, email: c.email, plan: planFor(config, profile.plan) },
+      now(),
+    );
+    return { config, profile, plan };
   }
   const localeOf = (u: string) => locales.get(u) ?? 'en';
   const sweep = async () => {
@@ -580,6 +612,9 @@ export function createServerApp(o: ServerOptions) {
         locale: profile.locale,
         balance: l.balance(),
         held: l.held(),
+        // ROUND-C5 (3.6): what this person has now (the panel's locks).
+        features: plan.features,
+        limits: plan.limits,
       };
     },
     'GET /v1/balance': async (_b, c) => {
@@ -1037,6 +1072,59 @@ export function createServerApp(o: ServerOptions) {
       });
       return { balance };
     },
+    // ROUND-C5 (3.3 to 3.5): the owner's overrides, cohorts and "Who has
+    // this?" (admin surface only; the Owner App's routes call these).
+    'GET /v1/admin/access': async (_b, c) => {
+      if (!c.admin) throw new HttpError(403, 'admin', 'Only the owner.');
+      return { rules: await o.store.accessRules() };
+    },
+    'POST /v1/admin/access': async (b, c) => {
+      if (!c.admin) throw new HttpError(403, 'admin', 'Only the owner.');
+      const rules = b.rules as AccessRules;
+      if (
+        !rules ||
+        !Array.isArray(rules.overrides) ||
+        !Array.isArray(rules.cohorts)
+      )
+        throw bad('The access rules are not readable.');
+      await o.store.saveAccessRules(rules);
+      await o.store.appendAudit({
+        at: new Date(now()).toISOString(),
+        actor: c.userId,
+        action: 'access.save',
+        target: typeof b.what === 'string' ? b.what.slice(0, 120) : 'access',
+        detail: {
+          reason: typeof b.note === 'string' ? b.note.slice(0, 300) : '',
+        },
+      });
+      return { ok: true };
+    },
+    'POST /v1/admin/access/who': async (b, c) => {
+      if (!c.admin) throw new HttpError(403, 'admin', 'Only the owner.');
+      const { config } = await cfg.get();
+      const rules = await o.store.accessRules();
+      const key = typeof b.feature === 'string' ? b.feature.slice(0, 60) : '';
+      const lang = b.lang === 'hi' ? 'hi' : 'en';
+      const em = await o.store.emergency();
+      const people = (await o.store.profiles()).map((p) => {
+        const r = featureFor(
+          config,
+          rules,
+          { userId: p.id, email: p.email ?? '', plan: planFor(config, p.plan) },
+          key,
+          now(),
+          em.aiOff,
+        );
+        return {
+          userId: p.id,
+          email: p.email ?? '',
+          plan: p.plan,
+          on: r.on,
+          why: becauseText(r.because, config, lang),
+        };
+      });
+      return { people, count: people.filter((p) => p.on).length };
+    },
     'POST /v1/config': async (b, c) => {
       if (!c.admin)
         throw new HttpError(
@@ -1275,6 +1363,15 @@ export function createServerApp(o: ServerOptions) {
       );
       if (req.method === 'GET' && path === '/v1/health')
         return send(res, 200, { ok: true, api: API_VERSION });
+      // ROUND-C5 (1.6): the editor asks this before a cloud save (public).
+      if (req.method === 'GET' && path === '/v1/maintenance') {
+        const m = maintenanceFor((await cfg.get()).config.site, 'editor');
+        return send(res, 200, {
+          on: !!m,
+          message: m ? c5('maintenance-refused') : '',
+          messageHi: m ? c5('maintenance-refused', 'hi') : '',
+        });
+      }
       if (req.method === 'GET' && path === '/v1/config') {
         const live = await cfg.get();
         // P4 security: everyone may read the live settings, but a provider's
@@ -1292,7 +1389,8 @@ export function createServerApp(o: ServerOptions) {
       }
       if (req.method === 'POST' && path === '/v1/local/token') {
         if (
-          o.env.AUTH_MODE !== 'local' ||
+          // main.ts treats anything but 'supabase' as local; so does this.
+          o.env.AUTH_MODE === 'supabase' ||
           o.env.LOCAL_TOKENS !== '1' ||
           !o.env.LOCAL_AUTH_SECRET
         )
@@ -1422,6 +1520,17 @@ export function createServerApp(o: ServerOptions) {
       if (!route) throw new HttpError(404, 'not-found', 'Not found.');
       const caller = await o.authenticate(req.headers.authorization);
       who = caller.userId.slice(0, 8);
+      // ROUND-C5 (1.6): under maintenance a normal person's NEW writes are
+      // refused with one sentence; reads, running jobs (call, settle, an
+      // export being counted) and the admin and owner accounts go through.
+      if (MAINTENANCE_WRITES.has(`${req.method} ${path}`) && !caller.admin) {
+        const live = (await cfg.get()).config;
+        if (
+          maintenanceFor(live.site, 'panel') &&
+          !live.workspace.ownerEmails.includes(caller.email.toLowerCase())
+        )
+          throw new HttpError(503, 'maintenance', c5('maintenance-refused'));
+      }
       const out = await route(body, caller);
       return send(res, 200, out);
     } catch (e) {

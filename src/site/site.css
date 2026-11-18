@@ -311,3 +311,12 @@
   font-size: 13px;
   color: var(--ink-muted);
 }
+
+/* ROUND-C5 (0.3): the C3 Connect Claude header button made the phone header
+   wider than the screen (P3U-027, P3U-034, P2R2-034 in the C4 CI run). On a
+   phone it leaves the header; the footer keeps the link. */
+@media (max-width: 640px) {
+  #site-claude {
+    display: none;
+  }
+}

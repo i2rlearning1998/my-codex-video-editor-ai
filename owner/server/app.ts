@@ -19,6 +19,7 @@ import { Accounts, Sessions, csrfOk, reauthFresh, type Session } from './auth';
 import { OwnerLibrary, type LibraryConfig } from './library';
 import type { AdminBridge } from './admin-bridge';
 import { StyleBook, createStyleRoutes, HttpFail } from './styles';
+import { createContentRoutes } from './content';
 
 const root = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -141,15 +142,35 @@ export function createOwnerApp(config: OwnerAppConfig): {
   const adminScript = uiScript('admin.ts');
   // ROUND-C4: the Styles builder, Brief fields and Director limits screens.
   const builderScript = uiScript('builder.ts');
-  const styleRoutes = config.admin
+  // ROUND-C5: Website & Brand, Appearance, Features & access screens.
+  const contentScript = uiScript('content.ts');
+  const book = new StyleBook(config.dataDir);
+  const builderRoutes = config.admin
     ? createStyleRoutes({
         admin: config.admin,
-        book: new StyleBook(config.dataDir),
+        book,
         now,
         outDir: config.outDir,
         catalogUrl: config.catalogUrl,
       })
     : null;
+  // ROUND-C5: Website & Brand, Appearance, Features & access.
+  const contentRoutes = config.admin
+    ? createContentRoutes({
+        admin: config.admin,
+        book,
+        now,
+        outDir: config.outDir,
+        catalogUrl: config.catalogUrl,
+      })
+    : null;
+  const styleRoutes =
+    builderRoutes && contentRoutes
+      ? async (r: Parameters<typeof builderRoutes>[0]) =>
+          /^\/api\/(site|appearance|access)(\/|$)/.test(r.path)
+            ? contentRoutes(r)
+            : builderRoutes(r)
+      : null;
   const css = readFileSync(path.join(root, 'owner/ui/app.css'), 'utf8');
   const tokens = readFileSync(path.join(root, 'src/ui/tokens.css'), 'utf8');
   const page = readFileSync(
@@ -213,6 +234,13 @@ export function createOwnerApp(config: OwnerAppConfig): {
       return send(response, 200, script, 'text/javascript; charset=utf-8');
     if (method === 'GET' && url.pathname === '/admin.js')
       return send(response, 200, adminScript, 'text/javascript; charset=utf-8');
+    if (method === 'GET' && url.pathname === '/content.js')
+      return send(
+        response,
+        200,
+        contentScript,
+        'text/javascript; charset=utf-8',
+      );
     if (method === 'GET' && url.pathname === '/builder.js')
       return send(
         response,
@@ -491,7 +519,9 @@ export function createOwnerApp(config: OwnerAppConfig): {
     // ---- ROUND-C4: Styles builder and Brief fields --------------------
     if (
       url.pathname.startsWith('/api/styles') ||
-      url.pathname.startsWith('/api/fields')
+      url.pathname.startsWith('/api/fields') ||
+      // ROUND-C5: the same login, CSRF and audit path.
+      /^\/api\/(site|appearance|access)(\/|$)/.test(url.pathname)
     ) {
       if (!styleRoutes)
         throw new HttpError(503, 'The admin service is not running.');

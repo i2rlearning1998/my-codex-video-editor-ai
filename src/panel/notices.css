@@ -1,0 +1,89 @@
+/* ROUND-C5 (1.5): the owner's banner (website and panel). */
+.site-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  font-size: 14px;
+  background: var(--brand-accent, #7c5cff);
+  color: #fff;
+  position: relative;
+  z-index: 5;
+}
+.site-banner a {
+  color: inherit;
+  text-decoration: underline;
+}
+.site-banner-success {
+  background: #1f7a4d;
+}
+.site-banner-warning {
+  background: #8a5a00;
+}
+.site-banner-danger {
+  background: #a3242f;
+}
+.site-banner-close {
+  background: none;
+  border: 0;
+  color: inherit;
+  font-size: 20px;
+  min-inline-size: 32px;
+  min-block-size: 32px;
+  cursor: pointer;
+}
+/* ROUND-C5 (1.6, 1.7): the maintenance page and legal pages. */
+.maintenance-page {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  min-block-size: 60vh;
+  padding: 24px 16px;
+}
+.site-legal {
+  max-inline-size: 760px;
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+.site-footer-groups {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 24px;
+  justify-content: center;
+}
+.site-footer-group,
+.site-footer-legal {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.site-footer-legal {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* ROUND-C5 (2.3): the owner's picture or video on a card or hero. */
+.has-slot-cover {
+  position: relative;
+}
+.slot-cover {
+  display: block;
+  inline-size: 100%;
+  block-size: 140px;
+  border-radius: 12px;
+  margin-block-end: 8px;
+}
+.credit-hero.has-slot-cover > .slot-cover,
+.start-hero.has-slot-cover > .slot-cover,
+.site-section.hero.has-slot-cover > .slot-cover {
+  position: absolute;
+  inset: 0;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0.35;
+  z-index: 0;
+  pointer-events: none;
+}

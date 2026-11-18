@@ -429,6 +429,17 @@ const S = {
   'site.login': ['Log in', 'लॉग इन'],
   'site.signup': ['Sign up', 'साइन अप'],
   'site.claudeNav': ['Connect Claude', 'Claude जोड़ें'],
+  // ROUND-C5 (1.7): legal pages.
+  'site.home': ['Home', 'होम'],
+  'site.legalMissing': [
+    'This page is not available.',
+    'यह पेज उपलब्ध नहीं है।',
+  ],
+  'site.legalUpdated': ['Updated', 'अपडेट किया गया'],
+  'site.legalAgree': [
+    'By signing up you agree to:',
+    'साइन अप करके आप इनसे सहमत होते हैं:',
+  ],
   'style.draft': ['Draft (only you see it)', 'ड्राफ़्ट (सिर्फ़ आपको दिखता है)'],
   'style.tested': [
     'Tested (only you see it)',

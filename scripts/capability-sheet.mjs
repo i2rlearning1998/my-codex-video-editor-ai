@@ -44,6 +44,12 @@ try {
     new URL('../docs/ADMIN-COVERAGE.md', import.meta.url),
     cov.coverageMarkdown(),
   );
+  // ROUND-C5 (4.5): the Director-to-Claude parity table.
+  const par = await server.ssrLoadModule('/src/director/parity-matrix.ts');
+  await writeFile(
+    new URL('../docs/PARITY.md', import.meta.url),
+    par.parityMarkdown(),
+  );
   console.log(`docs/CAPABILITY-SHEET.md written (version ${version}).`);
 } finally {
   await server.close();

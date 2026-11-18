@@ -1228,7 +1228,7 @@ Built only after the manual editor is complete. All AI actions go through the sa
 | FIX7-021 | P1 | W9 | Verified | Owner additions (sub-categories, placed assets) show under every editor panel: Templates, Media, Audio, Record, AI, My Templates and Theme |
 | FIX7-022 | P1 | W9 | Verified | An AI-made Creator Pack (plans) published in the owner app works wherever the owner places it: the same card with its menu (Review & swap, Build again), movable into any category or new sub-category and copyable to more places; it leaves the AI category when moved |
 | FIX7-023 | P1 | W9 | Verified | The owner app lists an item in more than one place (Also shown in) and moves it by changing its primary place |
-| FIX7-024 | P1 | W9 | Bug | A photo, video, sound or theme the owner lists under another category shows there and works; a sound moved out of Audio leaves the Audio list; Scene and Draw show the owner's additions |
+| FIX7-024 | P1 | W9 | Verified | A photo, video, sound or theme the owner lists under another category shows there and works; a sound moved out of Audio leaves the Audio list; Scene and Draw show the owner's additions |
 | FIX7-025 | P1 | W9 | Verified | A file added to Media after a plan was built fills the plan slot that waits for it when its name holds the slot's words; nothing else is filled on its own |
 | FIX7-026 | P2 | W9 | Verified | Compare to plan shows at most 12 differences, then "and N more" |
 | FIX7-027 | P0 | W9 | Verified | A built plan adds nothing and offers no Play until every code animation is rendered (a Preparing step with progress); Cancel leaves nothing behind |
@@ -1724,7 +1724,7 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC4-001 | P0 | W10 | Verified | The three sample Styles stay legacy (no status, no template) and pass validateStyle; a NEW Style marked Tested or Published without a template is refused unless the owner wrote a reason |
 | RDC4-002 | P0 | W10 | Verified | A look with no Hindi name (or a copy of the English one) gets a small warning, never an error; the builder has both name fields |
 | RDC4-003 | P0 | W10 | Verified | The New project dialog lists Published Styles only; a Draft is shown to the owner's own account |
-| RDC4-004 | P1 | W10 | Bug | Card export and editor export of the same Claude video (Tier B block and Tier C scene), 5 decoded frames compared: frames near motion and the cut differ beyond the rule (measured numbers in reports/ROUND-C4.md); test.fail reproduction |
+| RDC4-004 | P1 | W10 | Verified | Card export and editor export of the same Claude video (Tier B block and Tier C scene, a scene cut) agree on every frame (fixed in Round C5: the card now gets the scene cuts and scene backgrounds; numbers in reports/round-c5/export-compare.json) |
 | RDC4-005 | P0 | W10 | Verified | A scene that reuses media the person already has is charged only for what is new, by one rule shared by the Director's Plan card and the connector's plan and scene costs |
 | RDC4-010 | P0 | W10 | Verified | Status moves: Draft, Tested, Published, never skipping without a reason; Tested needs a passed test; Published needs 3 passed tests on 3 topics or a 1 to 600 character reason; an invalid Style never moves up |
 | RDC4-011 | P0 | W10 | Verified | A save raises the version; a Published Style whose template or slots change goes back to Tested with its tests kept; text, looks, art or order never change the status |
@@ -1763,3 +1763,38 @@ Rows P3E-* are Part 1 (`codex/p3-engine`, server and engines), P3W-* are Part 2 
 | RDC4-065 | P0 | W10 | Verified | A provider, a model and an assignment added in the config make the matching Studio appear in get_asset_needs with no code change |
 | RDC4-066 | P0 | W10 | Verified | The AI-mode attachment control refuses a larger file with the owner's new limit in its sentence |
 | RDC4-070 | P0 | W10 | Verified | Verify-only: the existing Admin tabs open with their content; the MCP tab lists every priced action with its rule and the file limits |
+
+## RDC5: Round C5 (Website & Brand, Appearance, Features & access, Director/Claude parity; briefs/ROUND-C5.md)
+
+| ID | Priority | Wave | Status | Requirement |
+| --- | --- | --- | --- | --- |
+| RDC5-001 | P0 | W10 | Verified | Card export and editor export of the same Claude video match on every frame of a 4 s, 24 fps video with a scene cut (per-frame sweep; the chat export job carries the scene cuts and per-scene backgrounds the editor's export already passed) |
+| RDC5-002 | P0 | W10 | Verified | FIX7-024 runs as a normal test in its serial file: a photo and a live sound placed under Text show there, the sound leaves Audio, and an owner's Scene sub-category shows |
+| RDC5-003 | P0 | W10 | Verified | The C4 CI failures caused by C3/C4 are fixed: the website header fits a 360 and 390 px phone (the Connect Claude button leaves the phone header), and RDC2-022 reads get_plan_cost's per-scene wording |
+| RDC5-004 | P0 | W10 | Verified | Website & Brand: a brand change (tagline, colours, favicon) saves as one config version the website reads at once; a new brand name or logo asks for the password and code; owner text is plain text (HTML refused); sections added, copied, hidden and reordered |
+| RDC5-005 | P0 | W10 | Verified | Banner: shown only on its surfaces and inside its dates; an end before its start and a non-https link are refused; a changed banner gets a new version, so a closed one shows again |
+| RDC5-006 | P0 | W10 | Verified | Maintenance: switching it on asks for the code; a person's new writes and Claude's write tools are refused with the owner's sentence (503); reads, running jobs and an export being counted go on; the owner's own account and Admin are never locked out; GET /v1/maintenance tells the editor |
+| RDC5-007 | P0 | W10 | Verified | Legal pages: saved with a version and date, the last 10 versions kept, rollback (password and code) makes a new version; only published pages show; https links in the text are clickable |
+| RDC5-008 | P0 | W10 | Verified | Two Admin tabs saving the same config: the one edited from an older version is refused with the config-conflict sentence and nothing of it is saved |
+| RDC5-009 | P0 | W10 | Verified | Uploads are checked by their bytes: a renamed .exe as .mp4, an SVG and text are refused with the wrong-type sentence; a file over the limit gets the too-big sentence with both sizes |
+| RDC5-010 | P0 | W10 | Verified | A Hindi reader's missing texts are listed for the owner (Hindi fallback warning); the default config has none; a showcase video needs a poster; header links default to today's one link |
+| RDC5-011 | P0 | W10 | Verified | Every new Owner App route (site, appearance, access) refuses no session (401), a normal user's token (401) and a stale CSRF token (403) |
+| RDC5-012 | P0 | W10 | Verified | Admin Website & Brand screen used like the owner: tagline, colour with hex and reset, banner (a bad date range refused), a published legal page, preview, save, the version listed; maintenance on asks for the code |
+| RDC5-013 | P0 | W10 | Verified | The website and panel show the owner's banner (closed once, it stays closed); the footer shows the owner's group, copyright and published legal pages; the legal page shows date, version and a clickable https link; sign-up links it; Hindi reads Hindi |
+| RDC5-014 | P0 | W10 | Verified | Maintenance in the browser: the website shows the owner's message, signing in still works, a person's panel shows the maintenance page, the owner's own account still gets the panel; off again, the panel opens |
+| RDC5-015 | P0 | W10 | Verified | The editor mid-edit during maintenance: its cloud save is refused with the owner's sentence and sends nothing; the change is kept and sent when maintenance is off |
+| RDC5-016 | P0 | W10 | Verified | Appearance registry: slot ids are unique; every Style, Studio tool, lesson, plan and top-up has a derived slot; exempt reasons are named; a config with no appearance changes nothing |
+| RDC5-017 | P0 | W10 | Verified | Appearance saves: a picture slot reaches the live config; a video without a poster is refused with the owner's sentence; non-https addresses, a renamed .exe and an SVG are refused; the owner's own upload limit gives the too-big sentence |
+| RDC5-018 | P0 | W10 | Verified | Unused files: a file in two slots stays used until both let go; a slot of a deleted Style uses nothing; cleanup deletes only unused files uploaded in Appearance and is audited |
+| RDC5-019 | P0 | W10 | Verified | Admin › Appearance used like the owner: search, start a slot, upload a picture, click to set the focus, save; the slot shows as set |
+| RDC5-020 | P0 | W10 | Verified | The panel shows the owner's picture on the Credits hero and a Style card's video with its poster; a broken picture falls back to today's drawing; a hidden plan card is not shown; reduced motion shows the poster only |
+| RDC5-021 | P0 | W10 | Verified | Data saving: a Style card shows only its poster (website and panel share the slot) |
+| RDC5-022 | P0 | W10 | Verified | The crawl: every card, poster, hero and empty state on the website and panel pages is a slot or names its exempt reason |
+| RDC5-023 | P0 | W10 | Verified | Who gets a feature or a limit, in order: global off (and emergency), a personal override that has not ended, cohort overrides, beta and rollout (0 and 100 percent, a stable bucket), the plan; nothing set gives exactly the plan; a note is required for every override |
+| RDC5-024 | P0 | W10 | Verified | Owner App Features & access: an override asks for the code (refused without a note), the server, the panel's /v1/me and Claude follow at once; Who has this gives the reason and a count; an ended override is marked and not used; a plan with people cannot be deleted but can be archived; a cohort of up to 500 emails works and reaches a member at the next /v1/me; a deleted person's override changes nobody |
+| RDC5-025 | P0 | W10 | Verified | Admin › Features & access used like the owner: a group imported from a file, a rollout and a plan feature and limit saved, an override refused without a note then asking for the code and listed, Who has this answering with a count |
+| RDC5-026 | P0 | W10 | Verified | A free person's Brand Kit is locked; the owner's override unlocks it at the next load; when the override has ended it is locked again |
+| RDC5-027 | P0 | W10 | Verified | The parity matrix names a Claude way (or an exempt reason) for every member of the Director's own lists (message kinds, asset choices, plan-card actions, rewrite kinds, Style chat replies, Director steps); every tool it names exists on the connector; docs/PARITY.md is generated from it |
+| RDC5-028 | P0 | W10 | Verified | The gaps filled for Claude: rewrite_plan (Cheaper and Richer, the Director's swap rule, one rewrite each, refused with none left), remove_extra_idea (noted in the Video sheet), use_video_style (the Project style follows the video) |
+| RDC5-029 | P0 | W10 | Verified | The same plan built by the Director's builder and through the connector gives the same scenes, sizes, layer kinds and texts (ids, names and times excepted) |
+| RDC5-030 | P0 | W10 | Verified | Rough use: a video over the owner's limit is refused with both sizes; a PNG with a script in its metadata is stored only as a .png picture |

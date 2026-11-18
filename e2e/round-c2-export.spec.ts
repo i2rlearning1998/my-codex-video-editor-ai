@@ -162,7 +162,7 @@ test('[RDC2-022] export limits: a video past mcp.exportMaxSeconds, a cancelled r
     /^Built/,
   );
   expect(text(await call('get_plan_cost', { video_id: videoId }))).toMatch(
-    /^Approving/,
+    /^The plan, scene by scene:/,
   );
   expect(text(await call('approve_plan', { video_id: videoId }))).toMatch(
     /^Approved/,

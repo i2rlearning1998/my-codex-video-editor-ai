@@ -1,4 +1,4 @@
-import type { UsageReporter } from '../usage-report';
+import { gatewayBase, type UsageReporter } from '../usage-report';
 import { markAiProject } from '../project/ai-flag';
 import type { EditorChatEngine } from '../contracts/p3';
 import {
@@ -73,7 +73,11 @@ import type {
   CloudBackend as CloudAccount,
   CloudLibraryRow,
 } from '../cloud/backend';
-import { realSyncBackend, syncFailure } from '../sync/real-backend';
+import {
+  maintenanceSentence,
+  realSyncBackend,
+  syncFailure,
+} from '../sync/real-backend';
 import { assetFingerprint, mediaKey } from '../media/import';
 import { applyMotion, readMotion, reducedNow } from './motion';
 import { presetControls } from '../creator-pack/preset';
@@ -8569,6 +8573,11 @@ export function mountEditorShell(
           limitBytes: () => actions.cloud!.limitBytes(),
           signedIn: () => actions.cloud!.signedIn(),
           storage: cloudStorage,
+          maintenance: () =>
+            maintenanceSentence(
+              gatewayBase(),
+              document.documentElement.lang === 'hi',
+            ),
           collect: {
             project: () => ({
               name: realEngine.state.metadata.name,
