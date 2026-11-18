@@ -1389,7 +1389,8 @@ export function createServerApp(o: ServerOptions) {
       }
       if (req.method === 'POST' && path === '/v1/local/token') {
         if (
-          o.env.AUTH_MODE !== 'local' ||
+          // main.ts treats anything but 'supabase' as local; so does this.
+          o.env.AUTH_MODE === 'supabase' ||
           o.env.LOCAL_TOKENS !== '1' ||
           !o.env.LOCAL_AUTH_SECRET
         )
